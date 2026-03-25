@@ -1,0 +1,178 @@
+"use client";
+
+import Link from "next/link";
+import { useState } from "react";
+import {
+  DEVICE_CATEGORY_LABELS,
+  DEVICE_CATEGORY_VALUES,
+  type DeviceCategoryValue,
+} from "@/lib/device-categories";
+
+export function OrderForm() {
+  const [category, setCategory] = useState<DeviceCategoryValue>("ii");
+  const [licensePlate, setLicensePlate] = useState("");
+  const [contractAccepted, setContractAccepted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setMessage(null);
+    if (!contractAccepted) {
+      setError("Fogadd el a vásárlási feltételeket a folytatáshoz.");
+      return;
+    }
+    const plate = licensePlate.trim().toUpperCase().replace(/\s+/g, "");
+    if (plate.length < 5 || plate.length > 12) {
+      setError("Adj meg érvényes rendszámot (5–12 karakter).");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/stripe/checkout-device", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category,
+          contractAccepted: true,
+          licensePlate: plate,
+        }),
+      });
+      const data = (await response.json()) as {
+        ok: boolean;
+        error?: string;
+        url?: string | null;
+        waitlist?: boolean;
+        message?: string;
+      };
+      if (!data.ok) {
+        setError(data.error ?? "Hiba történt.");
+        return;
+      }
+      if (data.waitlist && data.message) {
+        setMessage(data.message);
+        return;
+      }
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      setError("Nem kaptunk Stripe URL-t.");
+    } catch {
+      setError("Hálózati hiba történt.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="adria-animate-in adria-delay-4 adria-glass mt-8 space-y-6 rounded-2xl p-6 transition-shadow duration-300 md:p-8"
+    >
+      <div>
+        <label htmlFor="category" className="mb-1.5 block text-sm font-medium text-foreground">
+          Járműkategória
+        </label>
+        <select
+          id="category"
+          value={category}
+          onChange={(e) => setCategory(e.target.value as DeviceCategoryValue)}
+          className="w-full rounded-xl border border-border/80 bg-white/90 px-4 py-2.5 text-sm shadow-sm transition"
+        >
+          {DEVICE_CATEGORY_VALUES.map((value) => (
+            <option key={value} value={value}>
+              {DEVICE_CATEGORY_LABELS[value]}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label htmlFor="licensePlate" className="mb-1.5 block text-sm font-medium text-foreground">
+          Jármű rendszáma
+        </label>
+        <input
+          id="licensePlate"
+          value={licensePlate}
+          onChange={(e) => setLicensePlate(e.target.value)}
+          placeholder="pl. ABC-123"
+          autoComplete="off"
+          className="w-full rounded-xl border border-border/80 bg-white/90 px-4 py-2.5 text-sm uppercase shadow-sm transition"
+        />
+        <p className="mt-1.5 text-xs text-muted">
+          A rendszám a készülékhez és a számlához kapcsolódik; Stripe fizetés után rögzítjük.
+        </p>
+      </div>
+
+      <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-5 shadow-inner backdrop-blur-sm">
+        <p className="font-semibold text-foreground">Vásárlási feltételek</p>
+        <ul className="mt-3 list-inside list-disc space-y-1.5 text-sm text-muted">
+          <li>A megrendelés Stripe-on keresztüli fizetést követ.</li>
+          <li>Sikeres fizetés után a készülék a fiókodhoz kapcsolódik.</li>
+          <li>Ha nincs szabad készülék, várólistára kerülsz — értesítünk.</li>
+        </ul>
+        <p className="mt-4 text-xs text-muted">
+          Részletes jogi szöveg:{" "}
+          <Link href="/aszf" className="font-medium text-primary underline">
+            Általános Szerződési Feltételek
+          </Link>
+          ,{" "}
+          <Link href="/adatvedelem" className="font-medium text-primary underline">
+            Adatvédelem
+          </Link>
+          .
+        </p>
+        <label className="mt-4 flex cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            checked={contractAccepted}
+            onChange={(e) => setContractAccepted(e.target.checked)}
+            className="mt-0.5 h-5 w-5 rounded border-border accent-primary"
+          />
+          <span className="text-sm text-foreground">Elfogadom a vásárlási feltételeket és az adatkezelést.</span>
+        </label>
+      </div>
+
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-danger-light px-4 py-3 text-sm text-danger">
+          {error}
+        </div>
+      )}
+      {message && (
+        <div className="rounded-xl border border-amber-200 bg-warning-light px-4 py-3 text-sm text-amber-900">
+          {message}
+        </div>
+      )}
+
+      <button
+        type="submit"
+        disabled={isSubmitting}
+        className="adria-btn-primary w-full rounded-xl px-4 py-3.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:transform-none"
+      >
+        {isSubmitting ? "Feldolgozás…" : "Tovább a fizetéshez"}
+      </button>
+
+      <div className="flex items-center justify-center gap-3 rounded-2xl border border-emerald-200/70 bg-emerald-50/90 px-4 py-3 text-center shadow-sm">
+        <svg
+          viewBox="0 0 24 24"
+          className="h-6 w-6 text-emerald-600"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M12 3l7 3v6c0 4.5-3.1 7.7-7 9-3.9-1.3-7-4.5-7-9V6l7-3z" />
+          <path d="m9 12 2 2 4-4" />
+        </svg>
+        <p className="text-base font-semibold text-slate-800">
+          Titkos és biztonságos fizetés <span className="ml-1 font-extrabold text-[#635BFF]">stripe</span>
+        </p>
+      </div>
+    </form>
+  );
+}

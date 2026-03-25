@@ -1,0 +1,349 @@
+import { getIntSetting, getSettingsMap } from "@/lib/app-settings";
+import { createEracuniInvoiceStub } from "@/lib/eracuni";
+import { createSupabaseAdminClient } from "@/lib/supabase-admin";
+import { sendAppEmail } from "@/lib/notify-email";
+import { getStripe } from "@/lib/stripe";
+
+function escapeHtml(input: string): string {
+  return input
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function buildEmailHtml(params: { title: string; intro: string; rows: Array<{ label: string; value: string }> }): string {
+  const rowsHtml = params.rows
+    .map(
+      (r) => `
+        <tr>
+          <td style="padding:6px 0;color:#64748b;font-size:13px;">${escapeHtml(r.label)}</td>
+          <td style="padding:6px 0;color:#0f172a;font-size:13px;font-weight:600;">${escapeHtml(r.value)}</td>
+        </tr>`,
+    )
+    .join("");
+
+  return `
+  <div style="background:#f8fafc;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
+    <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;">
+      <div style="padding:16px 20px;background:linear-gradient(135deg,#1d4ed8,#4f46e5);color:#ffffff;">
+        <div style="font-size:12px;opacity:0.9;letter-spacing:.04em;text-transform:uppercase;">AdriaGo</div>
+        <div style="font-size:20px;font-weight:700;margin-top:6px;">${escapeHtml(params.title)}</div>
+      </div>
+      <div style="padding:18px 20px;">
+        <p style="margin:0 0 12px 0;color:#334155;font-size:14px;line-height:1.5;">${escapeHtml(params.intro)}</p>
+        <table role="presentation" cellspacing="0" cellpadding="0" width="100%" style="border-collapse:collapse;">
+          ${rowsHtml}
+        </table>
+      </div>
+      <div style="padding:12px 20px;background:#f8fafc;color:#64748b;font-size:12px;">
+        Ez egy automatikus üzenet, kérjük ne válaszolj rá.
+      </div>
+    </div>
+  </div>`;
+}
+
+function parseAmountHuf(sessionAmountTotal: number | null, metadataAmountHuf: string | undefined): number {
+  const metaAmount = metadataAmountHuf ? Number.parseInt(metadataAmountHuf, 10) : NaN;
+  if (Number.isFinite(metaAmount) && metaAmount > 0) {
+    return metaAmount;
+  }
+
+  const total = sessionAmountTotal ?? 0;
+  return Math.round(total / 100);
+}
+
+export async function POST(request: Request) {
+  const signature = request.headers.get("stripe-signature");
+  if (!signature) {
+    return new Response("Missing stripe-signature header", { status: 400 });
+  }
+
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    return new Response("Missing STRIPE_WEBHOOK_SECRET", { status: 500 });
+  }
+
+  const rawBody = await request.text();
+
+  try {
+    const stripe = getStripe();
+    const event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object;
+      const supabase = createSupabaseAdminClient();
+
+      const metadata = session.metadata ?? {};
+      const amountHuf = parseAmountHuf(session.amount_total, metadata.amount_huf);
+      const orderType = metadata.order_type ?? "";
+      const deviceIdentifier = metadata.device_identifier || null;
+      const userEmail = metadata.user_email ?? null;
+      const isDevicePurchase = orderType === "device_purchase";
+      const isTopup = orderType === "topup";
+
+      const travelDestination = (metadata.travel_destination ?? "").trim() || null;
+
+      const { error } = await supabase.from("stripe_topups").upsert(
+        {
+          stripe_session_id: session.id,
+          stripe_payment_intent_id:
+            typeof session.payment_intent === "string"
+              ? session.payment_intent
+              : null,
+          user_id: metadata.user_id ?? null,
+          user_email: userEmail,
+          device_identifier: deviceIdentifier,
+          amount_huf: amountHuf,
+          currency: session.currency?.toUpperCase() ?? "HUF",
+          status: "paid",
+          paid_at: new Date().toISOString(),
+          payload: session,
+          travel_destination: travelDestination,
+        },
+        {
+          onConflict: "stripe_session_id",
+          ignoreDuplicates: false,
+        },
+      );
+
+      if (error) {
+        return new Response(`Supabase error: ${error.message}`, { status: 500 });
+      }
+
+      if (isDevicePurchase) {
+        const deviceId = metadata.device_id ?? null;
+        const authUserId = metadata.user_id ?? null;
+        const category = metadata.category ?? null;
+
+        if (!deviceId || !authUserId || !category || !deviceIdentifier) {
+          return new Response("Device purchase metadata incomplete", { status: 500 });
+        }
+
+        const paidAt = new Date().toISOString();
+
+        const licensePlate = (metadata.license_plate ?? "").trim() || null;
+
+        const { data: updatedRows, error: deviceUpdateError } = await supabase
+          .from("devices")
+          .update({
+            status: "sold",
+            auth_user_id: authUserId,
+            sold_at: paidAt,
+            updated_at: paidAt,
+            license_plate: licensePlate,
+          })
+          .eq("id", deviceId)
+          .eq("status", "available")
+          .select("id");
+
+        if (deviceUpdateError) {
+          return new Response(`Device update error: ${deviceUpdateError.message}`, {
+            status: 500,
+          });
+        }
+
+        const assignmentOk = Array.isArray(updatedRows) && updatedRows.length > 0;
+
+        const { error: orderError } = await supabase.from("enc_device_orders").upsert(
+          {
+            stripe_session_id: session.id,
+            auth_user_id: authUserId,
+            user_email: userEmail,
+            device_id: deviceId,
+            device_identifier: deviceIdentifier,
+            category,
+            amount_huf: amountHuf,
+            status: "paid",
+            assignment_ok: assignmentOk,
+            paid_at: paidAt,
+          },
+          { onConflict: "stripe_session_id", ignoreDuplicates: false },
+        );
+
+        if (orderError) {
+          return new Response(`enc_device_orders error: ${orderError.message}`, {
+            status: 500,
+          });
+        }
+
+        if (deviceIdentifier) {
+          const inv = await createEracuniInvoiceStub({
+            kind: "device_sale",
+            deviceIdentifier,
+            amountHuf,
+            userEmail: userEmail,
+          });
+          if (!inv.ok) {
+            console.error("[eracuni] Device sale invoice failed:", inv.error);
+          } else if (inv.skipped) {
+            console.warn("[eracuni] Device sale invoice skipped (missing config).");
+          } else {
+            console.info("[eracuni] Device sale invoice request sent successfully.");
+          }
+        }
+
+        if (userEmail) {
+          await sendAppEmail({
+            to: userEmail,
+            subject: "AdriaGo — sikeres ENC rendelés",
+            text: `Köszönjük a vásárlást. Eszköz: ${deviceIdentifier ?? "-"}. Összeg: ${amountHuf} Ft.`,
+            html: buildEmailHtml({
+              title: "Sikeres rendelés",
+              intro: "Köszönjük a vásárlást, a rendelésedet sikeresen rögzítettük.",
+              rows: [
+                { label: "Eszköz", value: deviceIdentifier ?? "-" },
+                { label: "Összeg", value: `${amountHuf} Ft` },
+                { label: "Rendelés azonosító", value: session.id },
+              ],
+            }),
+          }).catch((err) => {
+            console.error("[email] User order e-mail küldés sikertelen:", err);
+          });
+        }
+
+        const adminEmail = (process.env.ADMIN_EMAILS ?? "").split(",")[0]?.trim();
+        if (adminEmail) {
+          await sendAppEmail({
+            to: adminEmail,
+            subject: "AdriaGo admin — új ENC rendelés",
+            text: `Rendelés: ${deviceIdentifier}, ${userEmail}, ${amountHuf} Ft.`,
+            html: buildEmailHtml({
+              title: "Új ENC rendelés",
+              intro: "Új sikeres rendelés érkezett a rendszerbe.",
+              rows: [
+                { label: "Felhasználó", value: userEmail ?? "-" },
+                { label: "Eszköz", value: deviceIdentifier ?? "-" },
+                { label: "Összeg", value: `${amountHuf} Ft` },
+                { label: "Stripe session", value: session.id },
+              ],
+            }),
+          }).catch((err) => {
+            console.error("[email] Admin order e-mail küldés sikertelen:", err);
+          });
+        }
+      } else if (isTopup) {
+        // Egyenlegfeltoltes: idempotens wallet jovairas.
+        if (deviceIdentifier) {
+          const { error: walletApplyError } = await supabase.rpc("apply_topup", {
+            p_device_identifier: deviceIdentifier,
+            p_amount_huf: amountHuf,
+            p_stripe_session_id: session.id,
+            p_user_email: userEmail,
+          });
+
+          if (walletApplyError) {
+            return new Response(`Wallet apply error: ${walletApplyError.message}`, {
+              status: 500,
+            });
+          }
+
+          const inv = await createEracuniInvoiceStub({
+            kind: "topup",
+            deviceIdentifier,
+            amountHuf,
+            userEmail: userEmail,
+          });
+          if (!inv.ok) {
+            console.error("[eracuni] Topup invoice failed:", inv.error);
+          } else if (inv.skipped) {
+            console.warn("[eracuni] Topup invoice skipped (missing config).");
+          } else {
+            console.info("[eracuni] Topup invoice request sent successfully.");
+          }
+
+          if (userEmail) {
+            await sendAppEmail({
+              to: userEmail,
+              subject: "AdriaGo — sikeres egyenlegfeltöltés",
+              text: `Feltöltés: ${amountHuf} Ft, eszköz: ${deviceIdentifier}.`,
+              html: buildEmailHtml({
+                title: "Sikeres egyenlegfeltöltés",
+                intro: "A feltöltésed sikeresen jóváírásra került.",
+                rows: [
+                  { label: "Eszköz", value: deviceIdentifier ?? "-" },
+                  { label: "Feltöltés", value: `${amountHuf} Ft` },
+                  { label: "Stripe session", value: session.id },
+                ],
+              }),
+            }).catch((err) => {
+              console.error("[email] User topup e-mail küldés sikertelen:", err);
+            });
+          }
+
+          const settings = await getSettingsMap();
+          const minBal = getIntSetting(settings, "min_balance_warning_huf", 5000);
+
+          const { data: w } = await supabase
+            .from("device_wallets")
+            .select("balance_huf")
+            .eq("device_identifier", deviceIdentifier)
+            .maybeSingle();
+
+          const bal = w ? Number(w.balance_huf) : amountHuf;
+          if (userEmail && bal < minBal) {
+            await sendAppEmail({
+              to: userEmail,
+              subject: "AdriaGo — alacsony egyenleg",
+              text: `Az eszköz (${deviceIdentifier}) egyenlege: ${bal} Ft (küszöb: ${minBal} Ft).`,
+              html: buildEmailHtml({
+                title: "Alacsony egyenleg",
+                intro: "Az eszközöd egyenlege a beállított figyelmeztetési küszöb alá csökkent.",
+                rows: [
+                  { label: "Eszköz", value: deviceIdentifier ?? "-" },
+                  { label: "Jelenlegi egyenleg", value: `${bal} Ft` },
+                  { label: "Figyelmeztetési küszöb", value: `${minBal} Ft` },
+                ],
+              }),
+            }).catch((err) => {
+              console.error("[email] Low balance e-mail küldés sikertelen:", err);
+            });
+          }
+          if (userEmail && bal < 0) {
+            await sendAppEmail({
+              to: userEmail,
+              subject: "AdriaGo — negatív egyenleg",
+              text: `Figyelem: ${deviceIdentifier} egyenlege negatív: ${bal} Ft.`,
+              html: buildEmailHtml({
+                title: "Negatív egyenleg",
+                intro: "Figyelem: az eszközöd egyenlege negatívba fordult.",
+                rows: [
+                  { label: "Eszköz", value: deviceIdentifier ?? "-" },
+                  { label: "Jelenlegi egyenleg", value: `${bal} Ft` },
+                  { label: "Felhasználó", value: userEmail },
+                ],
+              }),
+            }).catch((err) => {
+              console.error("[email] Negative balance user e-mail küldés sikertelen:", err);
+            });
+            const adminEmail = (process.env.ADMIN_EMAILS ?? "").split(",")[0]?.trim();
+            if (adminEmail) {
+              await sendAppEmail({
+                to: adminEmail,
+                subject: "AdriaGo admin — negatív wallet",
+                text: `${deviceIdentifier} / ${userEmail}: ${bal} Ft`,
+                html: buildEmailHtml({
+                  title: "Negatív wallet riasztás",
+                  intro: "Egy felhasználói eszköz egyenlege negatívba fordult.",
+                  rows: [
+                    { label: "Felhasználó", value: userEmail ?? "-" },
+                    { label: "Eszköz", value: deviceIdentifier ?? "-" },
+                    { label: "Egyenleg", value: `${bal} Ft` },
+                  ],
+                }),
+              }).catch((err) => {
+                console.error("[email] Negative balance admin e-mail küldés sikertelen:", err);
+              });
+            }
+          }
+        }
+      }
+    }
+
+    return new Response("ok", { status: 200 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Webhook error";
+    return new Response(message, { status: 400 });
+  }
+}

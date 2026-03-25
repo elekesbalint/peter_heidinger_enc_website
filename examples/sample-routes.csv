@@ -1,0 +1,3 @@
+Reláció;A tranzakció végrehajtásának dátuma;Behajtás ideje;Kihajtás ideje;Készülék száma;Rendszám;Kifizetés (HRK);Pénznem
+A1 → B2;21.03.2026 10:15:00;21.03.2026 10:10:00;21.03.2026 10:20:00;08197398187421;ABC-123;12,50;EUR
+A1 → B2;21.03.2026 11:30:00;21.03.2026 11:25:00;21.03.2026 11:35:00;024354542;XYZ-999;8,00;EUR

@@ -1,26 +1,293 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #0f172a;
+  --card: rgba(255, 255, 255, 0.72);
+  --card-solid: #f8fafc;
+  --border: rgba(148, 163, 184, 0.35);
+  --primary: #2563eb;
+  --primary-strong: #1d4ed8;
+  --primary-light: rgba(239, 246, 255, 0.95);
+  --secondary: #0ea5e9;
+  --accent: #6366f1;
+  --success: #16a34a;
+  --success-light: #f0fdf4;
+  --warning: #f59e0b;
+  --warning-light: #fffbeb;
+  --danger: #dc2626;
+  --danger-light: #fef2f2;
+  --muted: #64748b;
+  --surface-glow: rgba(37, 99, 235, 0.06);
 }
 
 @theme inline {
-  --color-background: var(--background);
+  --color-background: transparent;
   --color-foreground: var(--foreground);
+  --color-card: var(--card-solid);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-strong: var(--primary-strong);
+  --color-primary-light: var(--primary-light);
+  --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+  --color-success-light: var(--success-light);
+  --color-warning: var(--warning);
+  --color-warning-light: var(--warning-light);
+  --color-danger: var(--danger);
+  --color-danger-light: var(--danger-light);
+  --color-muted: var(--muted);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --animate-fade-up: fade-up 0.75s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  --animate-fade-in: fade-in 0.6s ease-out forwards;
+  --animate-float: float-y 8s ease-in-out infinite;
+  --animate-shimmer: shimmer 12s ease-in-out infinite;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes float-y {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes shimmer {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
   }
 }
 
 body {
-  background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  min-height: 100vh;
+  /* Meleg, semleges „studio” háttér — nem hideg kék-szürke, nem tömör fehér */
+  background-color: #ebe8e4;
+  background-image:
+    radial-gradient(ellipse 110% 75% at 50% -28%, rgba(37, 99, 235, 0.07), transparent 52%),
+    radial-gradient(ellipse 65% 48% at 96% 12%, rgba(120, 113, 108, 0.07), transparent 48%),
+    radial-gradient(ellipse 58% 42% at 4% 82%, rgba(87, 83, 78, 0.06), transparent 44%),
+    linear-gradient(168deg, #faf9f7 0%, #f3f1ed 35%, #ebe8e4 68%, #e3dfd9 100%);
+  background-attachment: fixed;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.22;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: soft-light;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+::selection {
+  background-color: #2563eb;
+  color: #ffffff;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+/* Prémium üveges kártya */
+.adria-glass {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow:
+    0 4px 24px rgba(15, 23, 42, 0.06),
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.adria-glass:hover {
+  box-shadow:
+    0 12px 40px rgba(15, 23, 42, 0.1),
+    0 4px 12px rgba(37, 99, 235, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+.adria-animate-in {
+  opacity: 0;
+  animation: fade-up 0.75s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.adria-delay-1 {
+  animation-delay: 0.08s;
+}
+.adria-delay-2 {
+  animation-delay: 0.16s;
+}
+.adria-delay-3 {
+  animation-delay: 0.24s;
+}
+.adria-delay-4 {
+  animation-delay: 0.32s;
+}
+.adria-delay-5 {
+  animation-delay: 0.4s;
+}
+.adria-delay-6 {
+  animation-delay: 0.48s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adria-animate-in {
+    opacity: 1;
+    animation: none;
+  }
+}
+
+.hero-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 20s ease infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-gradient {
+    animation: none;
+  }
+}
+
+.adria-blob {
+  animation: shimmer 10s ease-in-out infinite;
+}
+
+.adria-blob-2 {
+  animation-delay: 2s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adria-blob {
+    animation: none;
+  }
+}
+
+/* Prémium CTA gomb: gradient + hover */
+.adria-btn-primary {
+  background: linear-gradient(135deg, #2563eb 0%, #4f46e5 55%, #4338ca 100%);
+  box-shadow:
+    0 4px 16px rgba(37, 99, 235, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition:
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.22s ease,
+    filter 0.22s ease;
+}
+
+.adria-btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow:
+    0 10px 28px rgba(37, 99, 235, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  filter: brightness(1.03);
+}
+
+.adria-btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adria-btn-primary:hover:not(:disabled),
+  .adria-btn-primary:active:not(:disabled) {
+    transform: none;
+    filter: none;
+  }
+}
+
+/* Belső oldalak dekoratív fényfoltjai */
+.adria-page-glow {
+  pointer-events: none;
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(48px);
+  opacity: 0.55;
+}
+
+.adria-page-glow-a {
+  top: -4rem;
+  right: -2rem;
+  width: 14rem;
+  height: 14rem;
+  background: rgba(37, 99, 235, 0.2);
+  animation: float-y 12s ease-in-out infinite;
+}
+
+.adria-page-glow-b {
+  bottom: 20%;
+  left: -3rem;
+  width: 12rem;
+  height: 12rem;
+  background: rgba(99, 102, 241, 0.16);
+  animation: float-y 14s ease-in-out infinite;
+  animation-delay: 1.5s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adria-page-glow-a,
+  .adria-page-glow-b {
+    animation: none;
+  }
 }
