@@ -1,6 +1,7 @@
+import { cache } from "react";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
-type ProfileRow = {
+export type ProfileRow = {
   name: string | null;
   phone: string | null;
   billing_address: string | null;
@@ -11,7 +12,8 @@ function hasText(value: string | null | undefined): boolean {
   return Boolean(value && value.trim().length > 0);
 }
 
-export async function isProfileComplete(authUserId: string): Promise<boolean> {
+/** Egy kérésen belül egy DB-lekérés a profilra (layout név + oldal teljesség ellenőrzés). */
+export const getProfileByAuthUserId = cache(async (authUserId: string): Promise<ProfileRow | null> => {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("profiles")
@@ -19,7 +21,13 @@ export async function isProfileComplete(authUserId: string): Promise<boolean> {
     .eq("auth_user_id", authUserId)
     .maybeSingle<ProfileRow>();
 
-  if (error || !data) return false;
+  if (error || !data) return null;
+  return data;
+});
+
+export async function isProfileComplete(authUserId: string): Promise<boolean> {
+  const data = await getProfileByAuthUserId(authUserId);
+  if (!data) return false;
 
   return (
     hasText(data.name) &&

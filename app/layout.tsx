@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import { Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth-server";
-import { createSupabaseAdminClient } from "@/lib/supabase-admin";
+import { getProfileByAuthUserId } from "@/lib/profile-completion";
 import "./globals.css";
 
 const inter = Inter({
@@ -28,16 +28,8 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const user = await getCurrentUser();
-  let profileName: string | null = null;
-  if (user) {
-    const supabase = createSupabaseAdminClient();
-    const { data } = await supabase
-      .from("profiles")
-      .select("name")
-      .eq("auth_user_id", user.id)
-      .maybeSingle();
-    profileName = (data?.name as string | null) ?? null;
-  }
+  const profileRow = user ? await getProfileByAuthUserId(user.id) : null;
+  const profileName = profileRow?.name ?? null;
 
   const rawName =
     profileName ??

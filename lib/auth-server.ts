@@ -1,13 +1,15 @@
 import type { User } from "@supabase/supabase-js";
+import { cache } from "react";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
-export async function getCurrentUser(): Promise<User | null> {
+/** Egy HTTP kérésen belül deduplikálva – layout + oldal ne hívja kétszer a Supabase auth-ot. */
+export const getCurrentUser = cache(async (): Promise<User | null> => {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   return user;
-}
+});
 
 export function isAdminEmail(email: string | undefined): boolean {
   if (!email) return false;
