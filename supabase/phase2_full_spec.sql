@@ -45,7 +45,8 @@ insert into settings (key, value, updated_at) values
   ('topup_package_1_huf', '15000', now()),
   ('topup_package_2_huf', '25000', now()),
   ('topup_package_3_huf', '45000', now()),
-  ('topup_block_smallest_for_categories', 'ii,iii,iv', now())
+  ('topup_block_smallest_for_categories', 'ii,iii,iv', now()),
+  ('referral_device_discount_huf', '25000', now())
 on conflict (key) do nothing;
 
 -- Feltoltes: uticel (Stripe webhook metadata)

@@ -168,6 +168,22 @@ export async function POST(request: Request) {
           });
         }
 
+        const referralInviteId = (metadata.referral_invite_id ?? "").trim();
+        if (referralInviteId) {
+          const { error: referralUseError } = await supabase
+            .from("referral_invites")
+            .update({
+              status: "discounted",
+              discount_used_at: paidAt,
+            })
+            .eq("id", referralInviteId)
+            .eq("invited_auth_user_id", authUserId)
+            .is("discount_used_at", null);
+          if (referralUseError) {
+            console.error("[referral] Discount mark failed:", referralUseError.message);
+          }
+        }
+
         if (deviceIdentifier) {
           const inv = await createEracuniInvoiceStub({
             kind: "device_sale",

@@ -124,6 +124,10 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
     label: "3. topup csomag (Ft)",
     hint: "A legnagyobb feltöltési csomag ára.",
   },
+  referral_device_discount_huf: {
+    label: "Ajánlói kedvezmény készülékvásárlásra (Ft)",
+    hint: "A meghívott user első sikeres készülékvásárlásakor ennyivel csökken az ár.",
+  },
 };
 
 function normalizeAddressForDisplay(raw: string | null): string {

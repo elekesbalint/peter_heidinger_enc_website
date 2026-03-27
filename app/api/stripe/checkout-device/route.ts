@@ -6,6 +6,7 @@ import {
 } from "@/lib/device-categories";
 import { isProfileComplete } from "@/lib/profile-completion";
 import { getBaseUrl, getStripe } from "@/lib/stripe";
+import { getIntSetting, getSettingsMap } from "@/lib/app-settings";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 function toStripeHufAmount(hufAmount: number): number {
@@ -100,7 +101,23 @@ export async function POST(request: Request) {
       );
     }
 
-    const priceHuf = getDevicePriceHuf();
+    const settings = await getSettingsMap();
+    const referralDiscountHuf = Math.max(
+      0,
+      getIntSetting(settings, "referral_device_discount_huf", 25000),
+    );
+    const { data: activeReferral } = await supabase
+      .from("referral_invites")
+      .select("id")
+      .eq("invited_auth_user_id", user.id)
+      .is("discount_used_at", null)
+      .order("accepted_at", { ascending: true, nullsFirst: false })
+      .limit(1)
+      .maybeSingle();
+
+    const basePriceHuf = getDevicePriceHuf();
+    const appliedReferralDiscountHuf = activeReferral ? Math.min(basePriceHuf, referralDiscountHuf) : 0;
+    const priceHuf = Math.max(1, basePriceHuf - appliedReferralDiscountHuf);
     const stripe = getStripe();
     const baseUrl = getBaseUrl();
 
@@ -130,6 +147,9 @@ export async function POST(request: Request) {
         device_identifier: available.identifier,
         category,
         amount_huf: String(priceHuf),
+        base_amount_huf: String(basePriceHuf),
+        referral_discount_huf: String(appliedReferralDiscountHuf),
+        referral_invite_id: activeReferral?.id ?? "",
         license_plate: licensePlate,
       },
     });

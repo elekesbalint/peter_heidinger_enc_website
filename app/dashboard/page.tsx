@@ -7,6 +7,7 @@ import { DEVICE_CATEGORY_LABELS, type DeviceCategoryValue } from "@/lib/device-c
 import { isProfileComplete } from "@/lib/profile-completion";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import { ProfileForm } from "./profile-form";
+import { ReferralPanel } from "./referral-panel";
 
 const DEVICE_STATUS_LABELS: Record<string, string> = {
   available: "elérhető",
@@ -70,6 +71,25 @@ export default async function DashboardPage({
     .in("device_number_raw", ownedIdentifiers)
     .order("executed_at", { ascending: false })
     .limit(50);
+
+  const referralDiscountHuf = getIntSetting(settings, "referral_device_discount_huf", 25000);
+  let referralInvites: Array<{
+    id: string;
+    invited_email: string;
+    status: string;
+    created_at: string;
+    accepted_at: string | null;
+    discount_used_at: string | null;
+  }> = [];
+  const { data: inviteRows, error: inviteErr } = await supabase
+    .from("referral_invites")
+    .select("id, invited_email, status, created_at, accepted_at, discount_used_at")
+    .eq("inviter_auth_user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (!inviteErr && inviteRows) {
+    referralInvites = inviteRows as typeof referralInvites;
+  }
 
   return (
     <div className="mx-auto w-full max-w-6xl px-6 py-12">
@@ -219,6 +239,8 @@ export default async function DashboardPage({
           )}
         </div>
       </section>
+
+      <ReferralPanel discountHuf={referralDiscountHuf} invites={referralInvites} />
 
       <section className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-sm">
         <h2 className="text-xl font-semibold">Wallet-egyenlegek</h2>

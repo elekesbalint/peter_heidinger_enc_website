@@ -12,6 +12,7 @@ const DEFAULTS: Record<string, string> = {
   topup_package_3_huf: "45000",
   /** Vesszovel elvalasztott kategoriak (pl. ii,iii,iv): ezekhez nem valaszthato a legkisebb topup csomag. */
   topup_block_smallest_for_categories: "ii,iii,iv",
+  referral_device_discount_huf: "25000",
 };
 
 export async function getSettingsMap(): Promise<Record<string, string>> {
