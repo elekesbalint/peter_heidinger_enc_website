@@ -12,6 +12,10 @@ const DEFAULTS: Record<string, string> = {
   /** Vesszovel elvalasztott kategoriak (pl. ii,iii,iv): ezekhez nem valaszthato a legkisebb topup csomag. */
   topup_block_smallest_for_categories: "ii,iii,iv",
   referral_device_discount_huf: "25000",
+  home_hero_title: "ENC vásárlás és útdíjkezelés egyetlen modern rendszerben.",
+  home_hero_subtitle:
+    "Eszközrendelés, egyenlegfeltöltés, útvonaladatok kezelése és adminisztráció — prémium felületen, biztonságos fizetéssel.",
+  dashboard_intro_text: "Saját eszközök, egyenleg, úttörténet és profil. Alacsony egyenleg küszöb:",
 };
 
 export async function getSettingsMap(): Promise<Record<string, string>> {

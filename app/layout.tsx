@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import type { Viewport } from "next";
 import { Inter } from "next/font/google";
 import { Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth-server";
 import { getProfileByAuthUserId } from "@/lib/profile-completion";
+import { MobileNavMenu } from "./components/mobile-nav-menu";
 import "./globals.css";
 
 const inter = Inter({
@@ -20,6 +22,12 @@ export const metadata: Metadata = {
   title: "AdriaGo — ENC értékesítés és útdíjkezelés",
   description:
     "Webalapú ENC értékesítési és útdíjkezelő rendszer — eszközrendelés, egyenlegfeltöltés, útvonalkövetés.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default async function RootLayout({
@@ -45,8 +53,8 @@ export default async function RootLayout({
     >
       <body suppressHydrationWarning className="relative flex min-h-full flex-col text-foreground">
         <div className="relative z-10 flex min-h-full flex-1 flex-col">
-          <header className="sticky top-0 z-40 border-b border-white/40 bg-white/55 shadow-sm backdrop-blur-xl transition-shadow duration-300 hover:shadow-md">
-            <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+          <header className="sticky top-0 z-40 w-full border-b border-white/40 bg-white/55 shadow-sm backdrop-blur-xl transition-shadow duration-300 hover:shadow-md">
+            <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-6">
               <Link
                 href="/"
                 className="group flex items-center gap-2.5 transition-transform duration-300 hover:scale-[1.02]"
@@ -105,48 +113,7 @@ export default async function RootLayout({
                   </>
                 )}
               </nav>
-              <details className="relative md:hidden">
-                <summary className="list-none rounded-xl border border-slate-300/85 bg-white/80 px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-white">
-                  Menü
-                </summary>
-                <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-xl backdrop-blur">
-                  <Link href="/dashboard" className="block rounded-xl px-3 py-2 text-sm text-slate-700 hover:bg-slate-100">
-                    Fiókom
-                  </Link>
-                  <Link href="/order" className="mt-1 block rounded-xl px-3 py-2 text-sm text-slate-700 hover:bg-slate-100">
-                    Rendelés
-                  </Link>
-                  <Link href="/topup" className="mt-1 block rounded-xl px-3 py-2 text-sm text-slate-700 hover:bg-slate-100">
-                    Feltöltés
-                  </Link>
-                  <Link href="/kapcsolat" className="mt-1 block rounded-xl px-3 py-2 text-sm text-slate-700 hover:bg-slate-100">
-                    Kapcsolat
-                  </Link>
-                  {user ? (
-                    <Link
-                      href="/dashboard"
-                      className="mt-2 block rounded-xl border border-slate-300/80 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700"
-                    >
-                      Üdvözlünk, <span className="font-semibold text-slate-900">{displayName}</span>
-                    </Link>
-                  ) : (
-                    <>
-                      <Link
-                        href="/register"
-                        className="mt-2 block rounded-xl border border-slate-300/85 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-                      >
-                        Regisztráció
-                      </Link>
-                      <Link
-                        href="/login"
-                        className="mt-1 block rounded-xl bg-gradient-to-r from-primary to-indigo-600 px-3 py-2 text-sm font-semibold text-white"
-                      >
-                        Belépés
-                      </Link>
-                    </>
-                  )}
-                </div>
-              </details>
+              <MobileNavMenu user={Boolean(user)} displayName={displayName} />
             </div>
           </header>
 

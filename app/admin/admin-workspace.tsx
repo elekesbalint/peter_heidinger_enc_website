@@ -132,6 +132,18 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
     label: "Ajánlói kedvezmény készülékvásárlásra (Ft)",
     hint: "A meghívott user első sikeres készülékvásárlásakor ennyivel csökken az ár.",
   },
+  home_hero_title: {
+    label: "Főoldal hero cím",
+    hint: "A landing page fő címsora.",
+  },
+  home_hero_subtitle: {
+    label: "Főoldal hero alcím",
+    hint: "A landing page címsor alatti leírás.",
+  },
+  dashboard_intro_text: {
+    label: "Dashboard bevezető szöveg",
+    hint: "A felhasználói dashboard tetején megjelenő rövid leírás.",
+  },
 };
 
 function normalizeAddressForDisplay(raw: string | null): string {
@@ -182,12 +194,7 @@ export function AdminWorkspace() {
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [encFilter, setEncFilter] = useState<"all" | "active" | "shipped" | "archived" | "cancelled">("all");
   const [encQuery, setEncQuery] = useState("");
-  const [shipForId, setShipForId] = useState<string | null>(null);
-  const [trackingInput, setTrackingInput] = useState("");
-  const [mplAgreementCode, setMplAgreementCode] = useState(
-    process.env.NEXT_PUBLIC_MPL_SENDER_AGREEMENT ?? "",
-  );
-  const [mplJson, setMplJson] = useState("{}");
+  const [mplAgreementCode] = useState(process.env.NEXT_PUBLIC_MPL_SENDER_AGREEMENT ?? "");
   const [labelLoadingForId, setLabelLoadingForId] = useState<string | null>(null);
   const [editShippingOrderId, setEditShippingOrderId] = useState<string | null>(null);
   const [editShippingAddress, setEditShippingAddress] = useState("");
@@ -558,28 +565,13 @@ export function AdminWorkspace() {
     await loadEnc();
   }
 
-  async function submitShip() {
-    if (!shipForId) return;
-    let mpl: Record<string, unknown> | null = null;
-    const raw = mplJson.trim();
-    if (raw && raw !== "{}") {
-      try {
-        mpl = JSON.parse(raw) as Record<string, unknown>;
-      } catch {
-        setEncErr("Érvénytelen MPL JSON");
-        return;
-      }
-    }
+  async function submitShip(orderId: string, trackingNumber?: string | null) {
     try {
-      await postOrderUpdate(shipForId, "ship", {
-        tracking_number: trackingInput.trim(),
-        mpl_payload: mpl,
+      await postOrderUpdate(orderId, "ship", {
+        tracking_number: (trackingNumber ?? "").trim(),
+        mpl_payload: null,
         mpl_sender_agreement: mplAgreementCode.trim() || null,
       });
-      setShipForId(null);
-      setTrackingInput("");
-      setMplAgreementCode("");
-      setMplJson("{}");
       await loadEnc();
     } catch (e) {
       setEncErr(e instanceof Error ? e.message : "Hiba");
@@ -954,41 +946,6 @@ export function AdminWorkspace() {
               </p>
             )}
             {encErr && <p className="mt-2 text-sm text-red-600">{encErr}</p>}
-            {shipForId && (
-              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm">
-                <p className="font-medium">MPL címkegenerálás</p>
-                <input
-                  value={trackingInput}
-                  onChange={(e) => setTrackingInput(e.target.value)}
-                  placeholder="Csomagkövető szám"
-                  className="mt-2 w-full rounded-lg border px-2 py-1"
-                />
-                <input
-                  value={mplAgreementCode}
-                  onChange={(e) => setMplAgreementCode(e.target.value)}
-                  placeholder="MPL megállapodás kód (sender.agreement), pl. 12345678"
-                  className="mt-2 w-full rounded-lg border px-2 py-1"
-                />
-                <textarea
-                  value={mplJson}
-                  onChange={(e) => setMplJson(e.target.value)}
-                  rows={4}
-                  className="mt-2 w-full rounded-lg border px-2 py-1 font-mono text-xs"
-                />
-                <div className="mt-2 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={submitShip}
-                    className="rounded-lg bg-primary px-3 py-1.5 text-white"
-                  >
-                    Mentés
-                  </button>
-                  <button type="button" onClick={() => setShipForId(null)} className="rounded-lg border px-3 py-1.5">
-                    Mégse
-                  </button>
-                </div>
-              </div>
-            )}
             <div className="mt-4 overflow-x-auto rounded-xl border border-border/70">
               <table className="min-w-full text-left text-sm">
                 <thead>
@@ -1094,11 +1051,7 @@ export function AdminWorkspace() {
                             <button
                               type="button"
                               className="rounded-md border border-primary/20 bg-primary/10 px-2 py-1 text-xs font-medium text-primary hover:bg-primary/15"
-                              onClick={() => {
-                                setShipForId(o.id);
-                                setTrackingInput(o.tracking_number ?? "");
-                                setMplJson("{}");
-                              }}
+                              onClick={() => submitShip(o.id, o.tracking_number)}
                             >
                               Küldés
                             </button>
@@ -1385,12 +1338,20 @@ export function AdminWorkspace() {
                   placeholder="Név"
                   className="rounded border px-2 py-1 text-sm"
                 />
-                {(["price_ia", "price_i", "price_ii", "price_iii", "price_iv"] as const).map((k) => (
+                {(
+                  [
+                    ["price_ia", "IA kategória (EUR)"],
+                    ["price_i", "I kategória (EUR)"],
+                    ["price_ii", "II kategória (EUR)"],
+                    ["price_iii", "III kategória (EUR)"],
+                    ["price_iv", "IV kategória (EUR)"],
+                  ] as const
+                ).map(([k, label]) => (
                   <input
                     key={k}
                     value={newDest[k]}
                     onChange={(e) => setNewDest({ ...newDest, [k]: e.target.value })}
-                    placeholder={k}
+                    placeholder={label}
                     className="rounded border px-2 py-1 text-sm"
                   />
                 ))}

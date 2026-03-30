@@ -80,6 +80,9 @@ export function ImportRoutesForm() {
               <p>
                 Fájl: <strong>{result.fileName}</strong>
               </p>
+              <p className="text-xs">
+                Tipp: az "Útvonal rekordok" táblában a fájlnévre is tudsz keresni.
+              </p>
               <p>Feldolgozott sorok: {result.parsedRows}</p>
               <p>Új rekordok: {result.insertedRows}</p>
               <p>Kihagyott (duplikált): {result.skippedRows}</p>

@@ -146,6 +146,7 @@ export async function POST(request: Request) {
     const appliedDiscountPct = discountActive ? discountPct : 0;
     const chargedEur = applyTopupDiscount(amountEur, appliedDiscountPct);
     const chargedHuf = Math.max(1, Math.round(chargedEur * fxEurToHuf));
+    const baseAmountHuf = Math.max(1, Math.round(amountEur * fxEurToHuf));
 
     const stripe = getStripe();
     const baseUrl = getBaseUrl();
@@ -178,8 +179,10 @@ export async function POST(request: Request) {
         user_id: user.id,
         user_email: user.email ?? "",
         device_identifier: deviceIdentifier,
-        amount_huf: String(chargedHuf),
-        base_amount_huf: String(Math.round(amountEur * fxEurToHuf)),
+        // Wallet jóváírás a teljes (kedvezmény előtti) csomagösszeggel történjen.
+        amount_huf: String(baseAmountHuf),
+        charged_amount_huf: String(chargedHuf),
+        base_amount_huf: String(baseAmountHuf),
         amount_eur: String(chargedEur),
         discount_percent: String(appliedDiscountPct),
         travel_destination: travelDestination,

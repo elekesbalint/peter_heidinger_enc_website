@@ -278,18 +278,20 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
           <label className="mb-1.5 block text-sm font-medium text-foreground">Úticél *</label>
           {destinations.length > 0 && destinationMode === "list" ? (
             <>
-              <select
+              <input
+                list="topup-destination-options"
                 value={travelDestination}
                 onChange={(e) => setTravelDestination(e.target.value)}
+                placeholder="Kezdj el gépelni, majd válassz a listából…"
                 className="w-full rounded-xl border border-border/80 bg-white/90 px-4 py-2.5 text-sm shadow-sm transition"
-              >
-                <option value="">— válassz úticélt —</option>
+              />
+              <datalist id="topup-destination-options">
                 {destinations.map((d) => (
                   <option key={d.id} value={d.name}>
                     {d.name}
                   </option>
                 ))}
-              </select>
+              </datalist>
               <button
                 type="button"
                 className="mt-2 text-xs font-medium text-primary hover:underline"

@@ -12,7 +12,7 @@ import { ReferralPanel } from "./referral-panel";
 const DEVICE_STATUS_LABELS: Record<string, string> = {
   available: "elérhető",
   assigned: "kiosztva",
-  sold: "eladva",
+  sold: "aktív",
   archived: "archív",
 };
 
@@ -45,6 +45,9 @@ export default async function DashboardPage({
   const minBal = getIntSetting(settings, "min_balance_warning_huf", 5000);
   const fxEurToHuf = Math.max(1, getIntSetting(settings, "fx_eur_to_huf", 400));
   const minBalEur = hufToEur(minBal, fxEurToHuf);
+  const dashboardIntro =
+    settings.dashboard_intro_text?.trim() ||
+    "Saját eszközök, egyenleg, úttörténet és profil. Alacsony egyenleg küszöb:";
 
   const { data: ownedDevices } = await supabase
     .from("devices")
@@ -127,7 +130,7 @@ export default async function DashboardPage({
         <LogoutButton />
       </div>
       <p className="mt-3 text-muted">
-        Saját eszközök, egyenleg, úttörténet és profil. Alacsony egyenleg küszöb:{" "}
+        {dashboardIntro}{" "}
         <strong className="text-foreground">{minBalEur.toLocaleString("hu-HU")} EUR</strong>
       </p>
       {showProfileRequiredBanner && (

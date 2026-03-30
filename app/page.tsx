@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getSettingsMap } from "@/lib/app-settings";
 
 const features = [
   {
@@ -53,6 +54,14 @@ const steps = [
 ];
 
 export default async function Home() {
+  const settings = await getSettingsMap();
+  const heroTitle =
+    settings.home_hero_title?.trim() ||
+    "ENC vásárlás és útdíjkezelés egyetlen modern rendszerben.";
+  const heroSubtitle =
+    settings.home_hero_subtitle?.trim() ||
+    "Eszközrendelés, egyenlegfeltöltés, útvonaladatok kezelése és adminisztráció — prémium felületen, biztonságos fizetéssel.";
+
   return (
     <>
       {/* Hero: lekerekített „lebegő” panel a meleg háttéren — nem teljes szélességű kék sáv */}
@@ -86,13 +95,10 @@ export default async function Home() {
                 AdriaGo Platform
               </p>
               <h1 className="adria-animate-in adria-delay-1 mt-5 text-4xl font-extrabold leading-[1.1] tracking-tight text-slate-900 md:text-5xl lg:text-6xl">
-                ENC vásárlás és útdíjkezelés
-                <br className="hidden md:inline" />
-                <span className="text-slate-700"> egyetlen modern rendszerben.</span>
+                {heroTitle}
               </h1>
               <p className="adria-animate-in adria-delay-2 mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-600">
-                Eszközrendelés, egyenlegfeltöltés, útvonaladatok kezelése és adminisztráció —
-                prémium felületen, biztonságos fizetéssel.
+                {heroSubtitle}
               </p>
               <div className="adria-animate-in adria-delay-3 mt-10 flex flex-wrap justify-center gap-4">
                 <Link

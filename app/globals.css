@@ -109,6 +109,7 @@ body {
     radial-gradient(ellipse 58% 42% at 4% 82%, rgba(87, 83, 78, 0.06), transparent 44%),
     linear-gradient(168deg, #faf9f7 0%, #f3f1ed 35%, #ebe8e4 68%, #e3dfd9 100%);
   background-attachment: fixed;
+  overflow-x: clip;
 }
 
 body::before {
@@ -290,4 +291,12 @@ textarea:focus {
   .adria-page-glow-b {
     animation: none;
   }
+}
+
+/* Kék hátterű CTA gombokon mindig fehér legyen a felirat */
+button[class*="bg-blue"],
+a[class*="bg-blue"],
+button[class*="bg-primary"],
+a[class*="bg-primary"] {
+  color: #ffffff;
 }

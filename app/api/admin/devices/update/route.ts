@@ -23,6 +23,9 @@ export async function POST(request: Request) {
   }
 
   const patch: Record<string, string | null> = {};
+  const now = new Date().toISOString();
+  let previousIdentifier: string | null = null;
+  let nextIdentifier: string | null = null;
 
   if (body.identifier !== undefined) {
     const v = String(body.identifier).trim();
@@ -60,12 +63,58 @@ export async function POST(request: Request) {
     return Response.json({ ok: false, error: "Nincs frissitendo mezo." }, { status: 400 });
   }
 
-  patch.updated_at = new Date().toISOString();
+  patch.updated_at = now;
 
   const supabase = createSupabaseAdminClient();
+  if (body.identifier !== undefined) {
+    const { data: currentRow, error: currentErr } = await supabase
+      .from("devices")
+      .select("identifier")
+      .eq("id", id)
+      .maybeSingle();
+    if (currentErr) {
+      return Response.json({ ok: false, error: currentErr.message }, { status: 500 });
+    }
+    previousIdentifier = currentRow?.identifier ?? null;
+    nextIdentifier = patch.identifier ?? null;
+  }
   const { error } = await supabase.from("devices").update(patch).eq("id", id);
   if (error) {
     return Response.json({ ok: false, error: error.message }, { status: 500 });
+  }
+
+  if (
+    previousIdentifier &&
+    nextIdentifier &&
+    previousIdentifier !== nextIdentifier
+  ) {
+    const [ordersRes, topupsRes, walletsRes, routesRes] = await Promise.all([
+      supabase
+        .from("enc_device_orders")
+        .update({ device_identifier: nextIdentifier })
+        .eq("device_identifier", previousIdentifier),
+      supabase
+        .from("stripe_topups")
+        .update({ device_identifier: nextIdentifier })
+        .eq("device_identifier", previousIdentifier),
+      supabase
+        .from("device_wallets")
+        .update({ device_identifier: nextIdentifier, updated_at: now })
+        .eq("device_identifier", previousIdentifier),
+      supabase
+        .from("route_records")
+        .update({ device_number_raw: nextIdentifier })
+        .eq("device_number_raw", previousIdentifier),
+    ]);
+
+    const propagateError =
+      ordersRes.error ?? topupsRes.error ?? walletsRes.error ?? routesRes.error;
+    if (propagateError) {
+      return Response.json(
+        { ok: false, error: `Azonosító mentve, de részleges frissítési hiba: ${propagateError.message}` },
+        { status: 500 },
+      );
+    }
   }
 
   return Response.json({ ok: true });

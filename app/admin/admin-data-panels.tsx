@@ -391,7 +391,7 @@ export function AdminDataPanels(props: AdminDataPanelsProps = {}) {
             <input
               value={routesQ}
               onChange={(e) => setRoutesQ(e.target.value)}
-              placeholder="Keszulek szama alapjan"
+              placeholder="Kereses eszkozre, relaciora vagy fajlnevre"
               className="rounded-xl border border-border bg-white px-3 py-2 text-sm"
             />
             <button
@@ -590,7 +590,7 @@ export function AdminDataPanels(props: AdminDataPanelsProps = {}) {
           <input
             value={routesQ}
             onChange={(e) => setRoutesQ(e.target.value)}
-            placeholder="Keszulek szama alapjan"
+              placeholder="Kereses eszkozre, relaciora vagy fajlnevre"
             className="rounded-xl border border-border bg-white px-3 py-2 text-sm"
           />
           <button

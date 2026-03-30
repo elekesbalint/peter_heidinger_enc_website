@@ -23,7 +23,13 @@ export async function GET(request: Request) {
     .limit(100);
 
   if (q) {
-    query = query.ilike("device_number_raw", `%${q}%`);
+    query = query.or(
+      [
+        `device_number_raw.ilike.%${q}%`,
+        `source_file_name.ilike.%${q}%`,
+        `relation_label.ilike.%${q}%`,
+      ].join(","),
+    );
   }
 
   const { data, error } = await query;

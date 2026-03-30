@@ -64,8 +64,10 @@ export default function RegisterPage() {
         setSuccess(
           "Küldtünk egy megerősítő linket az e-mail címedre. Kattints rá, majd jelentkezz be.",
         );
-        router.push("/login");
-        router.refresh();
+        window.setTimeout(() => {
+          router.push("/login");
+          router.refresh();
+        }, 2200);
         return;
       }
 
