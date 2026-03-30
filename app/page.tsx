@@ -202,7 +202,7 @@ export default async function Home() {
           <div className="mt-10 flex flex-wrap justify-center gap-4">
             <Link
               href="/register"
-              className="rounded-2xl bg-gradient-to-r from-primary to-indigo-600 px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-primary/30 transition-all duration-300 hover:scale-[1.03] hover:shadow-xl hover:shadow-primary/40"
+              className="rounded-2xl bg-gradient-to-r from-primary to-indigo-600 px-8 py-3.5 text-sm font-bold !text-white shadow-lg shadow-primary/30 transition-all duration-300 hover:scale-[1.03] hover:shadow-xl hover:shadow-primary/40"
             >
               Ingyenes regisztráció
             </Link>

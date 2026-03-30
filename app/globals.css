@@ -229,6 +229,7 @@ textarea:focus {
 /* Prémium CTA gomb: gradient + hover */
 .adria-btn-primary {
   background: linear-gradient(135deg, #2563eb 0%, #4f46e5 55%, #4338ca 100%);
+  color: #ffffff !important;
   box-shadow:
     0 4px 16px rgba(37, 99, 235, 0.35),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
@@ -299,4 +300,9 @@ a[class*="bg-blue"],
 button[class*="bg-primary"],
 a[class*="bg-primary"] {
   color: #ffffff;
+}
+
+button[class*="from-primary"],
+a[class*="from-primary"] {
+  color: #ffffff !important;
 }
