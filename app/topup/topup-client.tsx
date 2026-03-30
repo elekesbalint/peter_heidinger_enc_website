@@ -221,11 +221,12 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
     );
   }
 
+  const discountEligible = !manualTopupMode && minimumRequiredTopup <= 0;
   const previewAmount = manualTopupMode
     ? Math.max(minimumRequiredTopup, Number.parseFloat(customAmount || "0") || 0)
     : selectedAmount;
-  const charged = manualTopupMode ? previewAmount : applyTopupDiscount(selectedAmount, discountPercent);
-  const showDiscount = !manualTopupMode && discountPercent > 0 && charged !== selectedAmount;
+  const charged = discountEligible ? applyTopupDiscount(selectedAmount, discountPercent) : previewAmount;
+  const showDiscount = discountEligible && discountPercent > 0 && charged !== selectedAmount;
 
   return (
     <section className="mt-8 space-y-6">
@@ -387,7 +388,7 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
                 {disabled && smallest && (
                   <p className="mt-2 text-xs text-amber-700">Nem elérhető ebben a kategóriában</p>
                 )}
-                {discountPercent > 0 && !disabled && (
+                {discountEligible && discountPercent > 0 && !disabled && (
                   <p className="mt-2 text-xs text-success">
                     Fizetendő: {applyTopupDiscount(amount, discountPercent).toLocaleString("hu-HU")} EUR ({discountPercent}%
                     kedvezmény)
@@ -403,6 +404,11 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
           <p className="mt-4 text-sm text-muted">
             Kiválasztott csomag: <strong className="text-foreground">{selectedAmount.toLocaleString("hu-HU")} EUR</strong> →
             fizetendő: <strong className="text-foreground">{charged.toLocaleString("hu-HU")} EUR</strong>
+          </p>
+        )}
+        {!manualTopupMode && minimumRequiredTopup > 0 && discountPercent > 0 && (
+          <p className="mt-4 text-xs text-slate-600">
+            Ennél az úticélnál minimum feltöltés szükséges, ezért a csomagkedvezmény most nem érvényes.
           </p>
         )}
       </div>
