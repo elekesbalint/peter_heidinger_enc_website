@@ -30,7 +30,10 @@ export async function GET() {
           .select("id, identifier, category, status")
           .eq("auth_user_id", user.id)
           .order("identifier", { ascending: true }),
-        supabase.from("destinations").select("id, name").order("name", { ascending: true }),
+        supabase
+          .from("destinations")
+          .select("id, name, price_ia, price_i, price_ii, price_iii, price_iv")
+          .order("name", { ascending: true }),
       ]);
 
     if (devErr) {
@@ -41,6 +44,21 @@ export async function GET() {
     }
 
     const blocked = getTopupBlockSmallestCategories(settings);
+    const identifiers = (devices ?? []).map((d) => d.identifier).filter(Boolean);
+    let walletByIdentifier = new Map<string, number>();
+    if (identifiers.length > 0) {
+      const { data: wallets, error: walletErr } = await supabase
+        .from("device_wallets")
+        .select("device_identifier, balance_huf")
+        .in("device_identifier", identifiers);
+      if (walletErr) {
+        return Response.json({ ok: false, error: walletErr.message }, { status: 500 });
+      }
+      walletByIdentifier = new Map(
+        (wallets ?? []).map((w) => [w.device_identifier, Number(w.balance_huf ?? 0)] as const),
+      );
+    }
+
     const devicesOut = (devices ?? []).map((d) => {
       const cat = (d.category as string) ?? "";
       const smallest = packages[0];
@@ -49,6 +67,7 @@ export async function GET() {
         identifier: d.identifier,
         category: cat,
         status: d.status,
+        balance_huf: walletByIdentifier.get(d.identifier) ?? 0,
         smallestPackageBlocked:
           smallest != null &&
           isTopupPackageBlockedForCategory(cat, smallest, packages, blocked),
@@ -62,7 +81,15 @@ export async function GET() {
       minBalanceWarningHuf,
       blockedCategoriesForSmallestPackage: blockedCategories,
       devices: devicesOut,
-      destinations: (destinations ?? []).map((r) => ({ id: r.id, name: r.name })),
+      destinations: (destinations ?? []).map((r) => ({
+        id: r.id,
+        name: r.name,
+        price_ia: Number(r.price_ia ?? 0),
+        price_i: Number(r.price_i ?? 0),
+        price_ii: Number(r.price_ii ?? 0),
+        price_iii: Number(r.price_iii ?? 0),
+        price_iv: Number(r.price_iv ?? 0),
+      })),
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Ismeretlen hiba.";

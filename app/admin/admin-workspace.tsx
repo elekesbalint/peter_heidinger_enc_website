@@ -80,6 +80,8 @@ type UserRow = {
   last_sign_in_at: string | null;
   name: string | null;
   phone: string | null;
+  billing_address: string | null;
+  shipping_address: string | null;
 };
 
 const DEVICE_STATUSES = ["available", "assigned", "sold", "archived"] as const;
@@ -165,6 +167,10 @@ function getOrderStatuses(order: EncOrder): string[] {
   return statuses;
 }
 
+function isOrderActive(order: EncOrder): boolean {
+  return !order.archived_at && !order.cancelled_at && !order.shipped_at;
+}
+
 export function AdminWorkspace() {
   const [tab, setTab] = useState<TabId>("Eszközrendelések");
 
@@ -172,6 +178,8 @@ export function AdminWorkspace() {
   const [encLoading, setEncLoading] = useState(false);
   const [encErr, setEncErr] = useState<string | null>(null);
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
+  const [encFilter, setEncFilter] = useState<"all" | "active" | "shipped" | "archived" | "cancelled">("all");
+  const [encQuery, setEncQuery] = useState("");
   const [shipForId, setShipForId] = useState<string | null>(null);
   const [trackingInput, setTrackingInput] = useState("");
   const [mplAgreementCode, setMplAgreementCode] = useState(
@@ -179,6 +187,8 @@ export function AdminWorkspace() {
   );
   const [mplJson, setMplJson] = useState("{}");
   const [labelLoadingForId, setLabelLoadingForId] = useState<string | null>(null);
+  const [editShippingOrderId, setEditShippingOrderId] = useState<string | null>(null);
+  const [editShippingAddress, setEditShippingAddress] = useState("");
 
   const [waitlist, setWaitlist] = useState<WaitRow[]>([]);
   const [waitLoading, setWaitLoading] = useState(false);
@@ -216,6 +226,7 @@ export function AdminWorkspace() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [usrLoading, setUsrLoading] = useState(false);
   const [usrErr, setUsrErr] = useState<string | null>(null);
+  const [editUser, setEditUser] = useState<UserRow | null>(null);
 
   const [routesQ, setRoutesQ] = useState("");
 
@@ -350,6 +361,33 @@ export function AdminWorkspace() {
     }
   }, []);
 
+  async function saveUserProfile() {
+    if (!editUser) return;
+    setUsrErr(null);
+    try {
+      const res = await fetch("/api/admin/users/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editUser.id,
+          name: editUser.name,
+          phone: editUser.phone,
+          billing_address: editUser.billing_address,
+          shipping_address: editUser.shipping_address,
+        }),
+      });
+      const data = (await res.json()) as { ok: boolean; error?: string };
+      if (!data.ok) {
+        setUsrErr(data.error ?? "Hiba");
+        return;
+      }
+      setEditUser(null);
+      await loadUsers();
+    } catch {
+      setUsrErr("Hálózati hiba");
+    }
+  }
+
   useEffect(() => {
     if (tab === "Eszközrendelések") loadEnc();
     if (tab === "Készülékre vár") loadWait();
@@ -362,8 +400,13 @@ export function AdminWorkspace() {
 
   async function postOrderUpdate(
     id: string,
-    action: "archive" | "restore" | "cancel" | "uncancel" | "ship",
-    extra?: { tracking_number?: string; mpl_payload?: Record<string, unknown> | null; mpl_sender_agreement?: string | null },
+    action: "archive" | "restore" | "cancel" | "uncancel" | "ship" | "update_shipping",
+    extra?: {
+      tracking_number?: string;
+      mpl_payload?: Record<string, unknown> | null;
+      mpl_sender_agreement?: string | null;
+      shipping_address?: string | null;
+    },
   ) {
     const res = await fetch("/api/admin/enc-device-orders/update", {
       method: "POST",
@@ -709,6 +752,43 @@ export function AdminWorkspace() {
     });
   }
 
+  const filteredEncOrders = encOrders.filter((o) => {
+    const q = encQuery.trim().toLowerCase();
+    const byText =
+      !q ||
+      o.device_identifier?.toLowerCase().includes(q) ||
+      o.user_email?.toLowerCase().includes(q) ||
+      normalizeAddressForDisplay(o.shipping_address).toLowerCase().includes(q);
+
+    if (!byText) return false;
+    if (encFilter === "active") return isOrderActive(o);
+    if (encFilter === "shipped") return Boolean(o.shipped_at);
+    if (encFilter === "archived") return Boolean(o.archived_at);
+    if (encFilter === "cancelled") return Boolean(o.cancelled_at);
+    return true;
+  });
+
+  function selectAllActiveOrders() {
+    const ids = filteredEncOrders.filter(isOrderActive).map((o) => o.id);
+    setSelectedOrders(new Set(ids));
+  }
+
+  async function saveShippingAddress(orderId: string) {
+    const shipping_address = editShippingAddress.trim();
+    if (!shipping_address) {
+      setEncErr("A szállítási cím nem lehet üres.");
+      return;
+    }
+    try {
+      await postOrderUpdate(orderId, "update_shipping", { shipping_address });
+      setEditShippingOrderId(null);
+      setEditShippingAddress("");
+      await loadEnc();
+    } catch (e) {
+      setEncErr(e instanceof Error ? e.message : "Hálózati hiba");
+    }
+  }
+
   return (
     <section className="mt-8 grid gap-6 lg:grid-cols-[240px_1fr]">
       <aside className="rounded-2xl border border-border bg-card p-4 shadow-sm">
@@ -742,6 +822,32 @@ export function AdminWorkspace() {
                 className="rounded-xl border border-border bg-white px-3 py-1.5 text-sm font-semibold hover:bg-slate-50"
               >
                 Frissítés
+              </button>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <input
+                value={encQuery}
+                onChange={(e) => setEncQuery(e.target.value)}
+                placeholder="Keresés: eszköz, e-mail, szállítási cím"
+                className="min-w-[280px] flex-1 rounded-xl border border-border bg-white px-3 py-2 text-sm"
+              />
+              <select
+                value={encFilter}
+                onChange={(e) => setEncFilter(e.target.value as typeof encFilter)}
+                className="rounded-xl border border-border bg-white px-3 py-2 text-sm"
+              >
+                <option value="all">Összes</option>
+                <option value="active">Aktív</option>
+                <option value="shipped">Küldve</option>
+                <option value="archived">Archív</option>
+                <option value="cancelled">Törölt</option>
+              </select>
+              <button
+                type="button"
+                onClick={selectAllActiveOrders}
+                className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-900 hover:bg-indigo-100"
+              >
+                Összes aktív kijelölése
               </button>
             </div>
             {selectedOrders.size > 0 && (
@@ -834,13 +940,14 @@ export function AdminWorkspace() {
                   </tr>
                 </thead>
                 <tbody>
-                  {encOrders.map((o) => {
+                  {filteredEncOrders.map((o) => {
                     const statuses = getOrderStatuses(o);
                     return (
                       <tr key={o.id} className="border-b border-border/60 align-top hover:bg-slate-50/60">
                         <td className="px-2 py-2">
                           <input
                             type="checkbox"
+                            disabled={Boolean(o.shipped_at)}
                             checked={selectedOrders.has(o.id)}
                             onChange={() => toggleOrderSel(o.id)}
                           />
@@ -869,7 +976,37 @@ export function AdminWorkspace() {
                         <td className="px-2 py-2">{Number(o.amount_huf).toLocaleString("hu-HU")} Ft</td>
                         <td className="px-2 py-2">{o.user_email ?? "—"}</td>
                         <td className="max-w-[220px] px-2 py-2 text-xs text-slate-700">
-                          <p className="line-clamp-3">{normalizeAddressForDisplay(o.shipping_address)}</p>
+                          {editShippingOrderId === o.id ? (
+                            <div className="space-y-1">
+                              <textarea
+                                rows={3}
+                                value={editShippingAddress}
+                                onChange={(e) => setEditShippingAddress(e.target.value)}
+                                className="w-full rounded border px-2 py-1 text-xs"
+                              />
+                              <div className="flex gap-1">
+                                <button
+                                  type="button"
+                                  className="rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] text-emerald-800"
+                                  onClick={() => saveShippingAddress(o.id)}
+                                >
+                                  Mentés
+                                </button>
+                                <button
+                                  type="button"
+                                  className="rounded border px-2 py-1 text-[11px]"
+                                  onClick={() => {
+                                    setEditShippingOrderId(null);
+                                    setEditShippingAddress("");
+                                  }}
+                                >
+                                  Mégse
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="line-clamp-3">{normalizeAddressForDisplay(o.shipping_address)}</p>
+                          )}
                         </td>
                         <td className="max-w-[220px] px-2 py-2 text-xs text-slate-700">
                           <p className="line-clamp-3">{normalizeAddressForDisplay(o.billing_address)}</p>
@@ -914,6 +1051,16 @@ export function AdminWorkspace() {
                             >
                               Vissza
                             </button>
+                            <button
+                              type="button"
+                              className="rounded-md border px-2 py-1 text-xs hover:bg-slate-50"
+                              onClick={() => {
+                                setEditShippingOrderId(o.id);
+                                setEditShippingAddress(o.shipping_address ?? "");
+                              }}
+                            >
+                              Szállítási cím
+                            </button>
                             <details className="relative">
                               <summary className="cursor-pointer list-none rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-800 hover:bg-red-100">
                                 Veszélyes ▾
@@ -943,7 +1090,7 @@ export function AdminWorkspace() {
                 </tbody>
               </table>
               {encLoading && <p className="mt-2 px-2 py-2 text-sm text-muted">Betöltés…</p>}
-              {!encLoading && encOrders.length === 0 && (
+              {!encLoading && filteredEncOrders.length === 0 && (
                 <p className="mt-2 px-2 py-2 text-sm text-muted">Nincs rendelés.</p>
               )}
             </div>
@@ -1437,8 +1584,10 @@ export function AdminWorkspace() {
                 <tr className="border-b text-slate-500">
                   <th className="px-2 py-2">E-mail</th>
                   <th className="px-2 py-2">Név (profil)</th>
+                  <th className="px-2 py-2">Telefon</th>
                   <th className="px-2 py-2">Regisztráció</th>
                   <th className="px-2 py-2">Utolsó belépés</th>
+                  <th className="px-2 py-2">Művelet</th>
                 </tr>
               </thead>
               <tbody>
@@ -1446,15 +1595,74 @@ export function AdminWorkspace() {
                   <tr key={u.id} className="border-b border-border/60">
                     <td className="px-2 py-2">{u.email ?? "—"}</td>
                     <td className="px-2 py-2">{u.name ?? "—"}</td>
+                    <td className="px-2 py-2">{u.phone ?? "—"}</td>
                     <td className="px-2 py-2">{new Date(u.created_at).toLocaleString("hu-HU")}</td>
                     <td className="px-2 py-2">
                       {u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString("hu-HU") : "—"}
+                    </td>
+                    <td className="px-2 py-2">
+                      <button
+                        type="button"
+                        className="text-xs text-primary underline"
+                        onClick={() => setEditUser({ ...u })}
+                      >
+                        Szerkesztés
+                      </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
             {usrLoading && <p className="mt-2 text-sm text-muted">Betöltés…</p>}
+            {editUser && (
+              <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50/40 p-6">
+                <h3 className="font-semibold">Felhasználó szerkesztése: {editUser.email ?? editUser.id}</h3>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <label className="text-sm">
+                    Név
+                    <input
+                      value={editUser.name ?? ""}
+                      onChange={(e) => setEditUser({ ...editUser, name: e.target.value })}
+                      className="mt-1 w-full rounded border px-2 py-1"
+                    />
+                  </label>
+                  <label className="text-sm">
+                    Telefon
+                    <input
+                      value={editUser.phone ?? ""}
+                      onChange={(e) => setEditUser({ ...editUser, phone: e.target.value })}
+                      className="mt-1 w-full rounded border px-2 py-1"
+                    />
+                  </label>
+                  <label className="text-sm sm:col-span-2">
+                    Számlázási cím
+                    <textarea
+                      rows={2}
+                      value={editUser.billing_address ?? ""}
+                      onChange={(e) => setEditUser({ ...editUser, billing_address: e.target.value })}
+                      className="mt-1 w-full rounded border px-2 py-1"
+                    />
+                  </label>
+                  <label className="text-sm sm:col-span-2">
+                    Szállítási cím
+                    <textarea
+                      rows={2}
+                      value={editUser.shipping_address ?? ""}
+                      onChange={(e) => setEditUser({ ...editUser, shipping_address: e.target.value })}
+                      className="mt-1 w-full rounded border px-2 py-1"
+                    />
+                  </label>
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <button type="button" onClick={saveUserProfile} className="rounded-lg bg-primary px-3 py-1.5 text-sm text-white">
+                    Mentés
+                  </button>
+                  <button type="button" onClick={() => setEditUser(null)} className="rounded-lg border px-3 py-1.5 text-sm">
+                    Mégse
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

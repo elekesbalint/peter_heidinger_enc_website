@@ -6,7 +6,7 @@ import {
   createMplSandboxShipmentLabelOnly,
 } from "@/lib/mpl-sandbox";
 
-type Action = "archive" | "restore" | "cancel" | "uncancel" | "ship";
+type Action = "archive" | "restore" | "cancel" | "uncancel" | "ship" | "update_shipping";
 
 type AddressFields = {
   country: string;
@@ -82,6 +82,7 @@ export async function POST(request: Request) {
     tracking_number?: string;
     mpl_payload?: unknown | null;
     mpl_sender_agreement?: string | null;
+    shipping_address?: string | null;
   };
 
   const id = (body.id ?? "").trim();
@@ -287,6 +288,28 @@ export async function POST(request: Request) {
         return Response.json({ ok: false, error: msg }, { status: 500 });
       }
       break;
+    case "update_shipping": {
+      const shippingAddress = (body.shipping_address ?? "").trim();
+      if (!shippingAddress) {
+        return Response.json({ ok: false, error: "A szállítási cím nem lehet üres." }, { status: 400 });
+      }
+      const { data: orderRow, error: orderErr } = await supabase
+        .from("enc_device_orders")
+        .select("auth_user_id")
+        .eq("id", id)
+        .maybeSingle();
+      if (orderErr || !orderRow?.auth_user_id) {
+        return Response.json({ ok: false, error: "Rendelés nem található." }, { status: 404 });
+      }
+      const { error: profileErr } = await supabase
+        .from("profiles")
+        .update({ shipping_address: shippingAddress, updated_at: now })
+        .eq("auth_user_id", orderRow.auth_user_id);
+      if (profileErr) {
+        return Response.json({ ok: false, error: profileErr.message }, { status: 500 });
+      }
+      return Response.json({ ok: true });
+    }
     default:
       return Response.json({ ok: false, error: "Ismeretlen action." }, { status: 400 });
   }

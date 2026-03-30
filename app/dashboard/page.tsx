@@ -148,6 +148,12 @@ export default async function DashboardPage({
           const lowBalance = balance !== null && balance < minBal;
           const cat = device.category as DeviceCategoryValue;
           const catLabel = DEVICE_CATEGORY_LABELS[cat] ?? device.category;
+          const topupStateLabel =
+            balance === null
+              ? "Nincs wallet adat"
+              : lowBalance
+                ? "Feltöltés szükséges"
+                : "Rendben, tölthető";
           return (
             <article
               key={device.id}
@@ -167,6 +173,25 @@ export default async function DashboardPage({
               {device.license_plate && (
                 <p className="mt-2 text-sm text-muted">Rendszám: <span className="font-medium text-foreground">{device.license_plate}</span></p>
               )}
+              <div className="mt-3 flex items-center gap-2">
+                <span
+                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                    balance === null
+                      ? "bg-slate-100 text-slate-700"
+                      : lowBalance
+                        ? "bg-red-100 text-red-800"
+                        : "bg-emerald-100 text-emerald-800"
+                  }`}
+                >
+                  {balance === null ? "○" : lowBalance ? "!" : "✓"} {topupStateLabel}
+                </span>
+                <Link
+                  href={`/topup?device=${encodeURIComponent(device.identifier)}`}
+                  className="rounded-lg border border-border bg-white px-2.5 py-1 text-xs font-medium text-foreground hover:bg-slate-50"
+                >
+                  Feltöltés
+                </Link>
+              </div>
               {balance === null ? (
                 <p className="mt-4 text-sm text-muted">
                   Wallet-egyenleg még nincs rögzítve ehhez az eszközhöz.

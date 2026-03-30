@@ -4,7 +4,11 @@ import { getCurrentUser } from "@/lib/auth-server";
 import { isProfileComplete } from "@/lib/profile-completion";
 import { TopupClient } from "./topup-client";
 
-export default async function TopupPage() {
+export default async function TopupPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ device?: string }>;
+}) {
   const user = await getCurrentUser();
   if (!user) {
     redirect("/login");
@@ -12,6 +16,9 @@ export default async function TopupPage() {
   if (!(await isProfileComplete(user.id))) {
     redirect("/dashboard?profile=required");
   }
+
+  const params = searchParams ? await searchParams : undefined;
+  const initialDeviceIdentifier = (params?.device ?? "").trim();
 
   return (
     <div className="relative mx-auto w-full max-w-4xl px-6 py-12">
@@ -34,7 +41,7 @@ export default async function TopupPage() {
           Bejelentkezve: <span className="font-medium text-slate-700">{user.email}</span>
         </p>
 
-        <TopupClient />
+        <TopupClient initialDeviceIdentifier={initialDeviceIdentifier} />
       </div>
     </div>
   );

@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     }
 
     const body = (await request.json()) as {
-      baseAmountHuf?: number;
+      topupAmountHuf?: number;
       deviceIdentifier?: string;
       travelDestination?: string;
     };
@@ -39,9 +39,13 @@ export async function POST(request: Request) {
     const discountPct = getIntSetting(settings, "topup_discount_percent", 0);
     const blockedCats = getTopupBlockSmallestCategories(settings);
 
-    const base = body.baseAmountHuf;
-    if (typeof base !== "number" || !packages.includes(base)) {
-      return Response.json({ ok: false, error: "Ervenytelen csomag osszeg." }, { status: 400 });
+    const base = body.topupAmountHuf;
+    if (!Number.isFinite(base) || Number(base) <= 0) {
+      return Response.json({ ok: false, error: "Ervenytelen feltoltesi osszeg." }, { status: 400 });
+    }
+    const amountHuf = Math.floor(Number(base));
+    if (amountHuf < 1000) {
+      return Response.json({ ok: false, error: "Minimum feltoltes: 1000 Ft." }, { status: 400 });
     }
 
     const deviceIdentifier = (body.deviceIdentifier ?? "").trim();
@@ -78,10 +82,48 @@ export async function POST(request: Request) {
       );
     }
 
+    const { data: walletRow } = await supabase
+      .from("device_wallets")
+      .select("balance_huf")
+      .eq("device_identifier", deviceIdentifier)
+      .maybeSingle();
+    const currentBalanceHuf = Number(walletRow?.balance_huf ?? 0);
+
+    const { data: destinationRow } = await supabase
+      .from("destinations")
+      .select("name, price_ia, price_i, price_ii, price_iii, price_iv")
+      .eq("name", travelDestination)
+      .maybeSingle();
+
+    const categoryKey = String(ownedDevice.category).toLowerCase();
+    const byCategory: Record<string, number> = destinationRow
+      ? {
+          ia: Number(destinationRow.price_ia ?? 0),
+          i: Number(destinationRow.price_i ?? 0),
+          ii: Number(destinationRow.price_ii ?? 0),
+          iii: Number(destinationRow.price_iii ?? 0),
+          iv: Number(destinationRow.price_iv ?? 0),
+        }
+      : {};
+    const destinationRequiredHuf = Math.max(0, Math.floor(byCategory[categoryKey] ?? 0));
+    const minTopupRequiredHuf = Math.max(0, destinationRequiredHuf - currentBalanceHuf);
+
+    if (minTopupRequiredHuf > 0 && amountHuf < minTopupRequiredHuf) {
+      return Response.json(
+        {
+          ok: false,
+          error: `Legalabb ${minTopupRequiredHuf.toLocaleString("hu-HU")} Ft feltoltes szukseges ehhez az uticelhoz.`,
+        },
+        { status: 400 },
+      );
+    }
+
     if (
+      minTopupRequiredHuf <= 0 &&
+      packages.includes(amountHuf) &&
       isTopupPackageBlockedForCategory(
         ownedDevice.category as string,
-        base,
+        amountHuf,
         packages,
         blockedCats,
       )
@@ -96,14 +138,16 @@ export async function POST(request: Request) {
       );
     }
 
-    const chargedHuf = applyTopupDiscount(base, discountPct);
+    const discountActive = minTopupRequiredHuf <= 0 && packages.includes(amountHuf);
+    const appliedDiscountPct = discountActive ? discountPct : 0;
+    const chargedHuf = applyTopupDiscount(amountHuf, appliedDiscountPct);
 
     const stripe = getStripe();
     const baseUrl = getBaseUrl();
 
     const discountNote =
-      discountPct > 0
-        ? ` (kedvezmeny ${discountPct}% — fizetendo ${chargedHuf.toLocaleString("hu-HU")} Ft)`
+      appliedDiscountPct > 0
+        ? ` (kedvezmeny ${appliedDiscountPct}% — fizetendo ${chargedHuf.toLocaleString("hu-HU")} Ft)`
         : "";
 
     const session = await stripe.checkout.sessions.create({
@@ -118,7 +162,7 @@ export async function POST(request: Request) {
             currency: "huf",
             unit_amount: toStripeHufAmount(chargedHuf),
             product_data: {
-              name: `AdriaGo egyenlegfeltoltes — ${base.toLocaleString("hu-HU")} Ft csomag${discountNote}`,
+              name: `AdriaGo egyenlegfeltoltes — ${amountHuf.toLocaleString("hu-HU")} Ft${discountNote}`,
               description: `Uticel: ${travelDestination}`,
             },
           },
@@ -130,8 +174,8 @@ export async function POST(request: Request) {
         user_email: user.email ?? "",
         device_identifier: deviceIdentifier,
         amount_huf: String(chargedHuf),
-        base_amount_huf: String(base),
-        discount_percent: String(discountPct),
+        base_amount_huf: String(amountHuf),
+        discount_percent: String(appliedDiscountPct),
         travel_destination: travelDestination,
       },
     });

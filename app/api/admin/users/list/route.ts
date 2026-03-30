@@ -22,14 +22,27 @@ export async function GET(request: Request) {
   const users = authData.users ?? [];
   const ids = users.map((u) => u.id);
 
-  let profileByUser = new Map<string, { name: string | null; phone: string | null }>();
+  const profileByUser = new Map<
+    string,
+    {
+      name: string | null;
+      phone: string | null;
+      billing_address: string | null;
+      shipping_address: string | null;
+    }
+  >();
   if (ids.length > 0) {
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("auth_user_id, name, phone")
+      .select("auth_user_id, name, phone, billing_address, shipping_address")
       .in("auth_user_id", ids);
     for (const p of profiles ?? []) {
-      profileByUser.set(p.auth_user_id, { name: p.name, phone: p.phone });
+      profileByUser.set(p.auth_user_id, {
+        name: p.name,
+        phone: p.phone,
+        billing_address: p.billing_address ?? null,
+        shipping_address: p.shipping_address ?? null,
+      });
     }
   }
 
@@ -42,6 +55,8 @@ export async function GET(request: Request) {
       last_sign_in_at: u.last_sign_in_at ?? null,
       name: pr?.name ?? null,
       phone: pr?.phone ?? null,
+      billing_address: pr?.billing_address ?? null,
+      shipping_address: pr?.shipping_address ?? null,
     };
   });
 

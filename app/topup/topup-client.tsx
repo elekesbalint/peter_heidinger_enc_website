@@ -13,6 +13,7 @@ type ConfigDevice = {
   identifier: string;
   category: string;
   status: string;
+  balance_huf: number;
   smallestPackageBlocked: boolean;
 };
 
@@ -24,13 +25,22 @@ type ConfigResponse = {
   minBalanceWarningHuf?: number;
   blockedCategoriesForSmallestPackage?: string[];
   devices?: ConfigDevice[];
-  destinations?: { id: string; name: string }[];
+  destinations?: {
+    id: string;
+    name: string;
+    price_ia: number;
+    price_i: number;
+    price_ii: number;
+    price_iii: number;
+    price_iv: number;
+  }[];
 };
 
-export function TopupClient() {
+export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIdentifier?: string }) {
   const [config, setConfig] = useState<ConfigResponse | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
+  const [customAmount, setCustomAmount] = useState("");
   const [deviceIdentifier, setDeviceIdentifier] = useState("");
   const [travelDestination, setTravelDestination] = useState("");
   const [destinationMode, setDestinationMode] = useState<"list" | "custom">("list");
@@ -50,6 +60,10 @@ export function TopupClient() {
         }
         setConfig(data);
         setSelectedAmount(data.packages[0]);
+        const initial = initialDeviceIdentifier.trim();
+        if (initial && (data.devices ?? []).some((d) => d.identifier === initial)) {
+          setDeviceIdentifier(initial);
+        }
         if ((data.destinations?.length ?? 0) === 0) {
           setDestinationMode("custom");
         }
@@ -60,7 +74,7 @@ export function TopupClient() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initialDeviceIdentifier]);
 
   const packages = config?.packages ?? [];
   const discountPercent = config?.discountPercent ?? 0;
@@ -79,6 +93,7 @@ export function TopupClient() {
 
   const packageDisabled = (amount: number) => {
     if (!selectedDevice) return false;
+    if (minimumRequiredTopup > 0) return amount < minimumRequiredTopup;
     return isTopupPackageBlockedForCategory(
       selectedDevice.category,
       amount,
@@ -87,6 +102,30 @@ export function TopupClient() {
     );
   };
 
+  const selectedDestination = useMemo(
+    () => destinations.find((d) => d.name === travelDestination) ?? null,
+    [destinations, travelDestination],
+  );
+
+  const destinationRequiredHuf = useMemo(() => {
+    if (!selectedDestination || !selectedDevice) return 0;
+    const cat = selectedDevice.category.toLowerCase();
+    const byCat: Record<string, number> = {
+      ia: selectedDestination.price_ia ?? 0,
+      i: selectedDestination.price_i ?? 0,
+      ii: selectedDestination.price_ii ?? 0,
+      iii: selectedDestination.price_iii ?? 0,
+      iv: selectedDestination.price_iv ?? 0,
+    };
+    return Number(byCat[cat] ?? 0);
+  }, [selectedDestination, selectedDevice]);
+
+  const currentBalanceHuf = Number(selectedDevice?.balance_huf ?? 0);
+  const minimumRequiredTopup = Math.max(0, destinationRequiredHuf - currentBalanceHuf);
+  const canAnyPackageCoverMinimum =
+    minimumRequiredTopup > 0 ? packages.some((p) => p >= minimumRequiredTopup) : false;
+  const manualTopupMode = minimumRequiredTopup > 0 && !canAnyPackageCoverMinimum;
+
   useEffect(() => {
     if (selectedAmount == null || !selectedDevice) return;
     if (packageDisabled(selectedAmount)) {
@@ -94,12 +133,28 @@ export function TopupClient() {
       if (next != null) setSelectedAmount(next);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDevice?.identifier, selectedDevice?.category, packages.join(",")]);
+  }, [selectedDevice?.identifier, selectedDevice?.category, packages.join(","), minimumRequiredTopup]);
+
+  useEffect(() => {
+    if (manualTopupMode) {
+      setCustomAmount((prev) => {
+        const n = Number.parseInt(prev, 10);
+        if (!Number.isFinite(n) || n < minimumRequiredTopup) {
+          return String(minimumRequiredTopup);
+        }
+        return prev;
+      });
+    }
+  }, [manualTopupMode, minimumRequiredTopup]);
 
   async function startCheckout() {
     setError(null);
-    if (!selectedAmount) {
-      setError("Válassz csomagot.");
+    const manualAmountValue = Number.parseInt(customAmount.trim(), 10);
+    const effectiveAmount =
+      manualTopupMode || Number.isFinite(manualAmountValue) ? manualAmountValue : selectedAmount ?? 0;
+
+    if (!effectiveAmount || !Number.isFinite(effectiveAmount)) {
+      setError(manualTopupMode ? "Add meg a feltöltés összegét." : "Válassz csomagot.");
       return;
     }
     const dev = deviceIdentifier.trim();
@@ -112,8 +167,14 @@ export function TopupClient() {
       setError("Add meg az úticélt.");
       return;
     }
-    if (packageDisabled(selectedAmount)) {
+    if (!manualTopupMode && packageDisabled(effectiveAmount)) {
       setError("Ehhez a készülékhez nem választható a legkisebb csomag.");
+      return;
+    }
+    if (manualTopupMode && effectiveAmount < minimumRequiredTopup) {
+      setError(
+        `Ehhez az úticélhoz legalább ${minimumRequiredTopup.toLocaleString("hu-HU")} Ft feltöltés szükséges.`,
+      );
       return;
     }
 
@@ -123,7 +184,7 @@ export function TopupClient() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          baseAmountHuf: selectedAmount,
+          topupAmountHuf: effectiveAmount,
           deviceIdentifier: dev,
           travelDestination: dest,
         }),
@@ -159,8 +220,11 @@ export function TopupClient() {
     );
   }
 
-  const charged = applyTopupDiscount(selectedAmount, discountPercent);
-  const showDiscount = discountPercent > 0 && charged !== selectedAmount;
+  const previewAmount = manualTopupMode
+    ? Math.max(minimumRequiredTopup, Number.parseInt(customAmount || "0", 10) || 0)
+    : selectedAmount;
+  const charged = manualTopupMode ? previewAmount : applyTopupDiscount(selectedAmount, discountPercent);
+  const showDiscount = !manualTopupMode && discountPercent > 0 && charged !== selectedAmount;
 
   return (
     <section className="mt-8 space-y-6">
@@ -201,7 +265,8 @@ export function TopupClient() {
               <option value="">— válassz —</option>
               {devices.map((d) => (
                 <option key={d.id} value={d.identifier}>
-                  {d.identifier} ({String(d.category).toUpperCase()})
+                  {d.identifier} ({String(d.category).toUpperCase()}) — egyenleg:{" "}
+                  {Number(d.balance_huf ?? 0).toLocaleString("hu-HU")} Ft
                 </option>
               ))}
             </select>
@@ -252,10 +317,49 @@ export function TopupClient() {
             </>
           )}
         </div>
+        {selectedDevice && selectedDestination && (
+          <div className="mt-4 rounded-xl border border-indigo-200 bg-indigo-50/70 px-4 py-3 text-sm text-indigo-950">
+            <p>
+              Jelenlegi egyenleg: <strong>{currentBalanceHuf.toLocaleString("hu-HU")} Ft</strong> | Úticélhoz ajánlott:
+              <strong> {destinationRequiredHuf.toLocaleString("hu-HU")} Ft</strong>
+            </p>
+            {manualTopupMode ? (
+              <p className="mt-1">
+                Legalább <strong>{minimumRequiredTopup.toLocaleString("hu-HU")} Ft</strong> feltöltés szükséges.
+              </p>
+            ) : minimumRequiredTopup > 0 ? (
+              <p className="mt-1">
+                Legalább <strong>{minimumRequiredTopup.toLocaleString("hu-HU")} Ft</strong> feltöltés kell, ezt csomagból is ki tudod választani.
+              </p>
+            ) : (
+              <p className="mt-1">A jelenlegi egyenleg elegendő, csomag alapú feltöltést választhatsz.</p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="adria-animate-in adria-delay-4 adria-glass rounded-2xl p-6 transition-shadow duration-300 md:p-8">
-        <h2 className="text-lg font-semibold">Feltöltési csomagok</h2>
+        <h2 className="text-lg font-semibold">{manualTopupMode ? "Egyedi feltöltés" : "Feltöltési csomagok"}</h2>
+        {manualTopupMode ? (
+          <div className="mt-4 space-y-2">
+            <input
+              type="number"
+              min={minimumRequiredTopup}
+              step={100}
+              value={customAmount}
+              onChange={(e) => setCustomAmount(e.target.value)}
+              placeholder={`${minimumRequiredTopup.toLocaleString("hu-HU")} vagy több`}
+              className="w-full rounded-xl border border-border/80 bg-white/90 px-4 py-2.5 text-sm shadow-sm transition"
+            />
+            <p className="text-xs text-slate-600">
+              Ennél a feltöltésnél a topup kedvezmény nem érvényes; minimum:{" "}
+              {minimumRequiredTopup.toLocaleString("hu-HU")} Ft.
+            </p>
+            <p className="text-xs text-slate-600">
+              Fizetendő: <strong>{charged.toLocaleString("hu-HU")} Ft</strong>
+            </p>
+          </div>
+        ) : (
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           {packages.map((amount) => {
             const active = amount === selectedAmount;
@@ -290,6 +394,7 @@ export function TopupClient() {
             );
           })}
         </div>
+        )}
 
         {showDiscount && selectedAmount != null && (
           <p className="mt-4 text-sm text-muted">
