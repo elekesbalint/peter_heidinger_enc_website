@@ -1,9 +1,10 @@
 /** Csak tiszta szamitasok — hasznalhato kliensen es szerveren (nincs Supabase). */
 
-export function applyTopupDiscount(baseHuf: number, discountPercent: number): number {
-  if (discountPercent <= 0) return baseHuf;
+export function applyTopupDiscount(baseAmount: number, discountPercent: number): number {
+  if (discountPercent <= 0) return baseAmount;
   const p = Math.min(100, Math.max(0, discountPercent));
-  return Math.max(1, Math.round((baseHuf * (100 - p)) / 100));
+  const discounted = (baseAmount * (100 - p)) / 100;
+  return Math.max(0.01, Math.round(discounted * 100) / 100);
 }
 
 export function isSmallestTopupPackage(baseHuf: number, packagesSorted: number[]): boolean {
