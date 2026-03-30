@@ -20,6 +20,12 @@ function normalizeCurrencyLabel(raw: string | null | undefined): "EUR" | "HUF" {
   return (raw ?? "").trim().toUpperCase() === "EUR" ? "EUR" : "HUF";
 }
 
+function hufToEur(huf: number, fxEurToHuf: number): number {
+  if (!Number.isFinite(huf)) return 0;
+  if (!Number.isFinite(fxEurToHuf) || fxEurToHuf <= 0) return huf;
+  return Math.round((huf / fxEurToHuf) * 100) / 100;
+}
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -37,6 +43,8 @@ export default async function DashboardPage({
   const supabase = createSupabaseAdminClient();
   const settings = await getSettingsMap();
   const minBal = getIntSetting(settings, "min_balance_warning_huf", 5000);
+  const fxEurToHuf = Math.max(1, getIntSetting(settings, "fx_eur_to_huf", 400));
+  const minBalEur = hufToEur(minBal, fxEurToHuf);
 
   const { data: ownedDevices } = await supabase
     .from("devices")
@@ -120,7 +128,7 @@ export default async function DashboardPage({
       </div>
       <p className="mt-3 text-muted">
         Saját eszközök, egyenleg, úttörténet és profil. Alacsony egyenleg küszöb:{" "}
-        <strong className="text-foreground">{minBal.toLocaleString("hu-HU")} Ft</strong>
+        <strong className="text-foreground">{minBalEur.toLocaleString("hu-HU")} EUR</strong>
       </p>
       {showProfileRequiredBanner && (
         <div className="mt-4 rounded-2xl border border-amber-300 bg-warning-light px-5 py-4 shadow-sm">
@@ -149,6 +157,7 @@ export default async function DashboardPage({
         {(ownedDevices ?? []).map((device) => {
           const w = walletByDevice.get(device.identifier);
           const balance = w ? Number(w.balance_huf) : null;
+          const balanceEur = balance === null ? null : hufToEur(balance, fxEurToHuf);
           const lowBalance = balance !== null && balance < minBal;
           const cat = device.category as DeviceCategoryValue;
           const catLabel = DEVICE_CATEGORY_LABELS[cat] ?? device.category;
@@ -203,11 +212,11 @@ export default async function DashboardPage({
               ) : (
                 <>
                   <p className={`mt-4 text-2xl font-bold ${lowBalance ? "text-danger" : "text-success"}`}>
-                    {balance.toLocaleString("hu-HU")} Ft
+                    {Number(balanceEur).toLocaleString("hu-HU")} EUR
                   </p>
                   <p className="mt-1 text-sm text-muted">
                     {lowBalance
-                      ? `Alacsony egyenleg (küszöb ${minBal.toLocaleString("hu-HU")} Ft), töltsd fel.`
+                      ? `Alacsony egyenleg (küszöb ${minBalEur.toLocaleString("hu-HU")} EUR), töltsd fel.`
                       : "Egyenleg megfelelő."}
                   </p>
                 </>
@@ -288,7 +297,7 @@ export default async function DashboardPage({
                 <tr key={item.device_identifier} className="border-b border-border/60">
                   <td className="px-2 py-2.5 font-medium">{item.device_identifier}</td>
                   <td className="px-2 py-2.5">
-                    {Number(item.balance_huf).toLocaleString("hu-HU")} Ft
+                    {hufToEur(Number(item.balance_huf), fxEurToHuf).toLocaleString("hu-HU")} EUR
                   </td>
                   <td className="px-2 py-2.5">
                     {new Date(item.updated_at).toLocaleString("hu-HU")}
@@ -318,20 +327,25 @@ export default async function DashboardPage({
               </tr>
             </thead>
             <tbody>
-              {(topups ?? []).map((item) => (
+              {(topups ?? []).map((item) => {
+                const currency = normalizeCurrencyLabel(item.currency);
+                const amountDisplay =
+                  currency === "EUR"
+                    ? hufToEur(Number(item.amount_huf), fxEurToHuf)
+                    : Number(item.amount_huf);
+                return (
                 <tr key={item.id} className="border-b border-border/60">
                   <td className="px-2 py-2.5">
                     {new Date(item.paid_at ?? item.created_at).toLocaleString("hu-HU")}
                   </td>
                   <td className="px-2 py-2.5 font-medium">
-                    {Number(item.amount_huf).toLocaleString("hu-HU")}{" "}
-                    {normalizeCurrencyLabel(item.currency)}
+                    {amountDisplay.toLocaleString("hu-HU")} {currency}
                   </td>
                   <td className="px-2 py-2.5">{item.status}</td>
                   <td className="px-2 py-2.5">{item.device_identifier || "—"}</td>
                   <td className="px-2 py-2.5">{item.travel_destination ?? "—"}</td>
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
           {(topups ?? []).length === 0 && (

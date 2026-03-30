@@ -174,7 +174,7 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
     }
     if (manualTopupMode && effectiveAmount < minimumRequiredTopup) {
       setError(
-        `Ehhez az úticélhoz legalább ${minimumRequiredTopup.toLocaleString("hu-HU")} Ft feltöltés szükséges.`,
+        `Ehhez az úticélhoz legalább ${minimumRequiredTopup.toLocaleString("hu-HU")} EUR feltöltés szükséges.`,
       );
       return;
     }
