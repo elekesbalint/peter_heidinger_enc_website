@@ -46,6 +46,44 @@ export async function GET(request: Request) {
     }
   }
 
+  const devicesByUser = new Map<
+    string,
+    Array<{
+      identifier: string;
+      category: string;
+      status: string;
+      balance_huf: number | null;
+    }>
+  >();
+  if (ids.length > 0) {
+    const { data: devices } = await supabase
+      .from("devices")
+      .select("auth_user_id, identifier, category, status")
+      .in("auth_user_id", ids);
+    const identifiers = (devices ?? []).map((d) => d.identifier);
+    const walletByIdentifier = new Map<string, number>();
+    if (identifiers.length > 0) {
+      const { data: wallets } = await supabase
+        .from("device_wallets")
+        .select("device_identifier, balance_huf")
+        .in("device_identifier", identifiers);
+      for (const w of wallets ?? []) {
+        walletByIdentifier.set(w.device_identifier, Number(w.balance_huf ?? 0));
+      }
+    }
+    for (const d of devices ?? []) {
+      if (!d.auth_user_id) continue;
+      const list = devicesByUser.get(d.auth_user_id) ?? [];
+      list.push({
+        identifier: d.identifier,
+        category: d.category,
+        status: d.status,
+        balance_huf: walletByIdentifier.has(d.identifier) ? walletByIdentifier.get(d.identifier)! : null,
+      });
+      devicesByUser.set(d.auth_user_id, list);
+    }
+  }
+
   const items = users.map((u) => {
     const pr = profileByUser.get(u.id);
     return {
@@ -57,6 +95,7 @@ export async function GET(request: Request) {
       phone: pr?.phone ?? null,
       billing_address: pr?.billing_address ?? null,
       shipping_address: pr?.shipping_address ?? null,
+      devices: devicesByUser.get(u.id) ?? [],
     };
   });
 

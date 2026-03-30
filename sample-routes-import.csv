@@ -1,5 +1,5 @@
-Reláció;A tranzakció végrehajtásának dátuma;Behajtás ideje;Kihajtás ideje;Készülék száma;Rendszám;Kifizetés (HRK);Pénznem
+Reláció;A tranzakció végrehajtásának dátuma;Behajtás ideje;Kihajtás ideje;Készülék száma;Rendszám;Kifizetés (EUR);Pénznem
 TESZT REL A;25.03.2026 12:00:00;;;024354542;;100;EUR
-TESZT REL B;25.03.2026 12:05:00;;;024354542;;40;HUF
-TESZT REL C;25.03.2026 12:10:00;;;024354542;;10;HRK
+TESZT REL B;25.03.2026 12:05:00;;;024354542;;40;EUR
+TESZT REL C;25.03.2026 12:10:00;;;024354542;;10;EUR
 

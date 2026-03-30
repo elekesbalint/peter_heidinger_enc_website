@@ -16,6 +16,10 @@ const DEVICE_STATUS_LABELS: Record<string, string> = {
   archived: "archív",
 };
 
+function normalizeCurrencyLabel(raw: string | null | undefined): "EUR" | "HUF" {
+  return (raw ?? "").trim().toUpperCase() === "EUR" ? "EUR" : "HUF";
+}
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -253,7 +257,7 @@ export default async function DashboardPage({
                   <td className="px-2 py-2.5 font-mono text-xs">{r.device_number_raw}</td>
                   <td className="px-2 py-2.5">{r.relation_label}</td>
                   <td className="px-2 py-2.5">
-                    {Number(r.amount).toLocaleString("hu-HU")} {r.currency}
+                    {Number(r.amount).toLocaleString("hu-HU")} {normalizeCurrencyLabel(r.currency)}
                   </td>
                 </tr>
               ))}
@@ -321,7 +325,7 @@ export default async function DashboardPage({
                   </td>
                   <td className="px-2 py-2.5 font-medium">
                     {Number(item.amount_huf).toLocaleString("hu-HU")}{" "}
-                    {item.currency?.toUpperCase() ?? "HUF"}
+                    {normalizeCurrencyLabel(item.currency)}
                   </td>
                   <td className="px-2 py-2.5">{item.status}</td>
                   <td className="px-2 py-2.5">{item.device_identifier || "—"}</td>

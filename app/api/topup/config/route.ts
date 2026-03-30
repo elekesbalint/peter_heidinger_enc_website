@@ -19,6 +19,8 @@ export async function GET() {
     const packages = getTopupPackagesFromSettings(settings);
     const discountPercent = getIntSetting(settings, "topup_discount_percent", 0);
     const minBalanceWarningHuf = getIntSetting(settings, "min_balance_warning_huf", 5000);
+    const fxEurToHuf = Math.max(1, getIntSetting(settings, "fx_eur_to_huf", 400));
+    const minBalanceWarningEur = Number((minBalanceWarningHuf / fxEurToHuf).toFixed(2));
     const blockedCategories = Array.from(getTopupBlockSmallestCategories(settings));
 
     const supabase = createSupabaseAdminClient();
@@ -67,7 +69,7 @@ export async function GET() {
         identifier: d.identifier,
         category: cat,
         status: d.status,
-        balance_huf: walletByIdentifier.get(d.identifier) ?? 0,
+        balance_eur: Number((((walletByIdentifier.get(d.identifier) ?? 0) as number) / fxEurToHuf).toFixed(2)),
         smallestPackageBlocked:
           smallest != null &&
           isTopupPackageBlockedForCategory(cat, smallest, packages, blocked),
@@ -78,7 +80,8 @@ export async function GET() {
       ok: true,
       packages,
       discountPercent,
-      minBalanceWarningHuf,
+      minBalanceWarningEur,
+      fxEurToHuf,
       blockedCategoriesForSmallestPackage: blockedCategories,
       devices: devicesOut,
       destinations: (destinations ?? []).map((r) => ({

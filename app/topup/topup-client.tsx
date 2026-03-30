@@ -13,7 +13,7 @@ type ConfigDevice = {
   identifier: string;
   category: string;
   status: string;
-  balance_huf: number;
+  balance_eur: number;
   smallestPackageBlocked: boolean;
 };
 
@@ -22,7 +22,8 @@ type ConfigResponse = {
   error?: string;
   packages?: number[];
   discountPercent?: number;
-  minBalanceWarningHuf?: number;
+  minBalanceWarningEur?: number;
+  fxEurToHuf?: number;
   blockedCategoriesForSmallestPackage?: string[];
   devices?: ConfigDevice[];
   destinations?: {
@@ -107,7 +108,7 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
     [destinations, travelDestination],
   );
 
-  const destinationRequiredHuf = useMemo(() => {
+  const destinationRequiredEur = useMemo(() => {
     if (!selectedDestination || !selectedDevice) return 0;
     const cat = selectedDevice.category.toLowerCase();
     const byCat: Record<string, number> = {
@@ -120,8 +121,8 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
     return Number(byCat[cat] ?? 0);
   }, [selectedDestination, selectedDevice]);
 
-  const currentBalanceHuf = Number(selectedDevice?.balance_huf ?? 0);
-  const minimumRequiredTopup = Math.max(0, destinationRequiredHuf - currentBalanceHuf);
+  const currentBalanceEur = Number(selectedDevice?.balance_eur ?? 0);
+  const minimumRequiredTopup = Math.max(0, destinationRequiredEur - currentBalanceEur);
   const canAnyPackageCoverMinimum =
     minimumRequiredTopup > 0 ? packages.some((p) => p >= minimumRequiredTopup) : false;
   const manualTopupMode = minimumRequiredTopup > 0 && !canAnyPackageCoverMinimum;
@@ -138,9 +139,9 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
   useEffect(() => {
     if (manualTopupMode) {
       setCustomAmount((prev) => {
-        const n = Number.parseInt(prev, 10);
+        const n = Number.parseFloat(prev);
         if (!Number.isFinite(n) || n < minimumRequiredTopup) {
-          return String(minimumRequiredTopup);
+          return minimumRequiredTopup.toFixed(2);
         }
         return prev;
       });
@@ -149,7 +150,7 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
 
   async function startCheckout() {
     setError(null);
-    const manualAmountValue = Number.parseInt(customAmount.trim(), 10);
+    const manualAmountValue = Number.parseFloat(customAmount.trim());
     const effectiveAmount =
       manualTopupMode || Number.isFinite(manualAmountValue) ? manualAmountValue : selectedAmount ?? 0;
 
@@ -184,7 +185,7 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          topupAmountHuf: effectiveAmount,
+          topupAmountEur: effectiveAmount,
           deviceIdentifier: dev,
           travelDestination: dest,
         }),
@@ -221,7 +222,7 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
   }
 
   const previewAmount = manualTopupMode
-    ? Math.max(minimumRequiredTopup, Number.parseInt(customAmount || "0", 10) || 0)
+    ? Math.max(minimumRequiredTopup, Number.parseFloat(customAmount || "0") || 0)
     : selectedAmount;
   const charged = manualTopupMode ? previewAmount : applyTopupDiscount(selectedAmount, discountPercent);
   const showDiscount = !manualTopupMode && discountPercent > 0 && charged !== selectedAmount;
@@ -239,10 +240,10 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
           ).
         </p>
 
-        {config.minBalanceWarningHuf != null && (
+        {config.minBalanceWarningEur != null && (
           <p className="mt-2 text-xs text-muted">
             Figyelmeztetési küszöb alacsony egyenleghez:{" "}
-            <span className="font-medium">{config.minBalanceWarningHuf.toLocaleString("hu-HU")} Ft</span> (e-mail értesítés).
+            <span className="font-medium">{config.minBalanceWarningEur.toLocaleString("hu-HU")} EUR</span> (e-mail értesítés).
           </p>
         )}
 
@@ -266,7 +267,7 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
               {devices.map((d) => (
                 <option key={d.id} value={d.identifier}>
                   {d.identifier} ({String(d.category).toUpperCase()}) — egyenleg:{" "}
-                  {Number(d.balance_huf ?? 0).toLocaleString("hu-HU")} Ft
+                  {Number(d.balance_eur ?? 0).toLocaleString("hu-HU")} EUR
                 </option>
               ))}
             </select>
@@ -320,16 +321,16 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
         {selectedDevice && selectedDestination && (
           <div className="mt-4 rounded-xl border border-indigo-200 bg-indigo-50/70 px-4 py-3 text-sm text-indigo-950">
             <p>
-              Jelenlegi egyenleg: <strong>{currentBalanceHuf.toLocaleString("hu-HU")} Ft</strong> | Úticélhoz ajánlott:
-              <strong> {destinationRequiredHuf.toLocaleString("hu-HU")} Ft</strong>
+              Jelenlegi egyenleg: <strong>{currentBalanceEur.toLocaleString("hu-HU")} EUR</strong> | Úticélhoz ajánlott:
+              <strong> {destinationRequiredEur.toLocaleString("hu-HU")} EUR</strong>
             </p>
             {manualTopupMode ? (
               <p className="mt-1">
-                Legalább <strong>{minimumRequiredTopup.toLocaleString("hu-HU")} Ft</strong> feltöltés szükséges.
+                Legalább <strong>{minimumRequiredTopup.toLocaleString("hu-HU")} EUR</strong> feltöltés szükséges.
               </p>
             ) : minimumRequiredTopup > 0 ? (
               <p className="mt-1">
-                Legalább <strong>{minimumRequiredTopup.toLocaleString("hu-HU")} Ft</strong> feltöltés kell, ezt csomagból is ki tudod választani.
+                Legalább <strong>{minimumRequiredTopup.toLocaleString("hu-HU")} EUR</strong> feltöltés kell, ezt csomagból is ki tudod választani.
               </p>
             ) : (
               <p className="mt-1">A jelenlegi egyenleg elegendő, csomag alapú feltöltést választhatsz.</p>
@@ -345,7 +346,7 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
             <input
               type="number"
               min={minimumRequiredTopup}
-              step={100}
+              step={0.01}
               value={customAmount}
               onChange={(e) => setCustomAmount(e.target.value)}
               placeholder={`${minimumRequiredTopup.toLocaleString("hu-HU")} vagy több`}
@@ -353,10 +354,10 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
             />
             <p className="text-xs text-slate-600">
               Ennél a feltöltésnél a topup kedvezmény nem érvényes; minimum:{" "}
-              {minimumRequiredTopup.toLocaleString("hu-HU")} Ft.
+              {minimumRequiredTopup.toLocaleString("hu-HU")} EUR.
             </p>
             <p className="text-xs text-slate-600">
-              Fizetendő: <strong>{charged.toLocaleString("hu-HU")} Ft</strong>
+              Fizetendő: <strong>{charged.toLocaleString("hu-HU")} EUR</strong>
             </p>
           </div>
         ) : (
@@ -380,13 +381,13 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
                 }`}
               >
                 <p className="text-xs font-medium uppercase tracking-wider text-muted">Csomag</p>
-                <p className="mt-2 text-2xl font-bold text-foreground">{amount.toLocaleString("hu-HU")} Ft</p>
+                <p className="mt-2 text-2xl font-bold text-foreground">{amount.toLocaleString("hu-HU")} EUR</p>
                 {disabled && smallest && (
                   <p className="mt-2 text-xs text-amber-700">Nem elérhető ebben a kategóriában</p>
                 )}
                 {discountPercent > 0 && !disabled && (
                   <p className="mt-2 text-xs text-success">
-                    Fizetendő: {applyTopupDiscount(amount, discountPercent).toLocaleString("hu-HU")} Ft ({discountPercent}%
+                    Fizetendő: {applyTopupDiscount(amount, discountPercent).toLocaleString("hu-HU")} EUR ({discountPercent}%
                     kedvezmény)
                   </p>
                 )}
@@ -398,8 +399,8 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
 
         {showDiscount && selectedAmount != null && (
           <p className="mt-4 text-sm text-muted">
-            Kiválasztott csomag: <strong className="text-foreground">{selectedAmount.toLocaleString("hu-HU")} Ft</strong> →
-            fizetendő: <strong className="text-foreground">{charged.toLocaleString("hu-HU")} Ft</strong>
+            Kiválasztott csomag: <strong className="text-foreground">{selectedAmount.toLocaleString("hu-HU")} EUR</strong> →
+            fizetendő: <strong className="text-foreground">{charged.toLocaleString("hu-HU")} EUR</strong>
           </p>
         )}
       </div>

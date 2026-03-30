@@ -41,10 +41,9 @@ insert into settings (key, value, updated_at) values
   ('min_balance_warning_huf', '5000', now()),
   ('topup_discount_percent', '0', now()),
   ('fx_eur_to_huf', '400', now()),
-  ('fx_hrk_to_huf', '53', now()),
-  ('topup_package_1_huf', '15000', now()),
-  ('topup_package_2_huf', '25000', now()),
-  ('topup_package_3_huf', '45000', now()),
+  ('topup_package_1_huf', '40', now()),
+  ('topup_package_2_huf', '60', now()),
+  ('topup_package_3_huf', '100', now()),
   ('topup_block_smallest_for_categories', 'ii,iii,iv', now()),
   ('referral_device_discount_huf', '25000', now())
 on conflict (key) do nothing;
@@ -125,11 +124,8 @@ begin
   if cur = 'EUR' then
     select nullif(value, '')::numeric into v_fx from settings where key = 'fx_eur_to_huf';
     v_huf := greatest(1, round(NEW.amount * coalesce(v_fx, 400))::integer);
-  elsif cur = 'HRK' then
-    select nullif(value, '')::numeric into v_fx from settings where key = 'fx_hrk_to_huf';
-    v_huf := greatest(1, round(NEW.amount * coalesce(v_fx, 53))::integer);
   else
-    v_huf := greatest(1, round(NEW.amount)::integer);
+    raise exception 'Nem támogatott pénznem: %, csak EUR engedélyezett.', NEW.currency;
   end if;
 
   perform apply_route_debit(NEW.dedupe_key, NEW.device_number_raw, v_huf);

@@ -17,7 +17,7 @@ const TABS = [
   "Elérhető eszközök",
   "Úticélok",
   "Útvonal feltöltés",
-  "Egyenlegek",
+  "Tartozás",
   "Felhasználók",
   "Beállítások",
   "Audit / napló",
@@ -82,6 +82,12 @@ type UserRow = {
   phone: string | null;
   billing_address: string | null;
   shipping_address: string | null;
+  devices: Array<{
+    identifier: string;
+    category: string;
+    status: string;
+    balance_huf: number | null;
+  }>;
 };
 
 const DEVICE_STATUSES = ["available", "assigned", "sold", "archived"] as const;
@@ -98,10 +104,6 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
     label: "EUR -> HUF árfolyam",
     hint: "1 EUR hány Ft legyen a rendszerben.",
   },
-  fx_hrk_to_huf: {
-    label: "HRK -> HUF árfolyam",
-    hint: "1 HRK hány Ft legyen a rendszerben.",
-  },
   min_balance_warning_huf: {
     label: "Alacsony egyenleg küszöb (Ft)",
     hint: "Ezen összeg alatt küld figyelmeztető e-mailt.",
@@ -115,16 +117,16 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
     hint: "Pl. 10 esetén a fizetendő ár 10%-kal kevesebb.",
   },
   topup_package_1_huf: {
-    label: "1. topup csomag (Ft)",
-    hint: "A legkisebb feltöltési csomag ára.",
+    label: "1. topup csomag (EUR)",
+    hint: "A legkisebb feltöltési csomag ára EUR-ban.",
   },
   topup_package_2_huf: {
-    label: "2. topup csomag (Ft)",
-    hint: "A középső feltöltési csomag ára.",
+    label: "2. topup csomag (EUR)",
+    hint: "A középső feltöltési csomag ára EUR-ban.",
   },
   topup_package_3_huf: {
-    label: "3. topup csomag (Ft)",
-    hint: "A legnagyobb feltöltési csomag ára.",
+    label: "3. topup csomag (EUR)",
+    hint: "A legnagyobb feltöltési csomag ára EUR-ban.",
   },
   referral_device_discount_huf: {
     label: "Ajánlói kedvezmény készülékvásárlásra (Ft)",
@@ -191,6 +193,7 @@ export function AdminWorkspace() {
   const [editShippingAddress, setEditShippingAddress] = useState("");
 
   const [waitlist, setWaitlist] = useState<WaitRow[]>([]);
+  const [waitQ, setWaitQ] = useState("");
   const [waitLoading, setWaitLoading] = useState(false);
   const [waitErr, setWaitErr] = useState<string | null>(null);
   const [assignMsg, setAssignMsg] = useState<string | null>(null);
@@ -227,6 +230,7 @@ export function AdminWorkspace() {
   const [usrLoading, setUsrLoading] = useState(false);
   const [usrErr, setUsrErr] = useState<string | null>(null);
   const [editUser, setEditUser] = useState<UserRow | null>(null);
+  const [selectedDebtDevices, setSelectedDebtDevices] = useState<Set<string>>(new Set());
 
   const [routesQ, setRoutesQ] = useState("");
 
@@ -388,6 +392,36 @@ export function AdminWorkspace() {
     }
   }
 
+  function toggleDebtDevice(identifier: string) {
+    setSelectedDebtDevices((prev) => {
+      const next = new Set(prev);
+      if (next.has(identifier)) next.delete(identifier);
+      else next.add(identifier);
+      return next;
+    });
+  }
+
+  async function sendDebtWarnings(identifiers: string[]) {
+    if (identifiers.length === 0) return;
+    setUsrErr(null);
+    try {
+      const res = await fetch("/api/admin/device-wallets/send-warning", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device_identifiers: identifiers }),
+      });
+      const data = (await res.json()) as { ok: boolean; error?: string; sent_users?: number };
+      if (!data.ok) {
+        setUsrErr(data.error ?? "Hiba");
+        return;
+      }
+      setUsrErr(`Figyelmeztető e-mail kiküldve (${data.sent_users ?? 0} felhasználó).`);
+      setSelectedDebtDevices(new Set());
+    } catch {
+      setUsrErr("Hálózati hiba");
+    }
+  }
+
   useEffect(() => {
     if (tab === "Eszközrendelések") loadEnc();
     if (tab === "Készülékre vár") loadWait();
@@ -395,7 +429,7 @@ export function AdminWorkspace() {
     if (tab === "Úticélok") loadDest();
     if (tab === "Beállítások") loadSettings();
     if (tab === "Felhasználók") loadUsers();
-    if (tab === "Egyenlegek") loadWallets();
+    if (tab === "Tartozás") loadWallets();
   }, [tab, loadEnc, loadWait, loadDevices, loadDest, loadSettings, loadUsers]);
 
   async function postOrderUpdate(
@@ -615,6 +649,37 @@ export function AdminWorkspace() {
       } else {
         setAssignMsg(data.message ?? "Nem történt kiosztás.");
       }
+      await loadWait();
+      await loadDevices("");
+    } catch {
+      setAssignErr("Hálózati hiba");
+    } finally {
+      setAssigning(false);
+    }
+  }
+
+  async function assignOneWaitlist(id: string) {
+    setAssignMsg(null);
+    setAssignErr(null);
+    setAssigning(true);
+    try {
+      const res = await fetch("/api/admin/device-waitlist/assign-one", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const data = (await res.json()) as {
+        ok: boolean;
+        error?: string;
+        item?: { device_identifier?: string; user_email?: string | null; category?: string };
+      };
+      if (!data.ok) {
+        setAssignErr(data.error ?? "Hiba");
+        return;
+      }
+      setAssignMsg(
+        `Kiosztva: ${data.item?.device_identifier ?? "?"} → ${data.item?.user_email ?? "?"} (${data.item?.category ?? "?"})`,
+      );
       await loadWait();
       await loadDevices("");
     } catch {
@@ -1101,6 +1166,12 @@ export function AdminWorkspace() {
           <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
             <div className="flex flex-wrap gap-2">
               <h2 className="text-xl font-semibold">Várólista</h2>
+              <input
+                value={waitQ}
+                onChange={(e) => setWaitQ(e.target.value)}
+                placeholder="Szűrés e-mailre"
+                className="rounded-lg border px-2 py-1 text-sm"
+              />
               <button type="button" onClick={() => loadWait()} className="rounded-xl border px-3 py-1.5 text-sm">
                 Frissítés
               </button>
@@ -1127,13 +1198,22 @@ export function AdminWorkspace() {
                 </tr>
               </thead>
               <tbody>
-                {waitlist.map((w) => (
+                {waitlist
+                  .filter((w) => (waitQ.trim() ? (w.user_email ?? "").toLowerCase().includes(waitQ.trim().toLowerCase()) : true))
+                  .map((w) => (
                   <tr key={w.id} className="border-b border-border/60">
                     <td className="px-2 py-2">{w.user_email ?? "—"}</td>
                     <td className="px-2 py-2">{w.category}</td>
                     <td className="px-2 py-2">{w.note ?? "—"}</td>
                     <td className="px-2 py-2">{new Date(w.created_at).toLocaleString("hu-HU")}</td>
                     <td className="px-2 py-2">
+                      <button
+                        type="button"
+                        className="mr-2 text-xs text-emerald-700 underline"
+                        onClick={() => assignOneWaitlist(w.id)}
+                      >
+                        Kiosztás
+                      </button>
                       <button
                         type="button"
                         className="text-xs text-red-700 underline"
@@ -1297,6 +1377,7 @@ export function AdminWorkspace() {
           <div className="space-y-6">
             <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
               <h2 className="text-xl font-semibold">Új úticél</h2>
+              <p className="mt-1 text-xs text-slate-500">A kategóriaárak EUR-ban értendők.</p>
               <div className="mt-3 grid gap-2 sm:grid-cols-3">
                 <input
                   value={newDest.name}
@@ -1335,11 +1416,11 @@ export function AdminWorkspace() {
                   <thead>
                     <tr className="border-b text-slate-500">
                       <th className="px-2 py-2">Név</th>
-                      <th className="px-2 py-2">IA</th>
-                      <th className="px-2 py-2">I</th>
-                      <th className="px-2 py-2">II</th>
-                      <th className="px-2 py-2">III</th>
-                      <th className="px-2 py-2">IV</th>
+                      <th className="px-2 py-2">IA (EUR)</th>
+                      <th className="px-2 py-2">I (EUR)</th>
+                      <th className="px-2 py-2">II (EUR)</th>
+                      <th className="px-2 py-2">III (EUR)</th>
+                      <th className="px-2 py-2">IV (EUR)</th>
                       <th className="px-2 py-2"> </th>
                     </tr>
                   </thead>
@@ -1419,14 +1500,14 @@ export function AdminWorkspace() {
           </div>
         )}
 
-        {tab === "Egyenlegek" && (
+        {tab === "Tartozás" && (
           <div className="space-y-6">
             <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-xl font-semibold">Eszköz egyenlegek</h2>
+                  <h2 className="text-xl font-semibold">Tartozás (negatív egyenlegek)</h2>
                   <p className="mt-1 text-sm text-muted">
-                    Zöld: {minBalanceWarningHuf} Ft felett, piros: alatt.
+                    Itt csak a 0 Ft alatti egyenlegű készülékek látszanak.
                   </p>
                 </div>
                 <button
@@ -1452,7 +1533,7 @@ export function AdminWorkspace() {
                     </tr>
                   </thead>
                   <tbody>
-                    {walletRows.map((w) => {
+                    {walletRows.filter((w) => (w.balance_huf ?? 0) < 0).map((w) => {
                       const bal = w.balance_huf ?? 0;
                       const ok = bal >= minBalanceWarningHuf;
                       return (
@@ -1485,10 +1566,10 @@ export function AdminWorkspace() {
                         </tr>
                       );
                     })}
-                    {walletRows.length === 0 && (
+                    {walletRows.filter((w) => (w.balance_huf ?? 0) < 0).length === 0 && (
                       <tr>
                         <td colSpan={5} className="px-2 py-4 text-sm text-muted">
-                          Nincsenek megjeleníthető adatok.
+                          Nincs negatív egyenlegű eszköz.
                         </td>
                       </tr>
                     )}
@@ -1574,6 +1655,13 @@ export function AdminWorkspace() {
           <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
             <div className="flex gap-2">
               <h2 className="text-xl font-semibold">Felhasználók (Auth)</h2>
+              <button
+                type="button"
+                onClick={() => sendDebtWarnings([...selectedDebtDevices])}
+                className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-sm text-amber-900"
+              >
+                Tartozás figyelmeztető e-mail (kijelöltek)
+              </button>
               <button type="button" onClick={() => loadUsers()} className="rounded border px-2 py-1 text-sm">
                 Frissítés
               </button>
@@ -1585,6 +1673,7 @@ export function AdminWorkspace() {
                   <th className="px-2 py-2">E-mail</th>
                   <th className="px-2 py-2">Név (profil)</th>
                   <th className="px-2 py-2">Telefon</th>
+                  <th className="px-2 py-2">Készülékek / egyenleg</th>
                   <th className="px-2 py-2">Regisztráció</th>
                   <th className="px-2 py-2">Utolsó belépés</th>
                   <th className="px-2 py-2">Művelet</th>
@@ -1596,6 +1685,39 @@ export function AdminWorkspace() {
                     <td className="px-2 py-2">{u.email ?? "—"}</td>
                     <td className="px-2 py-2">{u.name ?? "—"}</td>
                     <td className="px-2 py-2">{u.phone ?? "—"}</td>
+                    <td className="px-2 py-2">
+                      <div className="space-y-1">
+                        {u.devices.length === 0 && <div className="text-xs text-muted">Nincs eszköz</div>}
+                        {u.devices.map((d) => {
+                          const bal = Number(d.balance_huf ?? 0);
+                          const debt = bal < 0;
+                          return (
+                            <div key={d.identifier} className="flex items-center gap-2 text-xs">
+                              {debt && (
+                                <input
+                                  type="checkbox"
+                                  checked={selectedDebtDevices.has(d.identifier)}
+                                  onChange={() => toggleDebtDevice(d.identifier)}
+                                />
+                              )}
+                              <span className="font-mono">{d.identifier}</span>
+                              <span className={debt ? "font-semibold text-red-700" : "text-slate-700"}>
+                                {Number.isFinite(bal) ? `${bal.toLocaleString("hu-HU")} Ft` : "—"}
+                              </span>
+                              {debt && (
+                                <button
+                                  type="button"
+                                  className="rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] text-amber-900"
+                                  onClick={() => sendDebtWarnings([d.identifier])}
+                                >
+                                  Figyelmeztetés
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </td>
                     <td className="px-2 py-2">{new Date(u.created_at).toLocaleString("hu-HU")}</td>
                     <td className="px-2 py-2">
                       {u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString("hu-HU") : "—"}

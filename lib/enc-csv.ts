@@ -68,8 +68,11 @@ export function parseEncCsv(content: string): EncCsvRow[] {
     const exitAt = parseDate(record["Kihajtás ideje"] ?? "");
     const deviceNumberRaw = (record["Készülék száma"] ?? "").trim();
     const licensePlate = (record["Rendszám"] ?? "").trim() || null;
-    const amount = parseAmount(record["Kifizetés (HRK)"] ?? "0");
-    const currency = (record["Pénznem"] ?? "EUR").trim() || "EUR";
+    const amount = parseAmount(record["Kifizetés (EUR)"] ?? record["Kifizetés (HRK)"] ?? "0");
+    const currency = (record["Pénznem"] ?? "EUR").trim().toUpperCase() || "EUR";
+    if (currency !== "EUR") {
+      throw new Error(`A(z) ${currency} pénznem már nem támogatott. Kérjük EUR pénznemet használj.`);
+    }
     const sourceLineNumber = idx + 2;
 
     const dedupeKey = makeDedupeKey(

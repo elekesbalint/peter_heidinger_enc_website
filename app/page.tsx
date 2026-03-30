@@ -70,6 +70,12 @@ export default async function Home() {
             />
             <div className="pointer-events-none absolute -left-24 top-1/2 h-56 w-56 -translate-y-1/2 rounded-full bg-blue-500/10 blur-3xl" />
             <div className="pointer-events-none absolute -right-20 -top-8 h-64 w-64 rounded-full bg-indigo-400/9 blur-3xl" />
+            <div className="pointer-events-none absolute right-4 top-4 rounded-xl border border-white/70 bg-white/80 px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm">
+              🇭🇷 ENC vásárlás
+            </div>
+            <div className="pointer-events-none absolute bottom-4 left-4 rounded-xl border border-white/70 bg-white/75 px-3 py-1.5 text-sm text-slate-700 shadow-sm">
+              🌊 🐚 🐟 ☀️
+            </div>
             <div
               className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-slate-500/20 to-transparent"
               aria-hidden

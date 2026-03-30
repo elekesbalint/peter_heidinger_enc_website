@@ -11,8 +11,8 @@ import { isProfileComplete } from "@/lib/profile-completion";
 import { getBaseUrl, getStripe } from "@/lib/stripe";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
-function toStripeHufAmount(hufAmount: number): number {
-  return hufAmount * 100;
+function toStripeEurAmount(eurAmount: number): number {
+  return Math.round(eurAmount * 100);
 }
 
 export async function POST(request: Request) {
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     }
 
     const body = (await request.json()) as {
-      topupAmountHuf?: number;
+      topupAmountEur?: number;
       deviceIdentifier?: string;
       travelDestination?: string;
     };
@@ -38,14 +38,15 @@ export async function POST(request: Request) {
     const packages = getTopupPackagesFromSettings(settings);
     const discountPct = getIntSetting(settings, "topup_discount_percent", 0);
     const blockedCats = getTopupBlockSmallestCategories(settings);
+    const fxEurToHuf = Math.max(1, getIntSetting(settings, "fx_eur_to_huf", 400));
 
-    const base = body.topupAmountHuf;
+    const base = body.topupAmountEur;
     if (!Number.isFinite(base) || Number(base) <= 0) {
       return Response.json({ ok: false, error: "Ervenytelen feltoltesi osszeg." }, { status: 400 });
     }
-    const amountHuf = Math.floor(Number(base));
-    if (amountHuf < 1000) {
-      return Response.json({ ok: false, error: "Minimum feltoltes: 1000 Ft." }, { status: 400 });
+    const amountEur = Number(Number(base).toFixed(2));
+    if (amountEur < 5) {
+      return Response.json({ ok: false, error: "Minimum feltoltes: 5 EUR." }, { status: 400 });
     }
 
     const deviceIdentifier = (body.deviceIdentifier ?? "").trim();
@@ -87,7 +88,7 @@ export async function POST(request: Request) {
       .select("balance_huf")
       .eq("device_identifier", deviceIdentifier)
       .maybeSingle();
-    const currentBalanceHuf = Number(walletRow?.balance_huf ?? 0);
+    const currentBalanceEur = Number((Number(walletRow?.balance_huf ?? 0) / fxEurToHuf).toFixed(2));
 
     const { data: destinationRow } = await supabase
       .from("destinations")
@@ -105,25 +106,28 @@ export async function POST(request: Request) {
           iv: Number(destinationRow.price_iv ?? 0),
         }
       : {};
-    const destinationRequiredHuf = Math.max(0, Math.floor(byCategory[categoryKey] ?? 0));
-    const minTopupRequiredHuf = Math.max(0, destinationRequiredHuf - currentBalanceHuf);
+    const destinationRequiredEur = Math.max(0, Number(byCategory[categoryKey] ?? 0));
+    const minTopupRequiredEur = Math.max(
+      0,
+      Number((destinationRequiredEur - currentBalanceEur).toFixed(2)),
+    );
 
-    if (minTopupRequiredHuf > 0 && amountHuf < minTopupRequiredHuf) {
+    if (minTopupRequiredEur > 0 && amountEur < minTopupRequiredEur) {
       return Response.json(
         {
           ok: false,
-          error: `Legalabb ${minTopupRequiredHuf.toLocaleString("hu-HU")} Ft feltoltes szukseges ehhez az uticelhoz.`,
+          error: `Legalabb ${minTopupRequiredEur.toLocaleString("hu-HU")} EUR feltoltes szukseges ehhez az uticelhoz.`,
         },
         { status: 400 },
       );
     }
 
     if (
-      minTopupRequiredHuf <= 0 &&
-      packages.includes(amountHuf) &&
+      minTopupRequiredEur <= 0 &&
+      packages.includes(amountEur) &&
       isTopupPackageBlockedForCategory(
         ownedDevice.category as string,
-        amountHuf,
+        amountEur,
         packages,
         blockedCats,
       )
@@ -132,22 +136,23 @@ export async function POST(request: Request) {
       return Response.json(
         {
           ok: false,
-          error: `A(z) ${String(ownedDevice.category).toUpperCase()} kategoriahoz legalabb ${minAllowed.toLocaleString("hu-HU")} Ft-os csomag valaszthato.`,
+          error: `A(z) ${String(ownedDevice.category).toUpperCase()} kategoriahoz legalabb ${minAllowed.toLocaleString("hu-HU")} EUR-os csomag valaszthato.`,
         },
         { status: 400 },
       );
     }
 
-    const discountActive = minTopupRequiredHuf <= 0 && packages.includes(amountHuf);
+    const discountActive = minTopupRequiredEur <= 0 && packages.includes(amountEur);
     const appliedDiscountPct = discountActive ? discountPct : 0;
-    const chargedHuf = applyTopupDiscount(amountHuf, appliedDiscountPct);
+    const chargedEur = applyTopupDiscount(amountEur, appliedDiscountPct);
+    const chargedHuf = Math.max(1, Math.round(chargedEur * fxEurToHuf));
 
     const stripe = getStripe();
     const baseUrl = getBaseUrl();
 
     const discountNote =
       appliedDiscountPct > 0
-        ? ` (kedvezmeny ${appliedDiscountPct}% — fizetendo ${chargedHuf.toLocaleString("hu-HU")} Ft)`
+        ? ` (kedvezmeny ${appliedDiscountPct}% — fizetendo ${chargedEur.toLocaleString("hu-HU")} EUR)`
         : "";
 
     const session = await stripe.checkout.sessions.create({
@@ -159,10 +164,10 @@ export async function POST(request: Request) {
         {
           quantity: 1,
           price_data: {
-            currency: "huf",
-            unit_amount: toStripeHufAmount(chargedHuf),
+            currency: "eur",
+            unit_amount: toStripeEurAmount(chargedEur),
             product_data: {
-              name: `AdriaGo egyenlegfeltoltes — ${amountHuf.toLocaleString("hu-HU")} Ft${discountNote}`,
+              name: `AdriaGo egyenlegfeltoltes — ${amountEur.toLocaleString("hu-HU")} EUR${discountNote}`,
               description: `Uticel: ${travelDestination}`,
             },
           },
@@ -174,7 +179,8 @@ export async function POST(request: Request) {
         user_email: user.email ?? "",
         device_identifier: deviceIdentifier,
         amount_huf: String(chargedHuf),
-        base_amount_huf: String(amountHuf),
+        base_amount_huf: String(Math.round(amountEur * fxEurToHuf)),
+        amount_eur: String(chargedEur),
         discount_percent: String(appliedDiscountPct),
         travel_destination: travelDestination,
       },

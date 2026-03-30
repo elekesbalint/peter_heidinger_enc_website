@@ -156,6 +156,14 @@ export default async function RootLayout({
             <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-6 text-sm text-muted">
               <p>&copy; {new Date().getFullYear()} AdriaGo. Minden jog fenntartva.</p>
               <div className="flex gap-5">
+                <a
+                  href="https://encberbeadas.hu"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="transition-colors duration-200 hover:text-foreground"
+                >
+                  Partner: ENCbérbeadás.hu
+                </a>
                 <Link href="/aszf" className="transition-colors duration-200 hover:text-foreground">
                   ÁSZF
                 </Link>
