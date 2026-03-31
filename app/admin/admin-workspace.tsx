@@ -1989,6 +1989,7 @@ export function AdminWorkspace() {
                         {u.devices.length === 0 && <div className="text-xs text-muted">Nincs eszköz</div>}
                         {u.devices.map((d) => {
                           const bal = Number(d.balance_huf ?? 0);
+                          const balEur = hufToEur(bal, fxEurToHuf);
                           const debt = bal < 0;
                           return (
                             <div key={d.identifier} className="flex items-center gap-2 text-xs">
@@ -2001,7 +2002,12 @@ export function AdminWorkspace() {
                               )}
                               <span className="font-mono">{d.identifier}</span>
                               <span className={debt ? "font-semibold text-red-700" : "text-slate-700"}>
-                                {Number.isFinite(bal) ? `${bal.toLocaleString("hu-HU")} Ft` : "—"}
+                                {Number.isFinite(balEur)
+                                  ? `${balEur.toLocaleString("hu-HU", {
+                                      minimumFractionDigits: 2,
+                                      maximumFractionDigits: 2,
+                                    })} EUR`
+                                  : "—"}
                               </span>
                               {debt && (
                                 <button
