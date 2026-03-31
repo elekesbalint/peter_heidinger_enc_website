@@ -241,7 +241,7 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
     );
   }
 
-  const discountEligible = !manualTopupMode && minimumRequiredTopup <= 0;
+  const discountEligible = !manualTopupMode;
   const previewAmount = manualTopupMode
     ? Math.max(minimumRequiredTopup, Number.parseFloat(customAmount || "0") || 0)
     : selectedAmount;
@@ -449,7 +449,7 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
         )}
         {!manualTopupMode && minimumRequiredTopup > 0 && discountPercent > 0 && (
           <p className="mt-4 text-xs text-slate-600">
-            Ennél az úticélnál minimum feltöltés szükséges, ezért a csomagkedvezmény most nem érvényes.
+            Ennél az úticélnál minimum feltöltés szükséges, de a csomagkedvezmény érvényes.
           </p>
         )}
       </div>

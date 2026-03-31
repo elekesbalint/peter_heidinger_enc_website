@@ -142,7 +142,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const discountActive = minTopupRequiredEur <= 0 && packages.includes(amountEur);
+    const discountActive = packages.includes(amountEur);
     const appliedDiscountPct = discountActive ? discountPct : 0;
     const chargedEur = applyTopupDiscount(amountEur, appliedDiscountPct);
     const chargedHuf = Math.max(1, Math.round(chargedEur * fxEurToHuf));
