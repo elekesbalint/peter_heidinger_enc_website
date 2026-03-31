@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/admin-guard";
+import { getSettingsMap } from "@/lib/app-settings";
 import { sendAppEmail } from "@/lib/notify-email";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import {
@@ -213,6 +214,26 @@ export async function POST(request: Request) {
             shippingAddr.street && shippingAddr.extra
               ? `${shippingAddr.street}, ${shippingAddr.extra}`
               : shippingAddr.street || shippingAddr.extra;
+          const settings = await getSettingsMap();
+          const senderAddressCountry =
+            settings.mpl_sender_country?.trim() || "Magyarország";
+          const senderAddressZip =
+            settings.mpl_sender_zip?.trim() || "1138";
+          const senderAddressCity =
+            settings.mpl_sender_city?.trim() || "Budapest";
+          const senderAddressStreet =
+            settings.mpl_sender_street?.trim() || "Fő utca 1.";
+          const senderAddressLine = senderAddressCountry
+            ? `${senderAddressCountry}, ${senderAddressStreet}`
+            : senderAddressStreet;
+          const senderAddressRemark =
+            settings.mpl_sender_remark?.trim() || "admin beállítás";
+          const senderContactName =
+            settings.mpl_sender_name?.trim() || "AdriaGo Feladó";
+          const senderContactEmail =
+            settings.mpl_sender_email?.trim() || "teszt@pelda.hu";
+          const senderContactPhone =
+            settings.mpl_sender_phone?.trim() || "+36201234567";
 
           const demoPayload = [
             {
@@ -225,16 +246,16 @@ export async function POST(request: Request) {
               sender: {
                 agreement: senderAgreement,
                 contact: {
-                  name: "AdriaGo Feladó (Sandbox)",
-                  email: "teszt@pelda.hu",
+                  name: senderContactName,
+                  email: senderContactEmail,
                   // MPL sandbox validációhoz: mobil prefixel (pl. +36 20 ...)
-                  phone: "+36201234567",
+                  phone: senderContactPhone,
                 },
                 address: {
-                  postCode: "1138",
-                  city: "Budapest",
-                  address: "Fő utca 1.",
-                  remark: "demo",
+                  postCode: senderAddressZip,
+                  city: senderAddressCity,
+                  address: senderAddressLine,
+                  remark: senderAddressRemark,
                 },
               },
               item: [

@@ -154,6 +154,38 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
     label: "Ajánlói kedvezmény készülékvásárlásra (Ft)",
     hint: "A meghívott user első sikeres készülékvásárlásakor ennyivel csökken az ár.",
   },
+  mpl_sender_country: {
+    label: "MPL feladó ország",
+    hint: "A csomagfeladás feladó címének országa.",
+  },
+  mpl_sender_zip: {
+    label: "MPL feladó irányítószám",
+    hint: "A csomagfeladás feladó címének irányítószáma.",
+  },
+  mpl_sender_city: {
+    label: "MPL feladó város",
+    hint: "A csomagfeladás feladó címének városa.",
+  },
+  mpl_sender_street: {
+    label: "MPL feladó utca, házszám",
+    hint: "A csomagfeladás feladó címének utcája és házszáma.",
+  },
+  mpl_sender_remark: {
+    label: "MPL feladó cím megjegyzés",
+    hint: "Opcionális mező (pl. telephely, emelet).",
+  },
+  mpl_sender_name: {
+    label: "MPL feladó név",
+    hint: "Feladó kapcsolattartó vagy cégnév.",
+  },
+  mpl_sender_email: {
+    label: "MPL feladó e-mail",
+    hint: "Feladó kapcsolattartó e-mail címe.",
+  },
+  mpl_sender_phone: {
+    label: "MPL feladó telefon",
+    hint: "Feladó kapcsolattartó telefon E.164 formátumban (pl. +36201234567).",
+  },
   home_hero_title: {
     label: "Főoldal hero cím",
     hint: "A landing page fő címsora.",

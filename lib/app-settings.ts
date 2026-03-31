@@ -13,6 +13,14 @@ export const SETTINGS_DEFAULTS: Record<string, string> = {
   /** Vesszovel elvalasztott kategoriak (pl. ii,iii,iv): ezekhez nem valaszthato a legkisebb topup csomag. */
   topup_block_smallest_for_categories: "ii,iii,iv",
   referral_device_discount_huf: "25000",
+  mpl_sender_country: "Magyarország",
+  mpl_sender_zip: "1138",
+  mpl_sender_city: "Budapest",
+  mpl_sender_street: "Fő utca 1.",
+  mpl_sender_remark: "admin beállítás",
+  mpl_sender_name: "AdriaGo Feladó",
+  mpl_sender_email: "teszt@pelda.hu",
+  mpl_sender_phone: "+36201234567",
   home_platform_label: "AdriaGo Platform",
   home_hero_title: "ENC vásárlás és útdíjkezelés egyetlen modern rendszerben.",
   home_hero_subtitle:
