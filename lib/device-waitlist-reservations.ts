@@ -21,6 +21,23 @@ type DeviceItem = {
   category: DeviceCategoryValue;
 };
 
+async function resolveAuthUserIdByEmail(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  email: string | null | undefined,
+  fallbackAuthUserId: string,
+): Promise<string> {
+  const normalized = (email ?? "").trim().toLowerCase();
+  if (!normalized) return fallbackAuthUserId;
+  try {
+    const { data, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    if (error) return fallbackAuthUserId;
+    const hit = (data?.users ?? []).find((u) => (u.email ?? "").trim().toLowerCase() === normalized);
+    return hit?.id ?? fallbackAuthUserId;
+  } catch {
+    return fallbackAuthUserId;
+  }
+}
+
 function toStripeHufAmount(hufAmount: number): number {
   return hufAmount * 100;
 }
@@ -104,6 +121,11 @@ export async function createWaitlistPaymentReservation(params: {
   }
 
   const supabase = createSupabaseAdminClient();
+  const resolvedAuthUserId = await resolveAuthUserIdByEmail(
+    supabase,
+    waitlist.user_email,
+    waitlist.auth_user_id,
+  );
   const settings = await getSettingsMap();
   const referralDiscountHuf = Math.max(
     0,
@@ -154,7 +176,7 @@ export async function createWaitlistPaymentReservation(params: {
       order_type: "device_purchase",
       reservation_id: reservationId,
       source_waitlist_id: waitlist.id,
-      user_id: waitlist.auth_user_id,
+      user_id: resolvedAuthUserId,
       user_email: waitlist.user_email,
       device_id: device.id,
       device_identifier: device.identifier,
@@ -192,7 +214,7 @@ export async function createWaitlistPaymentReservation(params: {
   const { error: reservationErr } = await supabase.from("device_payment_reservations").insert({
     id: reservationId,
     source_waitlist_id: waitlist.id,
-    auth_user_id: waitlist.auth_user_id,
+    auth_user_id: resolvedAuthUserId,
     user_email: waitlist.user_email,
     category: waitlist.category,
     device_id: device.id,
@@ -273,7 +295,7 @@ export async function createWaitlistPaymentReservation(params: {
   const { error: assignmentLogError } = await supabase.from("admin_device_assignments").insert({
     admin_auth_user_id: adminAuthUserId,
     admin_email: adminEmail,
-    target_auth_user_id: waitlist.auth_user_id,
+    target_auth_user_id: resolvedAuthUserId,
     target_user_email: waitlist.user_email,
     device_id: device.id,
     device_identifier: device.identifier,

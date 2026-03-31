@@ -43,10 +43,9 @@ export default async function DashboardPage({
   const supabase = createSupabaseAdminClient();
   const { data: pendingAssignments } = await supabase
     .from("enc_device_orders")
-    .select("stripe_session_id, device_id")
-    .eq("auth_user_id", user.id)
+    .select("stripe_session_id, device_id, auth_user_id, user_email")
     .eq("status", "paid")
-    .eq("assignment_ok", false)
+    .eq("user_email", user.email ?? "")
     .not("device_id", "is", null)
     .order("created_at", { ascending: false })
     .limit(20);
@@ -68,7 +67,7 @@ export default async function DashboardPage({
       if (repairedRows && repairedRows.length > 0) {
         await supabase
           .from("enc_device_orders")
-          .update({ assignment_ok: true })
+          .update({ assignment_ok: true, auth_user_id: user.id, user_email: user.email ?? row.user_email ?? null })
           .eq("stripe_session_id", row.stripe_session_id);
       }
     }

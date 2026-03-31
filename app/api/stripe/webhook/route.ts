@@ -69,6 +69,23 @@ function parseAmountEur(
   return Math.round(total) / 100;
 }
 
+async function resolveAuthUserIdByEmail(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  email: string | null | undefined,
+  fallbackAuthUserId: string | null,
+): Promise<string | null> {
+  const normalized = (email ?? "").trim().toLowerCase();
+  if (!normalized) return fallbackAuthUserId;
+  try {
+    const { data, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    if (error) return fallbackAuthUserId;
+    const hit = (data?.users ?? []).find((u) => (u.email ?? "").trim().toLowerCase() === normalized);
+    return hit?.id ?? fallbackAuthUserId;
+  } catch {
+    return fallbackAuthUserId;
+  }
+}
+
 export async function POST(request: Request) {
   const signature = request.headers.get("stripe-signature");
   if (!signature) {
@@ -96,6 +113,8 @@ export async function POST(request: Request) {
       const orderType = metadata.order_type ?? "";
       const deviceIdentifier = metadata.device_identifier || null;
       const userEmail = metadata.user_email ?? null;
+      const customerEmail = session.customer_details?.email ?? null;
+      const emailForAuthResolution = userEmail || customerEmail;
       const isDevicePurchase = orderType === "device_purchase";
       const isTopup = orderType === "topup";
 
@@ -130,7 +149,11 @@ export async function POST(request: Request) {
 
       if (isDevicePurchase) {
         const deviceId = metadata.device_id ?? null;
-        const authUserId = metadata.user_id ?? null;
+        const authUserId = await resolveAuthUserIdByEmail(
+          supabase,
+          emailForAuthResolution,
+          metadata.user_id ?? null,
+        );
         const category = metadata.category ?? null;
         const reservationId = (metadata.reservation_id ?? "").trim();
 
