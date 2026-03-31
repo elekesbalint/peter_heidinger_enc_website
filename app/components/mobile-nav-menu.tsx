@@ -39,8 +39,15 @@ export function MobileNavMenu({ user, displayName }: Props) {
 
   return (
     <details ref={detailsRef} className="relative md:hidden">
-      <summary className="list-none rounded-xl border border-slate-300/85 bg-white/80 px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-white">
-        Menü
+      <summary
+        aria-label="Navigációs menü"
+        className="list-none rounded-xl border border-slate-300/85 bg-white/80 px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-white"
+      >
+        <span aria-hidden className="inline-flex h-5 w-5 flex-col items-center justify-center gap-1">
+          <span className="block h-0.5 w-4 rounded bg-slate-700" />
+          <span className="block h-0.5 w-4 rounded bg-slate-700" />
+          <span className="block h-0.5 w-4 rounded bg-slate-700" />
+        </span>
       </summary>
       <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-xl backdrop-blur">
         <Link href="/dashboard" onClick={closeMenu} className="block rounded-xl px-3 py-2 text-sm text-slate-700 hover:bg-slate-100">
