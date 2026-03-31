@@ -54,6 +54,21 @@ function parseAmountHuf(sessionAmountTotal: number | null, metadataAmountHuf: st
   return Math.round(total / 100);
 }
 
+function parseAmountEur(
+  sessionAmountTotal: number | null,
+  metadataAmountEur: string | undefined,
+): number {
+  const metaAmount = metadataAmountEur
+    ? Number.parseFloat(metadataAmountEur)
+    : NaN;
+  if (Number.isFinite(metaAmount) && metaAmount > 0) {
+    return Math.round(metaAmount * 100) / 100;
+  }
+
+  const total = sessionAmountTotal ?? 0;
+  return Math.round(total) / 100;
+}
+
 export async function POST(request: Request) {
   const signature = request.headers.get("stripe-signature");
   if (!signature) {
@@ -77,6 +92,7 @@ export async function POST(request: Request) {
 
       const metadata = session.metadata ?? {};
       const amountHuf = parseAmountHuf(session.amount_total, metadata.amount_huf);
+      const amountEur = parseAmountEur(session.amount_total, metadata.amount_eur);
       const orderType = metadata.order_type ?? "";
       const deviceIdentifier = metadata.device_identifier || null;
       const userEmail = metadata.user_email ?? null;
@@ -273,13 +289,22 @@ export async function POST(request: Request) {
             await sendAppEmail({
               to: userEmail,
               subject: "AdriaGo — sikeres egyenlegfeltöltés",
-              text: `Feltöltés: ${amountHuf} Ft, eszköz: ${deviceIdentifier}.`,
+              text: `Feltöltés: ${amountEur.toLocaleString("hu-HU", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })} EUR, eszköz: ${deviceIdentifier}.`,
               html: buildEmailHtml({
                 title: "Sikeres egyenlegfeltöltés",
                 intro: "A feltöltésed sikeresen jóváírásra került.",
                 rows: [
                   { label: "Eszköz", value: deviceIdentifier ?? "-" },
-                  { label: "Feltöltés", value: `${amountHuf} Ft` },
+                  {
+                    label: "Feltöltés",
+                    value: `${amountEur.toLocaleString("hu-HU", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })} EUR`,
+                  },
                   { label: "Stripe session", value: session.id },
                 ],
               }),
