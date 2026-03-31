@@ -50,6 +50,20 @@ export const SETTINGS_DEFAULTS: Record<string, string> = {
   home_feature_6_title: "Biztonság",
   home_feature_6_desc:
     "Biztonságos online fizetés, megbízható tranzakciókezelés és védett fiókhasználat.",
+  home_faq_title: "Gyakori kérdések",
+  home_faq_subtitle: "A legfontosabb tudnivalók az ENC rendelésről és használatról.",
+  home_faq_1_question: "Mennyi idő alatt érkezik meg az ENC készülék?",
+  home_faq_1_answer:
+    "A rendelés feldolgozása után e-mailben küldünk visszaigazolást, a szállítás ideje jellemzően 1-3 munkanap.",
+  home_faq_2_question: "Hogyan tudom feltölteni az egyenlegemet?",
+  home_faq_2_answer:
+    "A Feltöltés oldalon úticél választás után megadod az összeget, majd Stripe fizetéssel pár kattintásban feltöltheted az egyenleget.",
+  home_faq_3_question: "Látom valahol a készülékem és az egyenlegem állapotát?",
+  home_faq_3_answer:
+    "Igen, a Fiókom oldalon eszközönként látod az aktuális egyenleget, valamint a feltöltési és útvonal előzményeket is.",
+  home_faq_4_question: "Mi történik, ha alacsony az egyenlegem?",
+  home_faq_4_answer:
+    "A rendszer automatikus figyelmeztető e-mailt küld, amikor az egyenleged a beállított küszöb alá csökken.",
   home_final_title: "Készen állsz?",
   home_final_subtitle:
     "Hozd létre a fiókodat és rendeld meg az ENC készülékedet néhány perc alatt.",

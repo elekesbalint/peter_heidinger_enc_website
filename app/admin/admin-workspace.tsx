@@ -209,6 +209,22 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
   home_feature_5_desc: { label: "Feature 5 leírás", hint: "Főoldal 5. kártya szövege." },
   home_feature_6_title: { label: "Feature 6 cím", hint: "Főoldal 6. kártya címe." },
   home_feature_6_desc: { label: "Feature 6 leírás", hint: "Főoldal 6. kártya szövege." },
+  home_faq_title: {
+    label: "Főoldal GYIK cím",
+    hint: "GYIK blokk főcíme.",
+  },
+  home_faq_subtitle: {
+    label: "Főoldal GYIK alcím",
+    hint: "GYIK blokk rövid leírása.",
+  },
+  home_faq_1_question: { label: "GYIK 1 kérdés", hint: "Főoldal GYIK 1. kérdése." },
+  home_faq_1_answer: { label: "GYIK 1 válasz", hint: "Főoldal GYIK 1. válasza." },
+  home_faq_2_question: { label: "GYIK 2 kérdés", hint: "Főoldal GYIK 2. kérdése." },
+  home_faq_2_answer: { label: "GYIK 2 válasz", hint: "Főoldal GYIK 2. válasza." },
+  home_faq_3_question: { label: "GYIK 3 kérdés", hint: "Főoldal GYIK 3. kérdése." },
+  home_faq_3_answer: { label: "GYIK 3 válasz", hint: "Főoldal GYIK 3. válasza." },
+  home_faq_4_question: { label: "GYIK 4 kérdés", hint: "Főoldal GYIK 4. kérdése." },
+  home_faq_4_answer: { label: "GYIK 4 válasz", hint: "Főoldal GYIK 4. válasza." },
   home_final_title: {
     label: "Főoldal záró cím",
     hint: "Alsó CTA blokk címe.",

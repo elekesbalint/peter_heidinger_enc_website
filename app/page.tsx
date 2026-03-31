@@ -84,6 +84,36 @@ export default async function Home() {
       icon: "🔒",
     },
   ];
+  const faqs = [
+    {
+      question: text("home_faq_1_question", "Mennyi idő alatt érkezik meg az ENC készülék?"),
+      answer: text(
+        "home_faq_1_answer",
+        "A rendelés feldolgozása után e-mailben küldünk visszaigazolást, a szállítás ideje jellemzően 1-3 munkanap.",
+      ),
+    },
+    {
+      question: text("home_faq_2_question", "Hogyan tudom feltölteni az egyenlegemet?"),
+      answer: text(
+        "home_faq_2_answer",
+        "A Feltöltés oldalon úticél választás után megadod az összeget, majd Stripe fizetéssel pár kattintásban feltöltheted az egyenleget.",
+      ),
+    },
+    {
+      question: text("home_faq_3_question", "Látom valahol a készülékem és az egyenlegem állapotát?"),
+      answer: text(
+        "home_faq_3_answer",
+        "Igen, a Fiókom oldalon eszközönként látod az aktuális egyenleget, valamint a feltöltési és útvonal előzményeket is.",
+      ),
+    },
+    {
+      question: text("home_faq_4_question", "Mi történik, ha alacsony az egyenlegem?"),
+      answer: text(
+        "home_faq_4_answer",
+        "A rendszer automatikus figyelmeztető e-mailt küld, amikor az egyenleged a beállított küszöb alá csökken.",
+      ),
+    },
+  ];
   const heroTitle =
     settings.home_hero_title?.trim() || "ENC vásárlás és útdíjkezelés egyetlen modern rendszerben.";
   const heroSubtitle =
@@ -218,6 +248,33 @@ export default async function Home() {
               </span>
               <h3 className="mt-4 text-lg font-semibold text-foreground">{f.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-muted">{f.desc}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="relative mx-auto max-w-5xl px-6 pb-8">
+        <div className="adria-animate-in text-center">
+          <h2 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+            {text("home_faq_title", "Gyakori kérdések")}
+          </h2>
+          <p className="mx-auto mt-3 max-w-2xl text-muted">
+            {text(
+              "home_faq_subtitle",
+              "A legfontosabb tudnivalók az ENC rendelésről és használatról.",
+            )}
+          </p>
+        </div>
+        <div className="mt-10 space-y-4">
+          {faqs.map((faq, i) => (
+            <article
+              key={faq.question}
+              className={`adria-glass adria-animate-in rounded-2xl p-5 md:p-6 ${
+                i === 0 ? "adria-delay-1" : i === 1 ? "adria-delay-2" : i === 2 ? "adria-delay-3" : "adria-delay-4"
+              }`}
+            >
+              <h3 className="text-base font-semibold text-foreground md:text-lg">{faq.question}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted md:text-base">{faq.answer}</p>
             </article>
           ))}
         </div>
