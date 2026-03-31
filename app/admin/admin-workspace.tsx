@@ -347,10 +347,22 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
   },
 };
 
-const CONTENT_SETTING_PREFIXES = ["home_", "dashboard_", "referral_"] as const;
+const CONTENT_SETTING_PREFIXES = ["home_", "dashboard_"] as const;
+const CONTENT_SETTING_KEYS = new Set([
+  "referral_section_title",
+  "referral_section_subtitle_prefix",
+  "referral_section_subtitle_suffix",
+  "referral_email_placeholder",
+  "referral_send_button",
+  "referral_success_message",
+  "referral_empty_message",
+  "referral_status_sent",
+  "referral_status_registered",
+  "referral_status_discount_used",
+]);
 
 function isContentSettingKey(key: string): boolean {
-  return CONTENT_SETTING_PREFIXES.some((prefix) => key.startsWith(prefix));
+  return CONTENT_SETTING_PREFIXES.some((prefix) => key.startsWith(prefix)) || CONTENT_SETTING_KEYS.has(key);
 }
 
 function normalizeAddressForDisplay(raw: string | null): string {
