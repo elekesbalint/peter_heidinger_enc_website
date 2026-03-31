@@ -19,6 +19,7 @@ const TABS = [
   "Útvonal feltöltés",
   "Tartozás",
   "Felhasználók",
+  "Szövegek",
   "Beállítások",
   "Audit / napló",
 ] as const;
@@ -346,6 +347,12 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
   },
 };
 
+const CONTENT_SETTING_PREFIXES = ["home_", "dashboard_", "referral_"] as const;
+
+function isContentSettingKey(key: string): boolean {
+  return CONTENT_SETTING_PREFIXES.some((prefix) => key.startsWith(prefix));
+}
+
 function normalizeAddressForDisplay(raw: string | null): string {
   if (!raw) return "—";
   const parts = raw
@@ -635,7 +642,7 @@ export function AdminWorkspace() {
     if (tab === "Készülékre vár") loadWait();
     if (tab === "Elérhető eszközök") loadDevices("");
     if (tab === "Úticélok") loadDest();
-    if (tab === "Beállítások") loadSettings();
+    if (tab === "Beállítások" || tab === "Szövegek") loadSettings();
     if (tab === "Felhasználók") loadUsers();
     if (tab === "Tartozás") loadWallets();
   }, [tab, loadEnc, loadWait, loadDevices, loadDest, loadSettings, loadUsers]);
@@ -2010,7 +2017,7 @@ export function AdminWorkspace() {
             </div>
             {setErr && <p className="mt-2 text-sm text-red-600">{setErr}</p>}
             <div className="mt-4 space-y-2">
-              {settings.map((s) => (
+              {settings.filter((s) => !isContentSettingKey(s.key)).map((s) => (
                 <div key={s.key} className="flex flex-wrap items-start gap-2 text-sm">
                   <div className="w-56 shrink-0">
                     <p className="font-medium text-foreground">{SETTINGS_META[s.key]?.label ?? s.key}</p>
@@ -2024,6 +2031,47 @@ export function AdminWorkspace() {
                   />
                 </div>
               ))}
+              {!setLoading && settings.filter((s) => !isContentSettingKey(s.key)).length === 0 && (
+                <p className="text-sm text-muted">Nincs technikai beállítás.</p>
+              )}
+            </div>
+            {setLoading && <p className="mt-2 text-sm text-muted">Betöltés…</p>}
+          </div>
+        )}
+
+        {tab === "Szövegek" && (
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+            <div className="flex gap-2">
+              <h2 className="text-xl font-semibold">Szövegek</h2>
+              <button type="button" onClick={() => loadSettings()} className="rounded border px-2 py-1 text-sm">
+                Frissítés
+              </button>
+              <button type="button" onClick={saveSettings} className="rounded bg-primary px-2 py-1 text-sm text-white">
+                Összes mentése
+              </button>
+            </div>
+            <p className="mt-2 text-sm text-muted">
+              Itt szerkeszthetők a főoldal, dashboard és ajánlói panel felhasználói szövegei.
+            </p>
+            {setErr && <p className="mt-2 text-sm text-red-600">{setErr}</p>}
+            <div className="mt-4 space-y-2">
+              {settings.filter((s) => isContentSettingKey(s.key)).map((s) => (
+                <div key={s.key} className="flex flex-wrap items-start gap-2 text-sm">
+                  <div className="w-56 shrink-0">
+                    <p className="font-medium text-foreground">{SETTINGS_META[s.key]?.label ?? s.key}</p>
+                    <p className="text-xs text-muted">{SETTINGS_META[s.key]?.hint ?? "Szöveg beállítás."}</p>
+                    <p className="mt-0.5 font-mono text-[10px] text-slate-400">{s.key}</p>
+                  </div>
+                  <input
+                    value={setDraft[s.key] ?? ""}
+                    onChange={(e) => setSetDraft((d) => ({ ...d, [s.key]: e.target.value }))}
+                    className="min-w-[200px] flex-1 rounded border px-2 py-1"
+                  />
+                </div>
+              ))}
+              {!setLoading && settings.filter((s) => isContentSettingKey(s.key)).length === 0 && (
+                <p className="text-sm text-muted">Nincs szerkeszthető szöveg.</p>
+              )}
             </div>
             {setLoading && <p className="mt-2 text-sm text-muted">Betöltés…</p>}
           </div>
