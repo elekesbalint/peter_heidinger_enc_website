@@ -597,7 +597,7 @@ export function AdminWorkspace() {
     await loadEnc();
   }
 
-  async function submitShip(orderId: string, trackingNumber?: string | null) {
+  async function submitShip(orderId: string, trackingNumber?: string | null): Promise<boolean> {
     try {
       await postOrderUpdate(orderId, "ship", {
         tracking_number: (trackingNumber ?? "").trim(),
@@ -605,8 +605,10 @@ export function AdminWorkspace() {
         mpl_sender_agreement: mplAgreementCode.trim() || null,
       });
       await loadEnc();
+      return true;
     } catch (e) {
       setEncErr(e instanceof Error ? e.message : "Hiba");
+      return false;
     }
   }
 
@@ -629,6 +631,11 @@ export function AdminWorkspace() {
     setEncErr(null);
     setLabelLoadingForId(orderId);
     try {
+      // One-click UX: if tracking is missing, trigger "Küldés" first.
+      if (!trackingNumber) {
+        const shipped = await submitShip(orderId, null);
+        if (!shipped) return;
+      }
       const res = await fetch(`/api/admin/enc-device-orders/label?id=${encodeURIComponent(orderId)}`);
       if (!res.ok) {
         const maybe = (await res.json().catch(() => null)) as { error?: string } | null;
