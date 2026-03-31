@@ -459,6 +459,7 @@ export function AdminWorkspace() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [usrLoading, setUsrLoading] = useState(false);
   const [usrErr, setUsrErr] = useState<string | null>(null);
+  const [usrMsg, setUsrMsg] = useState<string | null>(null);
   const [editUser, setEditUser] = useState<UserRow | null>(null);
   const [selectedDebtDevices, setSelectedDebtDevices] = useState<Set<string>>(new Set());
 
@@ -639,6 +640,7 @@ export function AdminWorkspace() {
   async function sendDebtWarnings(identifiers: string[]) {
     if (identifiers.length === 0) return;
     setUsrErr(null);
+    setUsrMsg(null);
     try {
       const res = await fetch("/api/admin/device-wallets/send-warning", {
         method: "POST",
@@ -650,8 +652,51 @@ export function AdminWorkspace() {
         setUsrErr(data.error ?? "Hiba");
         return;
       }
-      setUsrErr(`Figyelmeztető e-mail kiküldve (${data.sent_users ?? 0} felhasználó).`);
+      setUsrMsg(`Figyelmeztető e-mail kiküldve (${data.sent_users ?? 0} felhasználó).`);
       setSelectedDebtDevices(new Set());
+    } catch {
+      setUsrErr("Hálózati hiba");
+    }
+  }
+
+  async function quickAdjustUserDeviceBalance(identifier: string, currentBalanceHuf: number | null) {
+    const currentEur = hufToEur(Number(currentBalanceHuf ?? 0), fxEurToHuf);
+    const rawAmount = window.prompt(
+      `Új egyenleg EUR-ban a(z) ${identifier} eszközhöz:`,
+      currentEur.toFixed(2).replace(".", ","),
+    );
+    if (rawAmount == null) return;
+    const parsed = Number.parseFloat(rawAmount.trim().replace(",", "."));
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      setUsrErr("Érvénytelen EUR összeg.");
+      return;
+    }
+    const reason = window.prompt("Megjegyzés (opcionális):", "Admin módosítás (Felhasználók fül)") ?? "";
+
+    setUsrErr(null);
+    setUsrMsg(null);
+    try {
+      const res = await fetch("/api/admin/device-wallets/adjust", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          device_identifier: identifier,
+          new_balance_huf: String(eurToHuf(parsed, fxEurToHuf)),
+          reason: reason.trim() || undefined,
+        }),
+      });
+      const data = (await res.json()) as { ok: boolean; error?: string };
+      if (!data.ok) {
+        setUsrErr(data.error ?? "Hiba");
+        return;
+      }
+      setUsrMsg(
+        `Egyenleg módosítva: ${identifier} -> ${parsed.toLocaleString("hu-HU", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })} EUR.`,
+      );
+      await Promise.all([loadUsers(), loadWallets()]);
     } catch {
       setUsrErr("Hálózati hiba");
     }
@@ -1905,6 +1950,7 @@ export function AdminWorkspace() {
               </button>
             </div>
             {usrErr && <p className="mt-2 text-sm text-red-600">{usrErr}</p>}
+            {usrMsg && <p className="mt-2 text-sm text-emerald-700">{usrMsg}</p>}
             <table className="mt-4 min-w-full text-left text-sm">
               <thead>
                 <tr className="border-b text-slate-500">
@@ -1964,6 +2010,13 @@ export function AdminWorkspace() {
                                   Figyelmeztetés
                                 </button>
                               )}
+                              <button
+                                type="button"
+                                className="rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[11px] text-blue-900"
+                                onClick={() => quickAdjustUserDeviceBalance(d.identifier, d.balance_huf)}
+                              >
+                                Egyenleg állítás
+                              </button>
                             </div>
                           );
                         })}
