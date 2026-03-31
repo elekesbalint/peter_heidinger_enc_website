@@ -25,6 +25,18 @@ const TABS = [
 
 type TabId = (typeof TABS)[number];
 
+function hufToEur(huf: number, fxEurToHuf: number): number {
+  if (!Number.isFinite(huf)) return 0;
+  if (!Number.isFinite(fxEurToHuf) || fxEurToHuf <= 0) return huf;
+  return Math.round((huf / fxEurToHuf) * 100) / 100;
+}
+
+function eurToHuf(eur: number, fxEurToHuf: number): number {
+  if (!Number.isFinite(eur)) return 0;
+  if (!Number.isFinite(fxEurToHuf) || fxEurToHuf <= 0) return Math.round(eur);
+  return Math.round(eur * fxEurToHuf);
+}
+
 type EncOrder = {
   id: string;
   stripe_session_id: string;
@@ -253,6 +265,7 @@ export function AdminWorkspace() {
   const [walletLoading, setWalletLoading] = useState(false);
   const [walletErr, setWalletErr] = useState<string | null>(null);
   const [minBalanceWarningHuf, setMinBalanceWarningHuf] = useState(5000);
+  const [fxEurToHuf, setFxEurToHuf] = useState(400);
   const [walletAdjustDeviceId, setWalletAdjustDeviceId] = useState("");
   const [walletAdjustNewBalance, setWalletAdjustNewBalance] = useState("");
   const [walletAdjustReason, setWalletAdjustReason] = useState("");
@@ -483,11 +496,17 @@ export function AdminWorkspace() {
       setWalletAdjustErr("Add meg az eszközazonosítót (device_identifier).");
       return;
     }
-    const new_balance_huf = walletAdjustNewBalance.trim();
-    if (!new_balance_huf) {
-      setWalletAdjustErr("Add meg az új egyenleget (Ft, egész szám).");
+    const newBalanceEurText = walletAdjustNewBalance.trim().replace(",", ".");
+    if (!newBalanceEurText) {
+      setWalletAdjustErr("Add meg az új egyenleget (EUR).");
       return;
     }
+    const newBalanceEur = Number.parseFloat(newBalanceEurText);
+    if (!Number.isFinite(newBalanceEur) || newBalanceEur < 0) {
+      setWalletAdjustErr("Érvénytelen EUR összeg.");
+      return;
+    }
+    const new_balance_huf = String(eurToHuf(newBalanceEur, fxEurToHuf));
     setWalletAdjustLoading(true);
     try {
       const res = await fetch("/api/admin/device-wallets/adjust", {
@@ -505,9 +524,16 @@ export function AdminWorkspace() {
         return;
       }
       setWalletAdjustMsg(
-        `Egyenleg beállítva. Régi: ${Number(data.old_balance_huf).toLocaleString("hu-HU")} Ft, Új: ${Number(
-          data.new_balance_huf,
-        ).toLocaleString("hu-HU")} Ft (Δ ${Number(data.delta_huf).toLocaleString("hu-HU")} Ft).`,
+        `Egyenleg beállítva. Régi: ${hufToEur(Number(data.old_balance_huf), fxEurToHuf).toLocaleString("hu-HU", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })} EUR, Új: ${hufToEur(Number(data.new_balance_huf), fxEurToHuf).toLocaleString("hu-HU", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })} EUR (Δ ${hufToEur(Number(data.delta_huf), fxEurToHuf).toLocaleString("hu-HU", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })} EUR).`,
       );
       setWalletAdjustReason("");
     } catch (e) {
@@ -526,6 +552,7 @@ export function AdminWorkspace() {
         ok: boolean;
         error?: string;
         minBalanceWarningHuf?: number;
+        fxEurToHuf?: number;
         items?: WalletRow[];
       };
       if (!data.ok) {
@@ -533,6 +560,7 @@ export function AdminWorkspace() {
         return;
       }
       setMinBalanceWarningHuf(data.minBalanceWarningHuf ?? 5000);
+      setFxEurToHuf(data.fxEurToHuf ?? 400);
       setWalletRows(data.items ?? []);
     } catch {
       setWalletErr("Hálózati hiba");
@@ -1468,7 +1496,7 @@ export function AdminWorkspace() {
                 <div>
                   <h2 className="text-xl font-semibold">Tartozás (negatív egyenlegek)</h2>
                   <p className="mt-1 text-sm text-muted">
-                    Itt csak a 0 Ft alatti egyenlegű készülékek látszanak.
+                    Itt csak a 0 EUR alatti egyenlegű készülékek látszanak.
                   </p>
                 </div>
                 <button
@@ -1496,6 +1524,7 @@ export function AdminWorkspace() {
                   <tbody>
                     {walletRows.filter((w) => (w.balance_huf ?? 0) < 0).map((w) => {
                       const bal = w.balance_huf ?? 0;
+                      const balEur = hufToEur(bal, fxEurToHuf);
                       const ok = bal >= minBalanceWarningHuf;
                       return (
                         <tr key={w.identifier} className="border-b border-border/60">
@@ -1503,7 +1532,7 @@ export function AdminWorkspace() {
                           <td className="px-2 py-2">{DEVICE_STATUS_LABELS[w.status as keyof typeof DEVICE_STATUS_LABELS] ?? w.status}</td>
                           <td className="px-2 py-2">
                             <span className={`font-semibold ${ok ? "text-emerald-700" : "text-red-700"}`}>
-                              {bal.toLocaleString("hu-HU")} Ft
+                              {balEur.toLocaleString("hu-HU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
                             </span>
                           </td>
                           <td className="px-2 py-2 text-xs text-slate-600">
@@ -1515,7 +1544,9 @@ export function AdminWorkspace() {
                               className="text-xs text-primary underline"
                               onClick={() => {
                                 setWalletAdjustDeviceId(w.identifier);
-                                setWalletAdjustNewBalance(String(bal));
+                                setWalletAdjustNewBalance(
+                                  balEur.toLocaleString("hu-HU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+                                );
                                 setWalletAdjustReason("");
                                 setWalletAdjustErr(null);
                                 setWalletAdjustMsg(null);
@@ -1556,15 +1587,15 @@ export function AdminWorkspace() {
                   />
                 </label>
                 <label className="text-sm">
-                  Új egyenleg (Ft)
+                  Új egyenleg (EUR)
                   <input
                     value={walletAdjustNewBalance}
                     onChange={(e) =>
-                      setWalletAdjustNewBalance(e.target.value.replace(/[^\d]/g, "").slice(0, 10))
+                      setWalletAdjustNewBalance(e.target.value.replace(/[^\d,.\-]/g, "").slice(0, 12))
                     }
-                    placeholder="pl. 4999"
+                    placeholder="pl. 12,50"
                     className="mt-1 w-full rounded-lg border bg-white px-3 py-2 text-sm"
-                    inputMode="numeric"
+                    inputMode="decimal"
                   />
                 </label>
                 <label className="sm:col-span-2 text-sm">

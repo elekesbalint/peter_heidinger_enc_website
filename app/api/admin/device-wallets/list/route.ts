@@ -13,6 +13,7 @@ export async function GET(request: Request) {
 
   const settings = await getSettingsMap();
   const minBalanceWarningHuf = getIntSetting(settings, "min_balance_warning_huf", 5000);
+  const fxEurToHuf = Math.max(1, getIntSetting(settings, "fx_eur_to_huf", 400));
 
   const { data: devices, error: devErr } = await supabase
     .from("devices")
@@ -54,6 +55,6 @@ export async function GET(request: Request) {
     };
   });
 
-  return Response.json({ ok: true, minBalanceWarningHuf, items });
+  return Response.json({ ok: true, minBalanceWarningHuf, fxEurToHuf, items });
 }
 
