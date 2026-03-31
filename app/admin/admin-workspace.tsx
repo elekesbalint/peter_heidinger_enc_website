@@ -25,6 +25,7 @@ const TABS = [
 ] as const;
 
 type TabId = (typeof TABS)[number];
+const SHOW_ORDER_SHIP_BUTTON = false;
 
 function hufToEur(huf: number, fxEurToHuf: number): number {
   if (!Number.isFinite(huf)) return 0;
@@ -1307,13 +1308,15 @@ export function AdminWorkspace() {
                         </td>
                         <td className="px-2 py-2">
                           <div className="flex flex-wrap items-center gap-1.5">
-                            <button
-                              type="button"
-                              className="rounded-md border border-primary/20 bg-primary/10 px-2 py-1 text-xs font-medium text-primary hover:bg-primary/15"
-                              onClick={() => submitShip(o.id, o.tracking_number)}
-                            >
-                              Küldés
-                            </button>
+                            {SHOW_ORDER_SHIP_BUTTON && (
+                              <button
+                                type="button"
+                                className="rounded-md border border-primary/20 bg-primary/10 px-2 py-1 text-xs font-medium text-primary hover:bg-primary/15"
+                                onClick={() => submitShip(o.id, o.tracking_number)}
+                              >
+                                Küldés
+                              </button>
+                            )}
                             <button
                               type="button"
                               className="rounded-md border px-2 py-1 text-xs hover:bg-slate-50"

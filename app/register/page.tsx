@@ -9,6 +9,9 @@ import { isReservedAdminEmail } from "@/lib/admin-email";
 export default function RegisterPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [userType, setUserType] = useState<"private" | "company">("private");
+  const [companyName, setCompanyName] = useState("");
+  const [taxNumber, setTaxNumber] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -29,6 +32,16 @@ export default function RegisterPage() {
         );
         return;
       }
+      const normalizedCompanyName = companyName.trim();
+      const normalizedTaxNumber = taxNumber.trim();
+      if (userType === "company" && !normalizedCompanyName) {
+        setError("Céges regisztrációnál a cégnév kötelező.");
+        return;
+      }
+      if (userType === "company" && !normalizedTaxNumber) {
+        setError("Céges regisztrációnál az adószám kötelező.");
+        return;
+      }
 
       const supabase = createSupabaseBrowserClient();
       const emailRedirectTo =
@@ -37,7 +50,14 @@ export default function RegisterPage() {
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: normalizedEmail,
         password,
-        options: emailRedirectTo ? { emailRedirectTo } : undefined,
+        options: {
+          ...(emailRedirectTo ? { emailRedirectTo } : {}),
+          data: {
+            user_type: userType,
+            ...(userType === "company" ? { company_name: normalizedCompanyName } : {}),
+            ...(userType === "company" ? { tax_number: normalizedTaxNumber } : {}),
+          },
+        },
       });
 
       if (signUpError) {
@@ -71,6 +91,18 @@ export default function RegisterPage() {
         return;
       }
 
+      await fetch("/api/me/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_type: userType,
+          company_name: userType === "company" ? normalizedCompanyName : null,
+          tax_number: userType === "company" ? normalizedTaxNumber : null,
+        }),
+      }).catch(() => {
+        // Non-blocking: profile can still be completed later.
+      });
+
       setSuccess("Sikeres regisztráció, átirányítás…");
       router.push("/dashboard");
       router.refresh();
@@ -93,6 +125,50 @@ export default function RegisterPage() {
             </p>
           </div>
           <form className="space-y-4" onSubmit={onSubmit}>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-foreground" htmlFor="userType">
+                Fiók típusa
+              </label>
+              <select
+                id="userType"
+                value={userType}
+                onChange={(e) => setUserType(e.target.value === "company" ? "company" : "private")}
+                className="w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm transition"
+              >
+                <option value="private">Magánszemély</option>
+                <option value="company">Cég</option>
+              </select>
+            </div>
+            {userType === "company" && (
+              <>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-foreground" htmlFor="companyName">
+                    Cégnév
+                  </label>
+                  <input
+                    id="companyName"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    className="w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm transition"
+                    placeholder="Példa Kft."
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-foreground" htmlFor="taxNumber">
+                    Adószám
+                  </label>
+                  <input
+                    id="taxNumber"
+                    value={taxNumber}
+                    onChange={(e) => setTaxNumber(e.target.value)}
+                    className="w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm transition"
+                    placeholder="12345678-1-42"
+                    required
+                  />
+                </div>
+              </>
+            )}
             <div>
               <label className="mb-1.5 block text-sm font-medium text-foreground" htmlFor="email">
                 E-mail cím

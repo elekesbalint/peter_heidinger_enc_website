@@ -8,6 +8,8 @@ type Profile = {
   user_type: string;
   name: string | null;
   phone: string | null;
+  company_name: string | null;
+  tax_number: string | null;
   billing_address: string | null;
   shipping_address: string | null;
 };
@@ -169,6 +171,8 @@ export function ProfileForm({ forceOpen = false }: { forceOpen?: boolean }) {
                 user_type: "private",
                 name: null,
                 phone: null,
+                company_name: null,
+                tax_number: null,
                 billing_address: null,
                 shipping_address: null,
               },
@@ -214,6 +218,19 @@ export function ProfileForm({ forceOpen = false }: { forceOpen?: boolean }) {
       return;
     }
 
+    if (profile.user_type === "company") {
+      if (!(profile.company_name ?? "").trim()) {
+        setError("Céges fióknál a cégnév kötelező.");
+        setProfileOpen(true);
+        return;
+      }
+      if (!(profile.tax_number ?? "").trim()) {
+        setError("Céges fióknál az adószám kötelező.");
+        setProfileOpen(true);
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const res = await fetch("/api/me/profile", {
@@ -223,6 +240,8 @@ export function ProfileForm({ forceOpen = false }: { forceOpen?: boolean }) {
           user_type: profile.user_type,
           name: profile.name,
           phone: profile.phone,
+          company_name: profile.company_name,
+          tax_number: profile.tax_number,
           billing_address: formatAddress(billingAddress),
           shipping_address: formatAddress(shippingAddress),
         }),
@@ -305,6 +324,32 @@ export function ProfileForm({ forceOpen = false }: { forceOpen?: boolean }) {
               className={fieldClass}
             />
           </div>
+          {profile.user_type === "company" && (
+            <>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                  Cégnév <span className="text-danger">*</span>
+                </label>
+                <input
+                  value={profile.company_name ?? ""}
+                  onChange={(e) => setProfile({ ...profile, company_name: e.target.value || null })}
+                  className={fieldClass}
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                  Adószám <span className="text-danger">*</span>
+                </label>
+                <input
+                  value={profile.tax_number ?? ""}
+                  onChange={(e) => setProfile({ ...profile, tax_number: e.target.value || null })}
+                  className={fieldClass}
+                  required
+                />
+              </div>
+            </>
+          )}
           <div>
         <button
           type="button"
