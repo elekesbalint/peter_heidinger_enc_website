@@ -8,7 +8,26 @@ import {
   type DeviceCategoryValue,
 } from "@/lib/device-categories";
 
-export function OrderForm() {
+type CategoryGuideItems = Record<DeviceCategoryValue, string>;
+
+type OrderFormProps = {
+  categoryGuideTitle: string;
+  categoryGuideSubtitle: string;
+  categoryGuideItems: CategoryGuideItems;
+};
+
+function toBulletItems(raw: string): string[] {
+  return raw
+    .split("\n")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+export function OrderForm({
+  categoryGuideTitle,
+  categoryGuideSubtitle,
+  categoryGuideItems,
+}: OrderFormProps) {
   const [category, setCategory] = useState<DeviceCategoryValue>("ii");
   const [licensePlate, setLicensePlate] = useState("");
   const [contractAccepted, setContractAccepted] = useState(false);
@@ -88,6 +107,34 @@ export function OrderForm() {
             </option>
           ))}
         </select>
+        <section className="mt-4 rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 shadow-inner backdrop-blur-sm">
+          <h3 className="text-sm font-semibold text-foreground">{categoryGuideTitle}</h3>
+          <p className="mt-1 text-xs text-muted">{categoryGuideSubtitle}</p>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+            {DEVICE_CATEGORY_VALUES.map((value) => {
+              const isActive = category === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setCategory(value)}
+                  className={`rounded-lg border px-2 py-2 text-xs font-semibold transition ${
+                    isActive
+                      ? "border-primary bg-primary text-white shadow-sm"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-primary/40"
+                  }`}
+                >
+                  {DEVICE_CATEGORY_LABELS[value]}
+                </button>
+              );
+            })}
+          </div>
+          <ul className="mt-3 list-inside list-disc space-y-1.5 text-sm text-muted">
+            {toBulletItems(categoryGuideItems[category]).map((item, idx) => (
+              <li key={`${category}-${idx}-${item}`}>{item}</li>
+            ))}
+          </ul>
+        </section>
       </div>
 
       <div>

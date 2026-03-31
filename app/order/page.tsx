@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth-server";
 import { getIntSetting, getSettingsMap } from "@/lib/app-settings";
+import type { DeviceCategoryValue } from "@/lib/device-categories";
 import { getDevicePriceHuf } from "@/lib/device-categories";
 import { isProfileComplete } from "@/lib/profile-completion";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
@@ -38,6 +39,28 @@ export default async function OrderPage() {
     ? Math.min(price, referralDiscountHuf)
     : 0;
   const payablePriceHuf = Math.max(1, price - appliedReferralDiscountHuf);
+  const categoryGuideTitle =
+    settings.order_category_guide_title?.trim() || "Kategória magyarázó";
+  const categoryGuideSubtitle =
+    settings.order_category_guide_subtitle?.trim() ||
+    "Válaszd ki a kategóriát, és ellenőrizd a fő szempontokat.";
+  const categoryGuideItems: Record<DeviceCategoryValue, string> = {
+    ia:
+      settings.order_category_guide_ia_items?.trim() ||
+      "Motorkerékpár\n2 tengely\nAlacsonyabb járműmagasság",
+    i:
+      settings.order_category_guide_i_items?.trim() ||
+      "Személyautó\nKisbusz\n2 tengely, lakókocsi/pótkocsi nélkül",
+    ii:
+      settings.order_category_guide_ii_items?.trim() ||
+      "Kisteherautó\n2 tengely, magasabb felépítmény\nNagyobb össztömeg vagy méret",
+    iii:
+      settings.order_category_guide_iii_items?.trim() ||
+      "Busz\n3 tengely\nNagyobb járműkategória",
+    iv:
+      settings.order_category_guide_iv_items?.trim() ||
+      "Nehézteherautó\n4 vagy több tengely\nLegmagasabb díjkategória",
+  };
 
   return (
     <div className="relative mx-auto w-full max-w-2xl px-6 py-12">
@@ -73,7 +96,11 @@ export default async function OrderPage() {
             </p>
           </div>
         )}
-        <OrderForm />
+        <OrderForm
+          categoryGuideTitle={categoryGuideTitle}
+          categoryGuideSubtitle={categoryGuideSubtitle}
+          categoryGuideItems={categoryGuideItems}
+        />
       </div>
     </div>
   );

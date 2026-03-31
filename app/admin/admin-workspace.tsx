@@ -365,9 +365,37 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
     label: "Referral státusz: kedvezmény felhasználva",
     hint: "Táblázat státusz felirat.",
   },
+  order_category_guide_title: {
+    label: "Rendelés kategória-magyarázó cím",
+    hint: "Kategória-magyarázó kártya főcíme az ENC rendelés oldalon.",
+  },
+  order_category_guide_subtitle: {
+    label: "Rendelés kategória-magyarázó alcím",
+    hint: "Kategória-magyarázó kártya rövid leírása.",
+  },
+  order_category_guide_ia_items: {
+    label: "Kategória IA pontok",
+    hint: "Egy sor = egy felsorolási pont.",
+  },
+  order_category_guide_i_items: {
+    label: "Kategória I pontok",
+    hint: "Egy sor = egy felsorolási pont.",
+  },
+  order_category_guide_ii_items: {
+    label: "Kategória II pontok",
+    hint: "Egy sor = egy felsorolási pont.",
+  },
+  order_category_guide_iii_items: {
+    label: "Kategória III pontok",
+    hint: "Egy sor = egy felsorolási pont.",
+  },
+  order_category_guide_iv_items: {
+    label: "Kategória IV pontok",
+    hint: "Egy sor = egy felsorolási pont.",
+  },
 };
 
-const CONTENT_SETTING_PREFIXES = ["home_", "dashboard_"] as const;
+const CONTENT_SETTING_PREFIXES = ["home_", "dashboard_", "order_"] as const;
 const CONTENT_SETTING_KEYS = new Set([
   "referral_section_title",
   "referral_section_subtitle_prefix",
@@ -383,6 +411,10 @@ const CONTENT_SETTING_KEYS = new Set([
 
 function isContentSettingKey(key: string): boolean {
   return CONTENT_SETTING_PREFIXES.some((prefix) => key.startsWith(prefix)) || CONTENT_SETTING_KEYS.has(key);
+}
+
+function isMultilineContentSettingKey(key: string): boolean {
+  return key.startsWith("order_category_guide_") && key.endsWith("_items");
 }
 
 function normalizeAddressForDisplay(raw: string | null): string {
@@ -2199,7 +2231,7 @@ export function AdminWorkspace() {
               </button>
             </div>
             <p className="mt-2 text-sm text-muted">
-              Itt szerkeszthetők a főoldal, dashboard és ajánlói panel felhasználói szövegei.
+              Itt szerkeszthetők a főoldal, dashboard, rendelés és ajánlói panel felhasználói szövegei.
             </p>
             {setErr && <p className="mt-2 text-sm text-red-600">{setErr}</p>}
             <div className="mt-4 space-y-2">
@@ -2210,11 +2242,19 @@ export function AdminWorkspace() {
                     <p className="text-xs text-muted">{SETTINGS_META[s.key]?.hint ?? "Szöveg beállítás."}</p>
                     <p className="mt-0.5 font-mono text-[10px] text-slate-400">{s.key}</p>
                   </div>
-                  <input
-                    value={setDraft[s.key] ?? ""}
-                    onChange={(e) => setSetDraft((d) => ({ ...d, [s.key]: e.target.value }))}
-                    className="min-w-[200px] flex-1 rounded border px-2 py-1"
-                  />
+                  {isMultilineContentSettingKey(s.key) ? (
+                    <textarea
+                      value={setDraft[s.key] ?? ""}
+                      onChange={(e) => setSetDraft((d) => ({ ...d, [s.key]: e.target.value }))}
+                      className="min-h-[96px] min-w-[200px] flex-1 rounded border px-2 py-1"
+                    />
+                  ) : (
+                    <input
+                      value={setDraft[s.key] ?? ""}
+                      onChange={(e) => setSetDraft((d) => ({ ...d, [s.key]: e.target.value }))}
+                      className="min-w-[200px] flex-1 rounded border px-2 py-1"
+                    />
+                  )}
                 </div>
               ))}
               {!setLoading && settings.filter((s) => isContentSettingKey(s.key)).length === 0 && (

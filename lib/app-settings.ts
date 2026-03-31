@@ -103,6 +103,13 @@ export const SETTINGS_DEFAULTS: Record<string, string> = {
   referral_status_sent: "Kiküldve",
   referral_status_registered: "Regisztrált",
   referral_status_discount_used: "Kedvezmény felhasználva",
+  order_category_guide_title: "Kategória magyarázó",
+  order_category_guide_subtitle: "Válaszd ki a kategóriát, és ellenőrizd a fő szempontokat.",
+  order_category_guide_ia_items: "Motorkerékpár\n2 tengely\nAlacsonyabb járműmagasság",
+  order_category_guide_i_items: "Személyautó\nKisbusz\n2 tengely, lakókocsi/pótkocsi nélkül",
+  order_category_guide_ii_items: "Kisteherautó\n2 tengely, magasabb felépítmény\nNagyobb össztömeg vagy méret",
+  order_category_guide_iii_items: "Busz\n3 tengely\nNagyobb járműkategória",
+  order_category_guide_iv_items: "Nehézteherautó\n4 vagy több tengely\nLegmagasabb díjkategória",
 };
 
 export async function getSettingsMap(): Promise<Record<string, string>> {
