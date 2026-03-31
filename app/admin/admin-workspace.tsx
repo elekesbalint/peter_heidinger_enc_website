@@ -1287,11 +1287,11 @@ export function AdminWorkspace() {
                               </div>
                             </div>
                           ) : (
-                            <p className="line-clamp-3">{normalizeAddressForDisplay(o.shipping_address)}</p>
+                            <p className="whitespace-pre-wrap break-words">{normalizeAddressForDisplay(o.shipping_address)}</p>
                           )}
                         </td>
                         <td className="max-w-[220px] px-2 py-2 text-xs text-slate-700">
-                          <p className="line-clamp-3">{normalizeAddressForDisplay(o.billing_address)}</p>
+                          <p className="whitespace-pre-wrap break-words">{normalizeAddressForDisplay(o.billing_address)}</p>
                         </td>
                         <td className="px-2 py-2">
                           <div className="flex items-center gap-2">
