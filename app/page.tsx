@@ -96,23 +96,20 @@ export default async function Home() {
       <section className="relative px-4 pt-6 pb-14 sm:px-6 md:pt-8 md:pb-20">
         <div className="relative mx-auto max-w-6xl">
           <div className="relative overflow-hidden rounded-[1.75rem] border border-white/65 shadow-2xl shadow-slate-900/8 ring-1 ring-slate-900/[0.03] md:rounded-[2.25rem]">
-            {/* Világos prémium hero panel: nincs erős „kék csík” érzet */}
             <div
-              className="absolute inset-0 rounded-[inherit] bg-gradient-to-b from-white/92 via-[#f5f7fb]/88 to-[#eef2f8]/86 backdrop-blur-xl"
+              className="absolute inset-0 rounded-[inherit] bg-cover bg-center"
+              style={{ backgroundImage: "url('/images/enc-hero-bg.png')" }}
+              aria-hidden
+            />
+            {/* Olvashatósági rétegek a háttérkép fölé */}
+            <div
+              className="absolute inset-0 rounded-[inherit] bg-gradient-to-b from-white/86 via-white/80 to-white/74"
               aria-hidden
             />
             <div
-              className="pointer-events-none absolute inset-0 rounded-[inherit] bg-[radial-gradient(ellipse_85%_55%_at_50%_0%,rgba(59,130,246,0.12),transparent_66%)]"
+              className="pointer-events-none absolute inset-0 rounded-[inherit] bg-[radial-gradient(ellipse_85%_55%_at_50%_0%,rgba(59,130,246,0.18),transparent_66%)]"
               aria-hidden
             />
-            <div className="pointer-events-none absolute -left-24 top-1/2 h-56 w-56 -translate-y-1/2 rounded-full bg-blue-500/10 blur-3xl" />
-            <div className="pointer-events-none absolute -right-20 -top-8 h-64 w-64 rounded-full bg-indigo-400/9 blur-3xl" />
-            <div className="pointer-events-none absolute right-4 top-4 rounded-xl border border-white/70 bg-white/80 px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm">
-              🇭🇷 ENC vásárlás
-            </div>
-            <div className="pointer-events-none absolute bottom-4 left-4 rounded-xl border border-white/70 bg-white/75 px-3 py-1.5 text-sm text-slate-700 shadow-sm">
-              🌊 🐚 🐟 ☀️
-            </div>
             <div
               className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-slate-500/20 to-transparent"
               aria-hidden
