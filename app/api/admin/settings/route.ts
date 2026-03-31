@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/admin-guard";
+import { SETTINGS_DEFAULTS } from "@/lib/app-settings";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 export async function GET() {
@@ -12,7 +13,21 @@ export async function GET() {
     return Response.json({ ok: false, error: error.message }, { status: 500 });
   }
 
-  return Response.json({ ok: true, items: data ?? [] });
+  const rowMap = new Map(
+    (data ?? []).map((row) => [row.key, row] as const),
+  );
+  const merged = Object.keys(SETTINGS_DEFAULTS)
+    .map((key) => {
+      const row = rowMap.get(key);
+      return {
+        key,
+        value: row?.value ?? SETTINGS_DEFAULTS[key] ?? "",
+        updated_at: row?.updated_at ?? "",
+      };
+    })
+    .sort((a, b) => a.key.localeCompare(b.key));
+
+  return Response.json({ ok: true, items: merged });
 }
 
 export async function PATCH(request: Request) {
@@ -30,11 +45,12 @@ export async function PATCH(request: Request) {
 
   const supabase = createSupabaseAdminClient();
   const now = new Date().toISOString();
+  const allowedKeys = new Set(Object.keys(SETTINGS_DEFAULTS));
 
   for (const e of entries) {
     const key = String(e.key ?? "").trim();
     const value = String(e.value ?? "").trim();
-    if (!key) continue;
+    if (!key || !allowedKeys.has(key)) continue;
     const { error } = await supabase
       .from("settings")
       .upsert({ key, value, updated_at: now }, { onConflict: "key" });

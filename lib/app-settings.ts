@@ -2,7 +2,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 import { getTopupBlockSmallestCategoriesFromString } from "@/lib/topup-calculations";
 
-const DEFAULTS: Record<string, string> = {
+export const SETTINGS_DEFAULTS: Record<string, string> = {
   device_price_huf: "499000",
   min_balance_warning_huf: "5000",
   topup_discount_percent: "0",
@@ -22,7 +22,7 @@ const DEFAULTS: Record<string, string> = {
 export async function getSettingsMap(): Promise<Record<string, string>> {
   const supabase = createSupabaseAdminClient();
   const { data } = await supabase.from("settings").select("key, value");
-  const map: Record<string, string> = { ...DEFAULTS };
+  const map: Record<string, string> = { ...SETTINGS_DEFAULTS };
   for (const row of data ?? []) {
     if (row.key && row.value != null) {
       map[row.key] = String(row.value);
@@ -53,6 +53,6 @@ export {
 /** Kategoriak, amelyeknel a legkisebb (1.) csomag nem valaszthato. */
 export function getTopupBlockSmallestCategories(map: Record<string, string>): Set<string> {
   return getTopupBlockSmallestCategoriesFromString(
-    map.topup_block_smallest_for_categories ?? DEFAULTS.topup_block_smallest_for_categories,
+    map.topup_block_smallest_for_categories ?? SETTINGS_DEFAULTS.topup_block_smallest_for_categories,
   );
 }
