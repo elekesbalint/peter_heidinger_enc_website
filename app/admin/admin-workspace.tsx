@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import JSZip from "jszip";
 
 import {
   DEVICE_CATEGORY_LABELS,
@@ -467,6 +468,8 @@ export function AdminWorkspace() {
   const [encQuery, setEncQuery] = useState("");
   const [mplAgreementCode] = useState(process.env.NEXT_PUBLIC_MPL_SENDER_AGREEMENT ?? "");
   const [labelLoadingForId, setLabelLoadingForId] = useState<string | null>(null);
+  const [bulkLabelsLoading, setBulkLabelsLoading] = useState(false);
+  const [bulkLabelsProgress, setBulkLabelsProgress] = useState<string | null>(null);
   const [editShippingOrderId, setEditShippingOrderId] = useState<string | null>(null);
   const [editShippingAddress, setEditShippingAddress] = useState("");
 
@@ -901,14 +904,20 @@ export function AdminWorkspace() {
     await loadEnc();
   }
 
-  async function submitShip(orderId: string, trackingNumber?: string | null): Promise<boolean> {
+  async function submitShip(
+    orderId: string,
+    trackingNumber?: string | null,
+    options?: { skipReload?: boolean },
+  ): Promise<boolean> {
     try {
       await postOrderUpdate(orderId, "ship", {
         tracking_number: (trackingNumber ?? "").trim(),
         mpl_payload: null,
         mpl_sender_agreement: mplAgreementCode.trim() || null,
       });
-      await loadEnc();
+      if (!options?.skipReload) {
+        await loadEnc();
+      }
       return true;
     } catch (e) {
       setEncErr(e instanceof Error ? e.message : "Hiba");
@@ -960,6 +969,70 @@ export function AdminWorkspace() {
       setEncErr(e instanceof Error ? e.message : "Hiba");
     } finally {
       setLabelLoadingForId(null);
+    }
+  }
+
+  function triggerFileDownload(blob: Blob, filename: string) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  async function generateBulkOrderLabels() {
+    const ids = [...selectedOrders];
+    if (ids.length === 0 || bulkLabelsLoading) return;
+    setEncErr(null);
+    setBulkLabelsLoading(true);
+    setBulkLabelsProgress(`0 / ${ids.length}`);
+    try {
+      const zip = new JSZip();
+      let successCount = 0;
+      const failed: string[] = [];
+      for (let i = 0; i < ids.length; i += 1) {
+        const orderId = ids[i];
+        setBulkLabelsProgress(`${i + 1} / ${ids.length}`);
+        const order = encOrders.find((o) => o.id === orderId);
+        if (!order) {
+          failed.push(orderId);
+          continue;
+        }
+        const shipped = await submitShip(orderId, order.tracking_number, { skipReload: true });
+        if (!shipped) {
+          failed.push(order.device_identifier ?? orderId);
+          continue;
+        }
+        const res = await fetch(`/api/admin/enc-device-orders/label?id=${encodeURIComponent(orderId)}`);
+        if (!res.ok) {
+          const maybe = (await res.json().catch(() => null)) as { error?: string } | null;
+          failed.push(order.device_identifier ?? maybe?.error ?? orderId);
+          continue;
+        }
+        const serverFilename = parseFilenameFromContentDisposition(res.headers.get("content-disposition"));
+        const filename = serverFilename || `mpl-label-${order.tracking_number ?? orderId}.pdf`;
+        const bytes = await res.arrayBuffer();
+        zip.file(filename, bytes);
+        successCount += 1;
+      }
+      if (successCount === 0) {
+        throw new Error("Egy címke sem készült el a kijelölt rendelésekhez.");
+      }
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      triggerFileDownload(zipBlob, `mpl-labels-${stamp}.zip`);
+      await loadEnc();
+      if (failed.length > 0) {
+        setEncErr(`Néhány címke nem készült el (${failed.length} db).`);
+      }
+    } catch (e) {
+      setEncErr(e instanceof Error ? e.message : "Tömeges címkegenerálási hiba.");
+    } finally {
+      setBulkLabelsLoading(false);
+      setBulkLabelsProgress(null);
     }
   }
 
@@ -1273,6 +1346,7 @@ export function AdminWorkspace() {
                 <button
                   type="button"
                   onClick={() => bulkOrders("archive")}
+                  disabled={bulkLabelsLoading}
                   className="rounded-lg border border-indigo-200 bg-white px-2.5 py-1 text-xs font-medium text-indigo-900 hover:bg-indigo-50"
                 >
                   Archíválás
@@ -1280,6 +1354,7 @@ export function AdminWorkspace() {
                 <button
                   type="button"
                   onClick={() => bulkOrders("restore")}
+                  disabled={bulkLabelsLoading}
                   className="rounded-lg border border-indigo-200 bg-white px-2.5 py-1 text-xs font-medium text-indigo-900 hover:bg-indigo-50"
                 >
                   Visszaállítás
@@ -1287,17 +1362,32 @@ export function AdminWorkspace() {
                 <button
                   type="button"
                   onClick={() => bulkOrders("cancel")}
+                  disabled={bulkLabelsLoading}
                   className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-800 hover:bg-red-100"
                 >
                   Törlés
                 </button>
                 <button
                   type="button"
+                  onClick={generateBulkOrderLabels}
+                  disabled={bulkLabelsLoading}
+                  className="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {bulkLabelsLoading ? "Címkék készítése..." : "Címkék tömeges generálása"}
+                </button>
+                <button
+                  type="button"
                   onClick={() => setSelectedOrders(new Set())}
+                  disabled={bulkLabelsLoading}
                   className="rounded-lg px-2.5 py-1 text-xs text-slate-600 hover:bg-white"
                 >
                   Kijelölés törlése
                 </button>
+                {bulkLabelsProgress && (
+                  <span className="text-xs text-emerald-900">
+                    Folyamat: {bulkLabelsProgress}
+                  </span>
+                )}
               </div>
             )}
             {selectedOrders.size === 0 && (
