@@ -1388,12 +1388,15 @@ export function AdminWorkspace() {
               <h2 className="text-xl font-semibold">Új úticél</h2>
               <p className="mt-1 text-xs text-slate-500">A kategóriaárak EUR-ban értendők.</p>
               <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                <input
-                  value={newDest.name}
-                  onChange={(e) => setNewDest({ ...newDest, name: e.target.value })}
-                  placeholder="Név"
-                  className="rounded border px-2 py-1 text-sm"
-                />
+                <label className="text-xs text-slate-600">
+                  Úticél neve
+                  <input
+                    value={newDest.name}
+                    onChange={(e) => setNewDest({ ...newDest, name: e.target.value })}
+                    placeholder="Név"
+                    className="mt-1 w-full rounded border px-2 py-1 text-sm"
+                  />
+                </label>
                 {(
                   [
                     ["price_ia", "IA kategória (EUR)"],
@@ -1403,13 +1406,15 @@ export function AdminWorkspace() {
                     ["price_iv", "IV kategória (EUR)"],
                   ] as const
                 ).map(([k, label]) => (
-                  <input
-                    key={k}
-                    value={newDest[k]}
-                    onChange={(e) => setNewDest({ ...newDest, [k]: e.target.value })}
-                    placeholder={label}
-                    className="rounded border px-2 py-1 text-sm"
-                  />
+                  <label key={k} className="text-xs text-slate-600">
+                    {label}
+                    <input
+                      value={newDest[k]}
+                      onChange={(e) => setNewDest({ ...newDest, [k]: e.target.value })}
+                      placeholder="0"
+                      className="mt-1 w-full rounded border px-2 py-1 text-sm"
+                    />
+                  </label>
                 ))}
                 <button
                   type="button"
