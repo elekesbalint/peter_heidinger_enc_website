@@ -250,7 +250,7 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
 
   return (
     <section className="mt-8 space-y-6">
-      <div className="adria-animate-in adria-delay-3 adria-glass rounded-2xl p-6 transition-shadow duration-300 md:p-8">
+      <div className="adria-animate-in adria-delay-3 adria-glass relative z-20 rounded-2xl p-6 transition-shadow duration-300 md:p-8">
         <h2 className="text-xl font-semibold">Csomag és úticél</h2>
         <p className="mt-2 text-sm text-muted">
           Csak a fiókodhoz rendelt készülékre tölthetsz fel egyenleget. A legkisebb csomag egyes
@@ -311,8 +311,8 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
                   className="w-full rounded-xl border border-border/80 bg-white/90 px-4 py-2.5 text-sm shadow-sm transition"
                 />
                 {destinationDropdownOpen && (
-                  <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-border/80 bg-white shadow-lg">
-                    <div className="max-h-56 overflow-y-auto py-1">
+                  <div className="absolute inset-x-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-border/80 bg-white shadow-lg">
+                    <div className="max-h-56 overflow-y-auto overscroll-contain py-1">
                       {filteredDestinations.length === 0 ? (
                         <p className="px-3 py-2 text-xs text-muted">Nincs találat.</p>
                       ) : (
@@ -383,7 +383,7 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
         )}
       </div>
 
-      <div className="adria-animate-in adria-delay-4 adria-glass rounded-2xl p-6 transition-shadow duration-300 md:p-8">
+      <div className="adria-animate-in adria-delay-4 adria-glass relative z-10 rounded-2xl p-6 transition-shadow duration-300 md:p-8">
         <h2 className="text-lg font-semibold">{manualTopupMode ? "Egyedi feltöltés" : "Feltöltési csomagok"}</h2>
         {manualTopupMode ? (
           <div className="mt-4 space-y-2">
