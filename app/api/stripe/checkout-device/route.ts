@@ -115,7 +115,10 @@ export async function POST(request: Request) {
       .limit(1)
       .maybeSingle();
 
-    const basePriceHuf = getDevicePriceHuf();
+    const basePriceHuf = Math.max(
+      1,
+      getIntSetting(settings, "device_price_huf", getDevicePriceHuf()),
+    );
     const appliedReferralDiscountHuf = activeReferral ? Math.min(basePriceHuf, referralDiscountHuf) : 0;
     const priceHuf = Math.max(1, basePriceHuf - appliedReferralDiscountHuf);
     const stripe = getStripe();

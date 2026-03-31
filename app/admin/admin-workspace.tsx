@@ -112,6 +112,10 @@ const DEVICE_STATUS_LABELS: Record<(typeof DEVICE_STATUSES)[number], string> = {
 };
 
 const SETTINGS_META: Record<string, { label: string; hint: string }> = {
+  device_price_huf: {
+    label: "Készülék alapár (Ft)",
+    hint: "ENC készülék listaára, referral előtt.",
+  },
   fx_eur_to_huf: {
     label: "EUR -> HUF árfolyam",
     hint: "1 EUR hány Ft legyen a rendszerben.",

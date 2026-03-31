@@ -3,6 +3,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import { getTopupBlockSmallestCategoriesFromString } from "@/lib/topup-calculations";
 
 const DEFAULTS: Record<string, string> = {
+  device_price_huf: "499000",
   min_balance_warning_huf: "5000",
   topup_discount_percent: "0",
   fx_eur_to_huf: "400",

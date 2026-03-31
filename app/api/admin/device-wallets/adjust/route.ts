@@ -1,5 +1,7 @@
 import { randomUUID } from "crypto";
 import { requireAdmin } from "@/lib/admin-guard";
+import { getIntSetting, getSettingsMap } from "@/lib/app-settings";
+import { sendAppEmail } from "@/lib/notify-email";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 function parseIntStrict(value: unknown): number | null {
@@ -83,6 +85,32 @@ export async function POST(request: Request) {
 
     if (txErr) {
       return Response.json({ ok: false, error: txErr.message }, { status: 500 });
+    }
+  }
+
+  const settings = await getSettingsMap();
+  const minBalanceWarningHuf = getIntSetting(settings, "min_balance_warning_huf", 5000);
+  const crossedLowBalance = oldBalance >= minBalanceWarningHuf && newBalance < minBalanceWarningHuf;
+  if (crossedLowBalance) {
+    const { data: deviceRow } = await supabase
+      .from("devices")
+      .select("auth_user_id")
+      .eq("identifier", deviceIdentifier)
+      .maybeSingle();
+
+    const authUserId = deviceRow?.auth_user_id ?? null;
+    if (authUserId) {
+      const userResp = await supabase.auth.admin.getUserById(authUserId);
+      const to = userResp.data.user?.email?.trim() ?? "";
+      if (to) {
+        await sendAppEmail({
+          to,
+          subject: "AdriaGo — alacsony egyenleg figyelmeztetés",
+          text: `Az eszközöd (${deviceIdentifier}) egyenlege ${newBalance} Ft-ra változott, ami az alacsony egyenleg küszöb (${minBalanceWarningHuf} Ft) alatt van. Kérjük töltsd fel az egyenleget.`,
+        }).catch((err) => {
+          console.error("[wallet-adjust] low-balance email failed:", err);
+        });
+      }
     }
   }
 
