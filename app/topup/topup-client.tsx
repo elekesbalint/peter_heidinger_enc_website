@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   applyTopupDiscount,
@@ -45,8 +45,10 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
   const [deviceIdentifier, setDeviceIdentifier] = useState("");
   const [travelDestination, setTravelDestination] = useState("");
   const [destinationMode, setDestinationMode] = useState<"list" | "custom">("list");
+  const [destinationDropdownOpen, setDestinationDropdownOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const destinationPickerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -107,6 +109,11 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
     () => destinations.find((d) => d.name === travelDestination) ?? null,
     [destinations, travelDestination],
   );
+  const filteredDestinations = useMemo(() => {
+    const q = travelDestination.trim().toLowerCase();
+    if (!q) return destinations;
+    return destinations.filter((d) => d.name.toLowerCase().includes(q));
+  }, [destinations, travelDestination]);
 
   const destinationRequiredEur = useMemo(() => {
     if (!selectedDestination || !selectedDevice) return 0;
@@ -147,6 +154,19 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
       });
     }
   }, [manualTopupMode, minimumRequiredTopup]);
+
+  useEffect(() => {
+    function handlePointerDown(event: PointerEvent) {
+      if (!destinationPickerRef.current) return;
+      const target = event.target;
+      if (target instanceof Node && destinationPickerRef.current.contains(target)) return;
+      setDestinationDropdownOpen(false);
+    }
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, []);
 
   async function startCheckout() {
     setError(null);
@@ -279,20 +299,41 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
           <label className="mb-1.5 block text-sm font-medium text-foreground">Úticél *</label>
           {destinations.length > 0 && destinationMode === "list" ? (
             <>
-              <input
-                list="topup-destination-options"
-                value={travelDestination}
-                onChange={(e) => setTravelDestination(e.target.value)}
-                placeholder="Kezdj el gépelni, majd válassz a listából…"
-                className="w-full rounded-xl border border-border/80 bg-white/90 px-4 py-2.5 text-sm shadow-sm transition"
-              />
-              <datalist id="topup-destination-options">
-                {destinations.map((d) => (
-                  <option key={d.id} value={d.name}>
-                    {d.name}
-                  </option>
-                ))}
-              </datalist>
+              <div ref={destinationPickerRef} className="relative">
+                <input
+                  value={travelDestination}
+                  onChange={(e) => {
+                    setTravelDestination(e.target.value);
+                    setDestinationDropdownOpen(true);
+                  }}
+                  onFocus={() => setDestinationDropdownOpen(true)}
+                  placeholder="Kezdj el gépelni, majd válassz a listából…"
+                  className="w-full rounded-xl border border-border/80 bg-white/90 px-4 py-2.5 text-sm shadow-sm transition"
+                />
+                {destinationDropdownOpen && (
+                  <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-border/80 bg-white shadow-lg">
+                    <div className="max-h-56 overflow-y-auto py-1">
+                      {filteredDestinations.length === 0 ? (
+                        <p className="px-3 py-2 text-xs text-muted">Nincs találat.</p>
+                      ) : (
+                        filteredDestinations.map((d) => (
+                          <button
+                            key={d.id}
+                            type="button"
+                            onClick={() => {
+                              setTravelDestination(d.name);
+                              setDestinationDropdownOpen(false);
+                            }}
+                            className="block w-full px-3 py-2 text-left text-sm text-foreground hover:bg-slate-100"
+                          >
+                            {d.name}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
               <button
                 type="button"
                 className="mt-2 text-xs font-medium text-primary hover:underline"
