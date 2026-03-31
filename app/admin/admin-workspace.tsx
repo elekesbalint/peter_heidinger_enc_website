@@ -610,6 +610,21 @@ export function AdminWorkspace() {
     }
   }
 
+  function parseFilenameFromContentDisposition(headerValue: string | null): string | null {
+    if (!headerValue) return null;
+    const utf8Match = headerValue.match(/filename\*=UTF-8''([^;]+)/i);
+    if (utf8Match?.[1]) {
+      try {
+        return decodeURIComponent(utf8Match[1]).trim();
+      } catch {
+        return utf8Match[1].trim();
+      }
+    }
+    const plainMatch = headerValue.match(/filename="?([^";]+)"?/i);
+    if (plainMatch?.[1]) return plainMatch[1].trim();
+    return null;
+  }
+
   async function downloadOrderLabel(orderId: string, trackingNumber: string | null) {
     setEncErr(null);
     setLabelLoadingForId(orderId);
@@ -623,11 +638,13 @@ export function AdminWorkspace() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `mpl-label-${trackingNumber ?? orderId}.pdf`;
+      const serverFilename = parseFilenameFromContentDisposition(res.headers.get("content-disposition"));
+      a.download = serverFilename || `mpl-label-${trackingNumber ?? orderId}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
+      await loadEnc();
     } catch (e) {
       setEncErr(e instanceof Error ? e.message : "Hiba");
     } finally {
