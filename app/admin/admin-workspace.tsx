@@ -1951,38 +1951,40 @@ export function AdminWorkspace() {
             </div>
             {usrErr && <p className="mt-2 text-sm text-red-600">{usrErr}</p>}
             {usrMsg && <p className="mt-2 text-sm text-emerald-700">{usrMsg}</p>}
-            <table className="mt-4 min-w-full text-left text-sm">
+            <table className="mt-4 w-full table-fixed text-left text-xs">
               <thead>
                 <tr className="border-b text-slate-500">
-                  <th className="px-2 py-2">E-mail</th>
-                  <th className="px-2 py-2">Típus</th>
-                  <th className="px-2 py-2">Név (profil)</th>
-                  <th className="px-2 py-2">Telefon</th>
-                  <th className="px-2 py-2">Cégnév / adószám</th>
-                  <th className="px-2 py-2">Készülékek / egyenleg</th>
-                  <th className="px-2 py-2">Regisztráció</th>
-                  <th className="px-2 py-2">Utolsó belépés</th>
-                  <th className="px-2 py-2">Művelet</th>
+                  <th className="w-[24%] px-1.5 py-1.5">E-mail</th>
+                  <th className="w-[10%] px-1.5 py-1.5">Típus</th>
+                  <th className="w-[19%] px-1.5 py-1.5">Profil adatok</th>
+                  <th className="w-[39%] px-1.5 py-1.5">Készülékek / egyenleg</th>
+                  <th className="w-[8%] px-1.5 py-1.5">Művelet</th>
                 </tr>
               </thead>
               <tbody>
                 {users.map((u) => (
                   <tr key={u.id} className="border-b border-border/60">
-                    <td className="px-2 py-2">{u.email ?? "—"}</td>
-                    <td className="px-2 py-2">{u.user_type === "company" ? "Cég" : "Magánszemély"}</td>
-                    <td className="px-2 py-2">{u.name ?? "—"}</td>
-                    <td className="px-2 py-2">{u.phone ?? "—"}</td>
-                    <td className="px-2 py-2 text-xs">
-                      {u.user_type === "company" ? (
-                        <div>
-                          <div>{u.company_name ?? "—"}</div>
+                    <td className="px-1.5 py-1.5">
+                      <div className="font-medium">{u.email ?? "—"}</div>
+                      <div className="text-[11px] text-slate-500">
+                        Reg: {new Date(u.created_at).toLocaleString("hu-HU")}
+                      </div>
+                      <div className="text-[11px] text-slate-500">
+                        Belépés: {u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString("hu-HU") : "—"}
+                      </div>
+                    </td>
+                    <td className="px-1.5 py-1.5">{u.user_type === "company" ? "Cég" : "Magánszemély"}</td>
+                    <td className="px-1.5 py-1.5 text-xs">
+                      <div>{u.name ?? "—"}</div>
+                      <div className="text-slate-500">{u.phone ?? "—"}</div>
+                      {u.user_type === "company" && (
+                        <>
+                          <div className="mt-1">{u.company_name ?? "—"}</div>
                           <div className="text-slate-500">{u.tax_number ?? "—"}</div>
-                        </div>
-                      ) : (
-                        "—"
+                        </>
                       )}
                     </td>
-                    <td className="px-2 py-2">
+                    <td className="px-1.5 py-1.5">
                       <div className="space-y-1">
                         {u.devices.length === 0 && <div className="text-xs text-muted">Nincs eszköz</div>}
                         {u.devices.map((d) => {
@@ -2004,7 +2006,7 @@ export function AdminWorkspace() {
                               {debt && (
                                 <button
                                   type="button"
-                                  className="rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] text-amber-900"
+                                  className="rounded border border-amber-200 bg-amber-50 px-1 py-0.5 text-[10px] text-amber-900"
                                   onClick={() => sendDebtWarnings([d.identifier])}
                                 >
                                   Figyelmeztetés
@@ -2012,24 +2014,20 @@ export function AdminWorkspace() {
                               )}
                               <button
                                 type="button"
-                                className="rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[11px] text-blue-900"
+                                className="rounded border border-blue-200 bg-blue-50 px-1 py-0.5 text-[10px] text-blue-900"
                                 onClick={() => quickAdjustUserDeviceBalance(d.identifier, d.balance_huf)}
                               >
-                                Egyenleg állítás
+                                Állítás
                               </button>
                             </div>
                           );
                         })}
                       </div>
                     </td>
-                    <td className="px-2 py-2">{new Date(u.created_at).toLocaleString("hu-HU")}</td>
-                    <td className="px-2 py-2">
-                      {u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString("hu-HU") : "—"}
-                    </td>
-                    <td className="px-2 py-2">
+                    <td className="px-1.5 py-1.5">
                       <button
                         type="button"
-                        className="text-xs text-primary underline"
+                        className="text-[11px] text-primary underline"
                         onClick={() => setEditUser({ ...u })}
                       >
                         Szerkesztés

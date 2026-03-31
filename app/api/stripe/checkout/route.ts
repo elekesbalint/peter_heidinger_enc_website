@@ -1,10 +1,7 @@
 import {
-  applyTopupDiscount,
   getIntSetting,
   getSettingsMap,
-  getTopupBlockSmallestCategories,
   getTopupPackagesFromSettings,
-  isTopupPackageBlockedForCategory,
 } from "@/lib/app-settings";
 import { getCurrentUser } from "@/lib/auth-server";
 import { isProfileComplete } from "@/lib/profile-completion";
@@ -36,8 +33,6 @@ export async function POST(request: Request) {
 
     const settings = await getSettingsMap();
     const packages = getTopupPackagesFromSettings(settings);
-    const discountPct = getIntSetting(settings, "topup_discount_percent", 0);
-    const blockedCats = getTopupBlockSmallestCategories(settings);
     const fxEurToHuf = Math.max(1, getIntSetting(settings, "fx_eur_to_huf", 400));
 
     const base = body.topupAmountEur;
@@ -122,29 +117,8 @@ export async function POST(request: Request) {
       );
     }
 
-    if (
-      minTopupRequiredEur <= 0 &&
-      packages.includes(amountEur) &&
-      isTopupPackageBlockedForCategory(
-        ownedDevice.category as string,
-        amountEur,
-        packages,
-        blockedCats,
-      )
-    ) {
-      const minAllowed = packages[1] ?? packages[0];
-      return Response.json(
-        {
-          ok: false,
-          error: `A(z) ${String(ownedDevice.category).toUpperCase()} kategoriahoz legalabb ${minAllowed.toLocaleString("hu-HU")} EUR-os csomag valaszthato.`,
-        },
-        { status: 400 },
-      );
-    }
-
-    const discountActive = packages.includes(amountEur);
-    const appliedDiscountPct = discountActive ? discountPct : 0;
-    const chargedEur = applyTopupDiscount(amountEur, appliedDiscountPct);
+    const appliedDiscountPct = 0;
+    const chargedEur = amountEur;
     const chargedHuf = Math.max(1, Math.round(chargedEur * fxEurToHuf));
     const baseAmountHuf = Math.max(1, Math.round(amountEur * fxEurToHuf));
 
