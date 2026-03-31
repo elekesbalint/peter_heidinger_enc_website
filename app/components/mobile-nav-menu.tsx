@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 
 type Props = {
   user: boolean;
@@ -14,6 +14,28 @@ export function MobileNavMenu({ user, displayName }: Props) {
   function closeMenu() {
     if (detailsRef.current) detailsRef.current.open = false;
   }
+
+  useEffect(() => {
+    function handlePointerDown(event: PointerEvent) {
+      const root = detailsRef.current;
+      if (!root?.open) return;
+      const target = event.target as Node | null;
+      if (target && !root.contains(target)) {
+        root.open = false;
+      }
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") closeMenu();
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, []);
 
   return (
     <details ref={detailsRef} className="relative md:hidden">
