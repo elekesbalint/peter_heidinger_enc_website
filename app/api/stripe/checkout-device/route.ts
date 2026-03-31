@@ -7,6 +7,7 @@ import {
 import { isProfileComplete } from "@/lib/profile-completion";
 import { getBaseUrl, getStripe } from "@/lib/stripe";
 import { getIntSetting, getSettingsMap } from "@/lib/app-settings";
+import { releaseExpiredDeviceReservations } from "@/lib/device-waitlist-reservations";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 function toStripeHufAmount(hufAmount: number): number {
@@ -46,6 +47,7 @@ export async function POST(request: Request) {
     }
 
     const supabase = createSupabaseAdminClient();
+    await releaseExpiredDeviceReservations();
     const { error: contractError } = await supabase.from("contract_acceptances").insert({
       auth_user_id: user.id,
       user_email: user.email ?? null,

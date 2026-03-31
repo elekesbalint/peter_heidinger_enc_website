@@ -1,18 +1,23 @@
 import { getCurrentUser, isAdminEmail } from "@/lib/auth-server";
+import type { DeviceCategoryValue } from "@/lib/device-categories";
+import {
+  createWaitlistPaymentReservation,
+  releaseExpiredDeviceReservations,
+} from "@/lib/device-waitlist-reservations";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 type WaitlistItem = {
   id: string;
   auth_user_id: string;
   user_email: string | null;
-  category: string;
+  category: DeviceCategoryValue;
   created_at: string;
 };
 
 type DeviceItem = {
   id: string;
   identifier: string;
-  category: string;
+  category: DeviceCategoryValue;
 };
 
 export async function POST() {
@@ -25,6 +30,12 @@ export async function POST() {
   }
 
   const supabase = createSupabaseAdminClient();
+  try {
+    await releaseExpiredDeviceReservations();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Nem sikerült a lejárt rezervációk felszabadítása.";
+    return Response.json({ ok: false, error: message }, { status: 500 });
+  }
 
   const { data: waitlistRows, error: waitlistError } = await supabase
     .from("device_waitlist")
@@ -92,67 +103,21 @@ export async function POST() {
     });
   }
 
-  const assignedAt = new Date().toISOString();
-  const { data: updatedRows, error: assignError } = await supabase
-    .from("devices")
-    .update({
-      status: "sold",
-      auth_user_id: selectedRequest.auth_user_id,
-      assigned_at: assignedAt,
-      sold_at: assignedAt,
-      updated_at: assignedAt,
-    })
-    .eq("id", selectedDevice.id)
-    .eq("status", "available")
-    .select("id")
-    .limit(1);
-
-  if (assignError) {
-    return Response.json({ ok: false, error: assignError.message }, { status: 500 });
-  }
-
-  if (!updatedRows || updatedRows.length === 0) {
+  try {
+    const item = await createWaitlistPaymentReservation({
+      waitlist: selectedRequest,
+      device: selectedDevice,
+      adminAuthUserId: user.id,
+      adminEmail: user.email ?? null,
+    });
     return Response.json({
       ok: true,
-      assigned: false,
-      message: "A kivalasztott keszuleket kozben lefoglaltak, probald ujra.",
+      assigned: true,
+      message: "Fizetési link kiküldve.",
+      item,
     });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Nem sikerült fizetési linket küldeni.";
+    return Response.json({ ok: false, error: message }, { status: 500 });
   }
-
-  const { error: deleteWaitlistError } = await supabase
-    .from("device_waitlist")
-    .delete()
-    .eq("id", selectedRequest.id);
-
-  if (deleteWaitlistError) {
-    return Response.json({ ok: false, error: deleteWaitlistError.message }, { status: 500 });
-  }
-
-  const { error: assignmentLogError } = await supabase.from("admin_device_assignments").insert({
-    admin_auth_user_id: user.id,
-    admin_email: user.email ?? null,
-    target_auth_user_id: selectedRequest.auth_user_id,
-    target_user_email: selectedRequest.user_email,
-    device_id: selectedDevice.id,
-    device_identifier: selectedDevice.identifier,
-    category: selectedRequest.category,
-    source_waitlist_id: selectedRequest.id,
-    assigned_at: assignedAt,
-  });
-
-  if (assignmentLogError) {
-    return Response.json({ ok: false, error: assignmentLogError.message }, { status: 500 });
-  }
-
-  return Response.json({
-    ok: true,
-    assigned: true,
-    message: "Kiosztas sikeres.",
-    item: {
-      waitlist_id: selectedRequest.id,
-      user_email: selectedRequest.user_email,
-      category: selectedRequest.category,
-      device_identifier: selectedDevice.identifier,
-    },
-  });
 }

@@ -895,7 +895,7 @@ export function AdminWorkspace() {
       }
       if (data.assigned && data.item) {
         setAssignMsg(
-          `Kiosztva: ${data.item.device_identifier ?? "?"} → ${data.item.user_email ?? "?"} (${data.item.category ?? "?"})`,
+          `Fizetési link kiküldve: ${data.item.device_identifier ?? "?"} → ${data.item.user_email ?? "?"} (${data.item.category ?? "?"})`,
         );
       } else {
         setAssignMsg(data.message ?? "Nem történt kiosztás.");
@@ -929,7 +929,7 @@ export function AdminWorkspace() {
         return;
       }
       setAssignMsg(
-        `Kiosztva: ${data.item?.device_identifier ?? "?"} → ${data.item?.user_email ?? "?"} (${data.item?.category ?? "?"})`,
+        `Fizetési link kiküldve: ${data.item?.device_identifier ?? "?"} → ${data.item?.user_email ?? "?"} (${data.item?.category ?? "?"})`,
       );
       await loadWait();
       await loadDevices("");

@@ -45,6 +45,7 @@ Supabase setup:
    - `supabase/device_orders.sql`
    - `supabase/phase2_full_spec.sql` — profil, rendszam, beallitasok, uicel a topupnal, wallet trigger utvonalakhoz
    - `supabase/referrals.sql` — ajanlo linkek, meghivo allapotok, referral kedvezmeny setting
+   - `supabase/waitlist_payment_links.sql` — varolistas fizetesi link + 48 oras keszulek rezervacio
 
 Regisztracio es admin fiok:
 

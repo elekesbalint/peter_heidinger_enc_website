@@ -132,6 +132,7 @@ export async function POST(request: Request) {
         const deviceId = metadata.device_id ?? null;
         const authUserId = metadata.user_id ?? null;
         const category = metadata.category ?? null;
+        const reservationId = (metadata.reservation_id ?? "").trim();
 
         if (!deviceId || !authUserId || !category || !deviceIdentifier) {
           return new Response("Device purchase metadata incomplete", { status: 500 });
@@ -141,18 +142,70 @@ export async function POST(request: Request) {
 
         const licensePlate = (metadata.license_plate ?? "").trim() || null;
 
-        const { data: updatedRows, error: deviceUpdateError } = await supabase
-          .from("devices")
-          .update({
-            status: "sold",
-            auth_user_id: authUserId,
-            sold_at: paidAt,
-            updated_at: paidAt,
-            license_plate: licensePlate,
-          })
-          .eq("id", deviceId)
-          .eq("status", "available")
-          .select("id");
+        let updatedRows: Array<{ id: string }> | null = null;
+        let deviceUpdateError: { message: string } | null = null;
+        if (reservationId) {
+          const { data: reservationRow, error: reservationErr } = await supabase
+            .from("device_payment_reservations")
+            .select("id, expires_at, paid_at, cancelled_at")
+            .eq("id", reservationId)
+            .maybeSingle();
+          if (reservationErr) {
+            return new Response(`Reservation lookup error: ${reservationErr.message}`, { status: 500 });
+          }
+          if (!reservationRow) {
+            return new Response("Reservation not found", { status: 500 });
+          }
+          const expired =
+            reservationRow.cancelled_at !== null ||
+            reservationRow.paid_at !== null ||
+            new Date(reservationRow.expires_at).getTime() < Date.now();
+          if (expired) {
+            return new Response("Reservation expired or already processed", { status: 409 });
+          }
+          const devUpdate = await supabase
+            .from("devices")
+            .update({
+              status: "sold",
+              auth_user_id: authUserId,
+              sold_at: paidAt,
+              updated_at: paidAt,
+              license_plate: licensePlate,
+            })
+            .eq("id", deviceId)
+            .eq("status", "assigned")
+            .select("id");
+          updatedRows = devUpdate.data as Array<{ id: string }> | null;
+          deviceUpdateError = devUpdate.error ? { message: devUpdate.error.message } : null;
+          if (!deviceUpdateError) {
+            const { error: reservationPaidErr } = await supabase
+              .from("device_payment_reservations")
+              .update({ paid_at: paidAt })
+              .eq("id", reservationId)
+              .is("paid_at", null)
+              .is("cancelled_at", null);
+            if (reservationPaidErr) {
+              return new Response(`Reservation mark paid error: ${reservationPaidErr.message}`, {
+                status: 500,
+              });
+            }
+          }
+        } else {
+          const devUpdate = await supabase
+            .from("devices")
+            .update({
+              status: "sold",
+              auth_user_id: authUserId,
+              sold_at: paidAt,
+              updated_at: paidAt,
+              license_plate: licensePlate,
+            })
+            .eq("id", deviceId)
+            .eq("status", "available")
+            .select("id");
+          updatedRows = devUpdate.data as Array<{ id: string }> | null;
+          deviceUpdateError = devUpdate.error ? { message: devUpdate.error.message } : null;
+        }
 
         if (deviceUpdateError) {
           return new Response(`Device update error: ${deviceUpdateError.message}`, {
