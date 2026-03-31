@@ -11,12 +11,27 @@ type ReferralInvite = {
   discount_used_at: string | null;
 };
 
+type ReferralPanelText = {
+  title: string;
+  subtitlePrefix: string;
+  subtitleSuffix: string;
+  emailPlaceholder: string;
+  sendButton: string;
+  successMessage: string;
+  emptyMessage: string;
+  statusSent: string;
+  statusRegistered: string;
+  statusDiscountUsed: string;
+};
+
 export function ReferralPanel({
   discountHuf,
   invites,
+  text,
 }: {
   discountHuf: number;
   invites: ReferralInvite[];
+  text: ReferralPanelText;
 }) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -43,7 +58,7 @@ export function ReferralPanel({
         setErr(data.error ?? "Hiba");
         return;
       }
-      setMsg("Meghívó elküldve.");
+      setMsg(text.successMessage);
       setEmail("");
     } catch {
       setErr("Hálózati hiba.");
@@ -54,9 +69,9 @@ export function ReferralPanel({
 
   return (
     <section className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-sm">
-      <h2 className="text-xl font-semibold">Ajánlás</h2>
+      <h2 className="text-xl font-semibold">{text.title}</h2>
       <p className="mt-1 text-sm text-muted">
-        Meghívó küldése e-mailben. A meghívott első készülékvásárlása {discountHuf.toLocaleString("hu-HU")} Ft kedvezményt kap.
+        {text.subtitlePrefix} {discountHuf.toLocaleString("hu-HU")} {text.subtitleSuffix}
       </p>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -64,7 +79,7 @@ export function ReferralPanel({
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="meghivott@pelda.hu"
+          placeholder={text.emailPlaceholder}
           className="min-w-[260px] flex-1 rounded-xl border border-border bg-white px-4 py-2.5 text-sm"
         />
         <button
@@ -73,7 +88,7 @@ export function ReferralPanel({
           disabled={loading}
           className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
         >
-          {loading ? "Küldés…" : "Meghívó küldése"}
+          {loading ? "Küldés…" : text.sendButton}
         </button>
       </div>
 
@@ -95,17 +110,17 @@ export function ReferralPanel({
                 <td className="px-2 py-2.5">{item.invited_email}</td>
                 <td className="px-2 py-2.5">
                   {item.discount_used_at
-                    ? "Kedvezmény felhasználva"
+                    ? text.statusDiscountUsed
                     : item.accepted_at
-                      ? "Regisztrált"
-                      : "Kiküldve"}
+                      ? text.statusRegistered
+                      : text.statusSent}
                 </td>
                 <td className="px-2 py-2.5">{new Date(item.created_at).toLocaleString("hu-HU")}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        {invites.length === 0 && <p className="mt-3 text-sm text-muted">Még nincs kiküldött meghívó.</p>}
+        {invites.length === 0 && <p className="mt-3 text-sm text-muted">{text.emptyMessage}</p>}
       </div>
     </section>
   );

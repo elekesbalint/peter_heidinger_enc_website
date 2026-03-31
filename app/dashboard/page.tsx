@@ -48,6 +48,7 @@ export default async function DashboardPage({
   const dashboardIntro =
     settings.dashboard_intro_text?.trim() ||
     "Saját eszközök, egyenleg, úttörténet és profil. Alacsony egyenleg küszöb:";
+  const text = (key: string, fallback: string) => settings[key]?.trim() || fallback;
 
   const { data: ownedDevices } = await supabase
     .from("devices")
@@ -110,20 +111,22 @@ export default async function DashboardPage({
     <div className="mx-auto w-full max-w-6xl px-6 py-12">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Fiókom</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {text("dashboard_page_title", "Fiókom")}
+          </h1>
           <p className="mt-2 text-sm text-muted">{user.email}</p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Link
               href="/order"
               className="rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-strong"
             >
-              ENC megrendelés
+              {text("dashboard_order_cta", "ENC megrendelés")}
             </Link>
             <Link
               href="/topup"
               className="rounded-xl border border-border bg-white px-5 py-2.5 text-sm font-semibold text-foreground transition hover:bg-slate-50"
             >
-              Egyenlegfeltöltés
+              {text("dashboard_topup_cta", "Egyenlegfeltöltés")}
             </Link>
           </div>
         </div>
@@ -135,24 +138,33 @@ export default async function DashboardPage({
       </p>
       {showProfileRequiredBanner && (
         <div className="mt-4 rounded-2xl border border-amber-300 bg-warning-light px-5 py-4 shadow-sm">
-          <p className="text-sm font-semibold text-amber-900">Profil kitöltése szükséges</p>
+          <p className="text-sm font-semibold text-amber-900">
+            {text("dashboard_profile_required_title", "Profil kitöltése szükséges")}
+          </p>
           <p className="mt-1 text-sm text-amber-900/90">
-            A rendeléshez és feltöltéshez előbb töltsd ki a profil és címek adatokat.
+            {text(
+              "dashboard_profile_required_text",
+              "A rendeléshez és feltöltéshez előbb töltsd ki a profil és címek adatokat.",
+            )}
           </p>
           <div className="mt-3">
             <a
               href="#profile-section"
               className="inline-flex rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-600"
             >
-              Profil kitöltése most
+              {text("dashboard_profile_required_cta", "Profil kitöltése most")}
             </a>
           </div>
         </div>
       )}
 
       <section id="profile-section" className="mt-10 rounded-2xl border border-border bg-card p-6 shadow-sm">
-        <h2 className="text-xl font-semibold">Profil és címek</h2>
-        <p className="mt-1 text-sm text-muted">Számlázás és szállítás.</p>
+        <h2 className="text-xl font-semibold">
+          {text("dashboard_profile_section_title", "Profil és címek")}
+        </h2>
+        <p className="mt-1 text-sm text-muted">
+          {text("dashboard_profile_section_subtitle", "Számlázás és szállítás.")}
+        </p>
         <ProfileForm forceOpen={showProfileRequiredBanner} />
       </section>
 
@@ -229,16 +241,21 @@ export default async function DashboardPage({
         })}
         {(ownedDevices ?? []).length === 0 && (
           <article className="md:col-span-2 rounded-2xl border border-border bg-card p-6 shadow-sm">
-            <h3 className="text-lg font-semibold">Még nincs hozzárendelt készüléked</h3>
+            <h3 className="text-lg font-semibold">
+              {text("dashboard_devices_empty_title", "Még nincs hozzárendelt készüléked")}
+            </h3>
             <p className="mt-2 text-sm text-muted">
-              Töltsd ki a profilodat, majd indíts új rendelést az ENC készülékhez.
+              {text(
+                "dashboard_devices_empty_text",
+                "Töltsd ki a profilodat, majd indíts új rendelést az ENC készülékhez.",
+              )}
             </p>
             <div className="mt-4">
               <Link
                 href="/order"
                 className="inline-flex rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-strong"
               >
-                Rendelés indítása
+                {text("dashboard_devices_empty_cta", "Rendelés indítása")}
               </Link>
             </div>
           </article>
@@ -246,9 +263,14 @@ export default async function DashboardPage({
       </section>
 
       <section className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-sm">
-        <h2 className="text-xl font-semibold">Úttörténet (utolsó 50)</h2>
+        <h2 className="text-xl font-semibold">
+          {text("dashboard_route_title", "Úttörténet (utolsó 50)")}
+        </h2>
         <p className="mt-2 text-sm text-muted">
-          Importált útvonal- és kapurekordok a saját készülékazonosítók alapján.
+          {text(
+            "dashboard_route_subtitle",
+            "Importált útvonal- és kapurekordok a saját készülékazonosítók alapján.",
+          )}
         </p>
         <div className="mt-4 overflow-x-auto">
           <table className="min-w-full text-left text-sm">
@@ -276,16 +298,40 @@ export default async function DashboardPage({
             </tbody>
           </table>
           {(routeHistory ?? []).length === 0 && (
-            <p className="mt-3 text-sm text-muted">Még nincs rögzített út a készülékekhez.</p>
+            <p className="mt-3 text-sm text-muted">
+              {text("dashboard_route_empty", "Még nincs rögzített út a készülékekhez.")}
+            </p>
           )}
         </div>
       </section>
 
-      <ReferralPanel discountHuf={referralDiscountHuf} invites={referralInvites} />
+      <ReferralPanel
+        discountHuf={referralDiscountHuf}
+        invites={referralInvites}
+        text={{
+          title: text("referral_section_title", "Ajánlás"),
+          subtitlePrefix: text(
+            "referral_section_subtitle_prefix",
+            "Meghívó küldése e-mailben. A meghívott első készülékvásárlása",
+          ),
+          subtitleSuffix: text("referral_section_subtitle_suffix", "Ft kedvezményt kap."),
+          emailPlaceholder: text("referral_email_placeholder", "meghivott@pelda.hu"),
+          sendButton: text("referral_send_button", "Meghívó küldése"),
+          successMessage: text("referral_success_message", "Meghívó elküldve."),
+          emptyMessage: text("referral_empty_message", "Még nincs kiküldött meghívó."),
+          statusSent: text("referral_status_sent", "Kiküldve"),
+          statusRegistered: text("referral_status_registered", "Regisztrált"),
+          statusDiscountUsed: text("referral_status_discount_used", "Kedvezmény felhasználva"),
+        }}
+      />
 
       <section className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-sm">
-        <h2 className="text-xl font-semibold">Wallet-egyenlegek</h2>
-        <p className="mt-2 text-sm text-muted">Eszközönkénti aktuális egyenleg.</p>
+        <h2 className="text-xl font-semibold">
+          {text("dashboard_wallet_title", "Wallet-egyenlegek")}
+        </h2>
+        <p className="mt-2 text-sm text-muted">
+          {text("dashboard_wallet_subtitle", "Eszközönkénti aktuális egyenleg.")}
+        </p>
         <div className="mt-4 overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead>
@@ -310,14 +356,20 @@ export default async function DashboardPage({
             </tbody>
           </table>
           {(wallets ?? []).length === 0 && (
-            <p className="mt-3 text-sm text-muted">Még nincs wallet-rekord.</p>
+            <p className="mt-3 text-sm text-muted">
+              {text("dashboard_wallet_empty", "Még nincs wallet-rekord.")}
+            </p>
           )}
         </div>
       </section>
 
       <section className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-sm">
-        <h2 className="text-xl font-semibold">Feltöltési előzmények</h2>
-        <p className="mt-2 text-sm text-muted">Stripe-fizetések (e-mail alapján).</p>
+        <h2 className="text-xl font-semibold">
+          {text("dashboard_topups_title", "Feltöltési előzmények")}
+        </h2>
+        <p className="mt-2 text-sm text-muted">
+          {text("dashboard_topups_subtitle", "Stripe-fizetések (e-mail alapján).")}
+        </p>
         <div className="mt-4 overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead>
@@ -352,7 +404,9 @@ export default async function DashboardPage({
             </tbody>
           </table>
           {(topups ?? []).length === 0 && (
-            <p className="mt-3 text-sm text-muted">Még nincs feltöltési rekord.</p>
+            <p className="mt-3 text-sm text-muted">
+              {text("dashboard_topups_empty", "Még nincs feltöltési rekord.")}
+            </p>
           )}
         </div>
       </section>

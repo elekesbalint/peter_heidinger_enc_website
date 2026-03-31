@@ -156,9 +156,193 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
     label: "Főoldal hero alcím",
     hint: "A landing page címsor alatti leírás.",
   },
+  home_platform_label: {
+    label: "Főoldal platform címke",
+    hint: "A hero tetején kis nagybetűs felirat.",
+  },
+  home_cta_order_label: {
+    label: "Főoldal elsődleges gomb",
+    hint: "Hero gomb felirat (eszközrendelés).",
+  },
+  home_cta_topup_label: {
+    label: "Főoldal másodlagos gomb",
+    hint: "Hero gomb felirat (feltöltés).",
+  },
+  home_steps_title: {
+    label: "Főoldal lépések cím",
+    hint: "„Így működik...” blokk címe.",
+  },
+  home_steps_subtitle: {
+    label: "Főoldal lépések alcím",
+    hint: "„Így működik...” blokk leírása.",
+  },
+  home_step_1_title: { label: "Lépés 1 cím", hint: "Főoldal 1. lépés címe." },
+  home_step_1_desc: { label: "Lépés 1 leírás", hint: "Főoldal 1. lépés szövege." },
+  home_step_2_title: { label: "Lépés 2 cím", hint: "Főoldal 2. lépés címe." },
+  home_step_2_desc: { label: "Lépés 2 leírás", hint: "Főoldal 2. lépés szövege." },
+  home_step_3_title: { label: "Lépés 3 cím", hint: "Főoldal 3. lépés címe." },
+  home_step_3_desc: { label: "Lépés 3 leírás", hint: "Főoldal 3. lépés szövege." },
+  home_step_4_title: { label: "Lépés 4 cím", hint: "Főoldal 4. lépés címe." },
+  home_step_4_desc: { label: "Lépés 4 leírás", hint: "Főoldal 4. lépés szövege." },
+  home_features_title: {
+    label: "Főoldal feature cím",
+    hint: "„Minden, ami...” blokk címe.",
+  },
+  home_features_subtitle: {
+    label: "Főoldal feature alcím",
+    hint: "„Minden, ami...” blokk leírása.",
+  },
+  home_feature_1_title: { label: "Feature 1 cím", hint: "Főoldal 1. kártya címe." },
+  home_feature_1_desc: { label: "Feature 1 leírás", hint: "Főoldal 1. kártya szövege." },
+  home_feature_2_title: { label: "Feature 2 cím", hint: "Főoldal 2. kártya címe." },
+  home_feature_2_desc: { label: "Feature 2 leírás", hint: "Főoldal 2. kártya szövege." },
+  home_feature_3_title: { label: "Feature 3 cím", hint: "Főoldal 3. kártya címe." },
+  home_feature_3_desc: { label: "Feature 3 leírás", hint: "Főoldal 3. kártya szövege." },
+  home_feature_4_title: { label: "Feature 4 cím", hint: "Főoldal 4. kártya címe." },
+  home_feature_4_desc: { label: "Feature 4 leírás", hint: "Főoldal 4. kártya szövege." },
+  home_feature_5_title: { label: "Feature 5 cím", hint: "Főoldal 5. kártya címe." },
+  home_feature_5_desc: { label: "Feature 5 leírás", hint: "Főoldal 5. kártya szövege." },
+  home_feature_6_title: { label: "Feature 6 cím", hint: "Főoldal 6. kártya címe." },
+  home_feature_6_desc: { label: "Feature 6 leírás", hint: "Főoldal 6. kártya szövege." },
+  home_final_title: {
+    label: "Főoldal záró cím",
+    hint: "Alsó CTA blokk címe.",
+  },
+  home_final_subtitle: {
+    label: "Főoldal záró alcím",
+    hint: "Alsó CTA blokk leírása.",
+  },
+  home_final_register_cta: {
+    label: "Főoldal regisztráció gomb",
+    hint: "Alsó CTA első gomb.",
+  },
+  home_final_contact_cta: {
+    label: "Főoldal kapcsolat gomb",
+    hint: "Alsó CTA második gomb.",
+  },
+  dashboard_page_title: {
+    label: "Dashboard főcím",
+    hint: "A felhasználói oldal felső címe.",
+  },
+  dashboard_order_cta: {
+    label: "Dashboard rendelés gomb",
+    hint: "Felső gyorsgomb felirat.",
+  },
+  dashboard_topup_cta: {
+    label: "Dashboard feltöltés gomb",
+    hint: "Felső gyorsgomb felirat.",
+  },
   dashboard_intro_text: {
     label: "Dashboard bevezető szöveg",
     hint: "A felhasználói dashboard tetején megjelenő rövid leírás.",
+  },
+  dashboard_profile_required_title: {
+    label: "Dashboard profil-kötelező cím",
+    hint: "Figyelmeztető blokk címe.",
+  },
+  dashboard_profile_required_text: {
+    label: "Dashboard profil-kötelező szöveg",
+    hint: "Figyelmeztető blokk tartalma.",
+  },
+  dashboard_profile_required_cta: {
+    label: "Dashboard profil-kötelező gomb",
+    hint: "Figyelmeztető blokk CTA gombja.",
+  },
+  dashboard_profile_section_title: {
+    label: "Dashboard profil szekció cím",
+    hint: "Profil és címek blokk címe.",
+  },
+  dashboard_profile_section_subtitle: {
+    label: "Dashboard profil szekció alcím",
+    hint: "Profil és címek blokk leírása.",
+  },
+  dashboard_devices_empty_title: {
+    label: "Dashboard üres készülék cím",
+    hint: "Ha nincs hozzárendelt készülék.",
+  },
+  dashboard_devices_empty_text: {
+    label: "Dashboard üres készülék szöveg",
+    hint: "Ha nincs hozzárendelt készülék.",
+  },
+  dashboard_devices_empty_cta: {
+    label: "Dashboard üres készülék gomb",
+    hint: "Üres készülék állapot CTA.",
+  },
+  dashboard_route_title: {
+    label: "Dashboard úttörténet cím",
+    hint: "Úttörténet blokk címe.",
+  },
+  dashboard_route_subtitle: {
+    label: "Dashboard úttörténet alcím",
+    hint: "Úttörténet blokk leírása.",
+  },
+  dashboard_route_empty: {
+    label: "Dashboard úttörténet üres szöveg",
+    hint: "Ha nincs úttörténet.",
+  },
+  dashboard_wallet_title: {
+    label: "Dashboard wallet cím",
+    hint: "Wallet blokk címe.",
+  },
+  dashboard_wallet_subtitle: {
+    label: "Dashboard wallet alcím",
+    hint: "Wallet blokk leírása.",
+  },
+  dashboard_wallet_empty: {
+    label: "Dashboard wallet üres szöveg",
+    hint: "Ha nincs wallet rekord.",
+  },
+  dashboard_topups_title: {
+    label: "Dashboard topup cím",
+    hint: "Feltöltési előzmények blokk címe.",
+  },
+  dashboard_topups_subtitle: {
+    label: "Dashboard topup alcím",
+    hint: "Feltöltési előzmények blokk leírása.",
+  },
+  dashboard_topups_empty: {
+    label: "Dashboard topup üres szöveg",
+    hint: "Ha nincs topup rekord.",
+  },
+  referral_section_title: {
+    label: "Referral szekció cím",
+    hint: "Ajánlói blokk főcím.",
+  },
+  referral_section_subtitle_prefix: {
+    label: "Referral alcím eleje",
+    hint: "Kedvezmény összege elé kerülő rész.",
+  },
+  referral_section_subtitle_suffix: {
+    label: "Referral alcím vége",
+    hint: "Kedvezmény összege utáni rész.",
+  },
+  referral_email_placeholder: {
+    label: "Referral email placeholder",
+    hint: "Ajánló email input mintaszöveg.",
+  },
+  referral_send_button: {
+    label: "Referral küldés gomb",
+    hint: "Ajánló küldés gomb felirata.",
+  },
+  referral_success_message: {
+    label: "Referral sikerüzenet",
+    hint: "Sikeres küldés után jelenik meg.",
+  },
+  referral_empty_message: {
+    label: "Referral üres állapot",
+    hint: "Ha még nincs kiküldött meghívó.",
+  },
+  referral_status_sent: {
+    label: "Referral státusz: kiküldve",
+    hint: "Táblázat státusz felirat.",
+  },
+  referral_status_registered: {
+    label: "Referral státusz: regisztrált",
+    hint: "Táblázat státusz felirat.",
+  },
+  referral_status_discount_used: {
+    label: "Referral státusz: kedvezmény felhasználva",
+    hint: "Táblázat státusz felirat.",
   },
 };
 

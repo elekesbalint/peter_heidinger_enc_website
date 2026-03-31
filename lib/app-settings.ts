@@ -13,10 +13,82 @@ export const SETTINGS_DEFAULTS: Record<string, string> = {
   /** Vesszovel elvalasztott kategoriak (pl. ii,iii,iv): ezekhez nem valaszthato a legkisebb topup csomag. */
   topup_block_smallest_for_categories: "ii,iii,iv",
   referral_device_discount_huf: "25000",
+  home_platform_label: "AdriaGo Platform",
   home_hero_title: "ENC vásárlás és útdíjkezelés egyetlen modern rendszerben.",
   home_hero_subtitle:
     "Eszközrendelés, egyenlegfeltöltés, útvonaladatok kezelése és adminisztráció — prémium felületen, biztonságos fizetéssel.",
+  home_cta_order_label: "Eszközrendelés",
+  home_cta_topup_label: "Egyenlegfeltöltés",
+  home_steps_title: "Így működik az AdriaGo",
+  home_steps_subtitle:
+    "Néhány egyszerű lépésben elindulhatsz, és minden fontos adatot egy helyen kezelhetsz.",
+  home_step_1_title: "Regisztráció és profil",
+  home_step_1_desc: "Hozd létre a fiókodat, majd add meg az alapadataidat és a számlázási címet.",
+  home_step_2_title: "ENC készülék rendelés",
+  home_step_2_desc: "Válaszd ki a járműkategóriát, add meg a rendszámot, és indítsd el a rendelést.",
+  home_step_3_title: "Egyenleg feltöltése",
+  home_step_3_desc: "Töltsd fel az egyenlegedet a megfelelő csomaggal, hogy indulhass az utazásra.",
+  home_step_4_title: "Utazás és követés",
+  home_step_4_desc: "Használd az ENC készüléket, a rendszerben pedig bármikor ellenőrizd a történetet.",
+  home_features_title: "Minden, ami az ENC kezeléshez kell",
+  home_features_subtitle:
+    "Egy platformon kezeled az eszközeidet, az egyenlegedet és az adminisztrációt.",
+  home_feature_1_title: "ENC eszközrendelés",
+  home_feature_1_desc:
+    "Válaszd ki a járműkategóriát, add meg a rendszámot és fizess biztonságosan Stripe-on keresztül.",
+  home_feature_2_title: "Egyenlegfeltöltés",
+  home_feature_2_desc:
+    "Választható csomagokkal gyorsan feltöltheted az egyenlegedet az utazásaidhoz.",
+  home_feature_3_title: "Útvonalkövetés",
+  home_feature_3_desc: "CSV import, automatikus wallet-levonás, árfolyamkezelés és teljes úttörténet.",
+  home_feature_4_title: "Gyors ügyintézés",
+  home_feature_4_desc:
+    "Átlátható rendelési folyamat, egyértelmű visszajelzések és gyors státuszkövetés egy helyen.",
+  home_feature_5_title: "Profil és számlázás",
+  home_feature_5_desc:
+    "Személyes és számlázási adataidat bármikor frissítheted egy felületen.",
+  home_feature_6_title: "Biztonság",
+  home_feature_6_desc:
+    "Biztonságos online fizetés, megbízható tranzakciókezelés és védett fiókhasználat.",
+  home_final_title: "Készen állsz?",
+  home_final_subtitle:
+    "Hozd létre a fiókodat és rendeld meg az ENC készülékedet néhány perc alatt.",
+  home_final_register_cta: "Ingyenes regisztráció",
+  home_final_contact_cta: "Kapcsolatfelvétel",
+  dashboard_page_title: "Fiókom",
+  dashboard_order_cta: "ENC megrendelés",
+  dashboard_topup_cta: "Egyenlegfeltöltés",
   dashboard_intro_text: "Saját eszközök, egyenleg, úttörténet és profil. Alacsony egyenleg küszöb:",
+  dashboard_profile_required_title: "Profil kitöltése szükséges",
+  dashboard_profile_required_text:
+    "A rendeléshez és feltöltéshez előbb töltsd ki a profil és címek adatokat.",
+  dashboard_profile_required_cta: "Profil kitöltése most",
+  dashboard_profile_section_title: "Profil és címek",
+  dashboard_profile_section_subtitle: "Számlázás és szállítás.",
+  dashboard_devices_empty_title: "Még nincs hozzárendelt készüléked",
+  dashboard_devices_empty_text:
+    "Töltsd ki a profilodat, majd indíts új rendelést az ENC készülékhez.",
+  dashboard_devices_empty_cta: "Rendelés indítása",
+  dashboard_route_title: "Úttörténet (utolsó 50)",
+  dashboard_route_subtitle:
+    "Importált útvonal- és kapurekordok a saját készülékazonosítók alapján.",
+  dashboard_route_empty: "Még nincs rögzített út a készülékekhez.",
+  dashboard_wallet_title: "Wallet-egyenlegek",
+  dashboard_wallet_subtitle: "Eszközönkénti aktuális egyenleg.",
+  dashboard_wallet_empty: "Még nincs wallet-rekord.",
+  dashboard_topups_title: "Feltöltési előzmények",
+  dashboard_topups_subtitle: "Stripe-fizetések (e-mail alapján).",
+  dashboard_topups_empty: "Még nincs feltöltési rekord.",
+  referral_section_title: "Ajánlás",
+  referral_section_subtitle_prefix: "Meghívó küldése e-mailben. A meghívott első készülékvásárlása",
+  referral_section_subtitle_suffix: "Ft kedvezményt kap.",
+  referral_email_placeholder: "meghivott@pelda.hu",
+  referral_send_button: "Meghívó küldése",
+  referral_success_message: "Meghívó elküldve.",
+  referral_empty_message: "Még nincs kiküldött meghívó.",
+  referral_status_sent: "Kiküldve",
+  referral_status_registered: "Regisztrált",
+  referral_status_discount_used: "Kedvezmény felhasználva",
 };
 
 export async function getSettingsMap(): Promise<Record<string, string>> {

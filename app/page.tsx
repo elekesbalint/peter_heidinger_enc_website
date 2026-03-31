@@ -1,63 +1,91 @@
 import Link from "next/link";
 import { getSettingsMap } from "@/lib/app-settings";
 
-const features = [
-  {
-    title: "ENC eszközrendelés",
-    desc: "Válaszd ki a járműkategóriát, add meg a rendszámot és fizess biztonságosan Stripe-on keresztül.",
-    icon: "📦",
-  },
-  {
-    title: "Egyenlegfeltöltés",
-    desc: "Választható csomagokkal gyorsan feltöltheted az egyenlegedet az utazásaidhoz.",
-    icon: "💳",
-  },
-  {
-    title: "Útvonalkövetés",
-    desc: "CSV import, automatikus wallet-levonás, árfolyamkezelés és teljes úttörténet.",
-    icon: "🛣️",
-  },
-  {
-    title: "Gyors ügyintézés",
-    desc: "Átlátható rendelési folyamat, egyértelmű visszajelzések és gyors státuszkövetés egy helyen.",
-    icon: "⚡",
-  },
-  {
-    title: "Profil és számlázás",
-    desc: "Személyes és számlázási adataidat bármikor frissítheted egy felületen.",
-    icon: "👤",
-  },
-  {
-    title: "Biztonság",
-    desc: "Biztonságos online fizetés, megbízható tranzakciókezelés és védett fiókhasználat.",
-    icon: "🔒",
-  },
-];
-
-const steps = [
-  {
-    title: "Regisztráció és profil",
-    desc: "Hozd létre a fiókodat, majd add meg az alapadataidat és a számlázási címet.",
-  },
-  {
-    title: "ENC készülék rendelés",
-    desc: "Válaszd ki a járműkategóriát, add meg a rendszámot, és indítsd el a rendelést.",
-  },
-  {
-    title: "Egyenleg feltöltése",
-    desc: "Töltsd fel az egyenlegedet a megfelelő csomaggal, hogy indulhass az utazásra.",
-  },
-  {
-    title: "Utazás és követés",
-    desc: "Használd az ENC készüléket, a rendszerben pedig bármikor ellenőrizd a történetet.",
-  },
-];
-
 export default async function Home() {
   const settings = await getSettingsMap();
+  const text = (key: string, fallback: string) => settings[key]?.trim() || fallback;
+  const steps = [
+    {
+      title: text("home_step_1_title", "Regisztráció és profil"),
+      desc: text(
+        "home_step_1_desc",
+        "Hozd létre a fiókodat, majd add meg az alapadataidat és a számlázási címet.",
+      ),
+    },
+    {
+      title: text("home_step_2_title", "ENC készülék rendelés"),
+      desc: text(
+        "home_step_2_desc",
+        "Válaszd ki a járműkategóriát, add meg a rendszámot, és indítsd el a rendelést.",
+      ),
+    },
+    {
+      title: text("home_step_3_title", "Egyenleg feltöltése"),
+      desc: text(
+        "home_step_3_desc",
+        "Töltsd fel az egyenlegedet a megfelelő csomaggal, hogy indulhass az utazásra.",
+      ),
+    },
+    {
+      title: text("home_step_4_title", "Utazás és követés"),
+      desc: text(
+        "home_step_4_desc",
+        "Használd az ENC készüléket, a rendszerben pedig bármikor ellenőrizd a történetet.",
+      ),
+    },
+  ];
+  const features = [
+    {
+      title: text("home_feature_1_title", "ENC eszközrendelés"),
+      desc: text(
+        "home_feature_1_desc",
+        "Válaszd ki a járműkategóriát, add meg a rendszámot és fizess biztonságosan Stripe-on keresztül.",
+      ),
+      icon: "📦",
+    },
+    {
+      title: text("home_feature_2_title", "Egyenlegfeltöltés"),
+      desc: text(
+        "home_feature_2_desc",
+        "Választható csomagokkal gyorsan feltöltheted az egyenlegedet az utazásaidhoz.",
+      ),
+      icon: "💳",
+    },
+    {
+      title: text("home_feature_3_title", "Útvonalkövetés"),
+      desc: text(
+        "home_feature_3_desc",
+        "CSV import, automatikus wallet-levonás, árfolyamkezelés és teljes úttörténet.",
+      ),
+      icon: "🛣️",
+    },
+    {
+      title: text("home_feature_4_title", "Gyors ügyintézés"),
+      desc: text(
+        "home_feature_4_desc",
+        "Átlátható rendelési folyamat, egyértelmű visszajelzések és gyors státuszkövetés egy helyen.",
+      ),
+      icon: "⚡",
+    },
+    {
+      title: text("home_feature_5_title", "Profil és számlázás"),
+      desc: text(
+        "home_feature_5_desc",
+        "Személyes és számlázási adataidat bármikor frissítheted egy felületen.",
+      ),
+      icon: "👤",
+    },
+    {
+      title: text("home_feature_6_title", "Biztonság"),
+      desc: text(
+        "home_feature_6_desc",
+        "Biztonságos online fizetés, megbízható tranzakciókezelés és védett fiókhasználat.",
+      ),
+      icon: "🔒",
+    },
+  ];
   const heroTitle =
-    settings.home_hero_title?.trim() ||
-    "ENC vásárlás és útdíjkezelés egyetlen modern rendszerben.";
+    settings.home_hero_title?.trim() || "ENC vásárlás és útdíjkezelés egyetlen modern rendszerben.";
   const heroSubtitle =
     settings.home_hero_subtitle?.trim() ||
     "Eszközrendelés, egyenlegfeltöltés, útvonaladatok kezelése és adminisztráció — prémium felületen, biztonságos fizetéssel.";
@@ -92,7 +120,7 @@ export default async function Home() {
 
             <div className="relative px-6 py-14 text-center sm:py-16 md:px-12 md:py-20">
               <p className="adria-animate-in text-sm font-semibold uppercase tracking-[0.2em] text-blue-700/80">
-                AdriaGo Platform
+                {text("home_platform_label", "AdriaGo Platform")}
               </p>
               <h1 className="adria-animate-in adria-delay-1 mt-5 text-4xl font-extrabold leading-[1.1] tracking-tight text-slate-900 md:text-5xl lg:text-6xl">
                 {heroTitle}
@@ -105,13 +133,13 @@ export default async function Home() {
                   href="/order"
                   className="adria-btn-primary rounded-2xl px-8 py-3.5 text-sm font-bold text-white"
                 >
-                  Eszközrendelés
+                  {text("home_cta_order_label", "Eszközrendelés")}
                 </Link>
                 <Link
                   href="/topup"
                   className="rounded-2xl border border-slate-300/85 bg-white/85 px-8 py-3.5 text-sm font-bold text-slate-800 shadow-sm backdrop-blur-md transition-all duration-300 hover:border-slate-400/80 hover:bg-white hover:scale-[1.03]"
                 >
-                  Egyenlegfeltöltés
+                  {text("home_cta_topup_label", "Egyenlegfeltöltés")}
                 </Link>
               </div>
             </div>
@@ -122,10 +150,13 @@ export default async function Home() {
       <section className="relative mx-auto max-w-6xl px-6 pt-6 pb-10">
         <div className="adria-animate-in text-center">
           <h2 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-            Így működik az AdriaGo
+            {text("home_steps_title", "Így működik az AdriaGo")}
           </h2>
           <p className="mx-auto mt-3 max-w-2xl text-muted">
-            Néhány egyszerű lépésben elindulhatsz, és minden fontos adatot egy helyen kezelhetsz.
+            {text(
+              "home_steps_subtitle",
+              "Néhány egyszerű lépésben elindulhatsz, és minden fontos adatot egy helyen kezelhetsz.",
+            )}
           </p>
         </div>
 
@@ -158,10 +189,13 @@ export default async function Home() {
       <section className="relative mx-auto max-w-6xl px-6 py-20">
         <div className="adria-animate-in text-center">
           <h2 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-            Minden, ami az ENC kezeléshez kell
+            {text("home_features_title", "Minden, ami az ENC kezeléshez kell")}
           </h2>
           <p className="mx-auto mt-3 max-w-2xl text-muted">
-            Egy platformon kezeled az eszközeidet, az egyenlegedet és az adminisztrációt.
+            {text(
+              "home_features_subtitle",
+              "Egy platformon kezeled az eszközeidet, az egyenlegedet és az adminisztrációt.",
+            )}
           </p>
         </div>
         <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -195,22 +229,27 @@ export default async function Home() {
       <section className="relative border-t border-white/30 py-20">
         <div className="absolute inset-0 bg-gradient-to-b from-white/25 to-transparent" />
         <div className="relative mx-auto max-w-3xl px-6 text-center">
-          <h2 className="text-2xl font-bold tracking-tight md:text-3xl">Készen állsz?</h2>
+          <h2 className="text-2xl font-bold tracking-tight md:text-3xl">
+            {text("home_final_title", "Készen állsz?")}
+          </h2>
           <p className="mt-3 text-muted">
-            Hozd létre a fiókodat és rendeld meg az ENC készülékedet néhány perc alatt.
+            {text(
+              "home_final_subtitle",
+              "Hozd létre a fiókodat és rendeld meg az ENC készülékedet néhány perc alatt.",
+            )}
           </p>
           <div className="mt-10 flex flex-wrap justify-center gap-4">
             <Link
               href="/register"
               className="rounded-2xl bg-gradient-to-r from-primary to-indigo-600 px-8 py-3.5 text-sm font-bold !text-white shadow-lg shadow-primary/30 transition-all duration-300 hover:scale-[1.03] hover:shadow-xl hover:shadow-primary/40"
             >
-              Ingyenes regisztráció
+              {text("home_final_register_cta", "Ingyenes regisztráció")}
             </Link>
             <Link
               href="/kapcsolat"
               className="adria-glass rounded-2xl px-8 py-3.5 text-sm font-bold text-foreground transition-all duration-300 hover:scale-[1.03]"
             >
-              Kapcsolatfelvétel
+              {text("home_final_contact_cta", "Kapcsolatfelvétel")}
             </Link>
           </div>
         </div>
