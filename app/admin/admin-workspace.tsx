@@ -92,8 +92,11 @@ type UserRow = {
   email: string | null;
   created_at: string;
   last_sign_in_at: string | null;
+  user_type: string | null;
   name: string | null;
   phone: string | null;
+  company_name: string | null;
+  tax_number: string | null;
   billing_address: string | null;
   shipping_address: string | null;
   devices: Array<{
@@ -602,8 +605,12 @@ export function AdminWorkspace() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: editUser.id,
+          user_type: editUser.user_type,
+          email: editUser.email,
           name: editUser.name,
           phone: editUser.phone,
+          company_name: editUser.company_name,
+          tax_number: editUser.tax_number,
           billing_address: editUser.billing_address,
           shipping_address: editUser.shipping_address,
         }),
@@ -1902,8 +1909,10 @@ export function AdminWorkspace() {
               <thead>
                 <tr className="border-b text-slate-500">
                   <th className="px-2 py-2">E-mail</th>
+                  <th className="px-2 py-2">Típus</th>
                   <th className="px-2 py-2">Név (profil)</th>
                   <th className="px-2 py-2">Telefon</th>
+                  <th className="px-2 py-2">Cégnév / adószám</th>
                   <th className="px-2 py-2">Készülékek / egyenleg</th>
                   <th className="px-2 py-2">Regisztráció</th>
                   <th className="px-2 py-2">Utolsó belépés</th>
@@ -1914,8 +1923,19 @@ export function AdminWorkspace() {
                 {users.map((u) => (
                   <tr key={u.id} className="border-b border-border/60">
                     <td className="px-2 py-2">{u.email ?? "—"}</td>
+                    <td className="px-2 py-2">{u.user_type === "company" ? "Cég" : "Magánszemély"}</td>
                     <td className="px-2 py-2">{u.name ?? "—"}</td>
                     <td className="px-2 py-2">{u.phone ?? "—"}</td>
+                    <td className="px-2 py-2 text-xs">
+                      {u.user_type === "company" ? (
+                        <div>
+                          <div>{u.company_name ?? "—"}</div>
+                          <div className="text-slate-500">{u.tax_number ?? "—"}</div>
+                        </div>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
                     <td className="px-2 py-2">
                       <div className="space-y-1">
                         {u.devices.length === 0 && <div className="text-xs text-muted">Nincs eszköz</div>}
@@ -1972,6 +1992,26 @@ export function AdminWorkspace() {
                 <h3 className="font-semibold">Felhasználó szerkesztése: {editUser.email ?? editUser.id}</h3>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
                   <label className="text-sm">
+                    Fiók típusa
+                    <select
+                      value={editUser.user_type ?? "private"}
+                      onChange={(e) => setEditUser({ ...editUser, user_type: e.target.value })}
+                      className="mt-1 w-full rounded border px-2 py-1"
+                    >
+                      <option value="private">Magánszemély</option>
+                      <option value="company">Cég</option>
+                    </select>
+                  </label>
+                  <label className="text-sm sm:col-span-2">
+                    E-mail cím
+                    <input
+                      type="email"
+                      value={editUser.email ?? ""}
+                      onChange={(e) => setEditUser({ ...editUser, email: e.target.value || null })}
+                      className="mt-1 w-full rounded border px-2 py-1"
+                    />
+                  </label>
+                  <label className="text-sm">
                     Név
                     <input
                       value={editUser.name ?? ""}
@@ -1987,6 +2027,26 @@ export function AdminWorkspace() {
                       className="mt-1 w-full rounded border px-2 py-1"
                     />
                   </label>
+                  {editUser.user_type === "company" && (
+                    <>
+                      <label className="text-sm">
+                        Cégnév
+                        <input
+                          value={editUser.company_name ?? ""}
+                          onChange={(e) => setEditUser({ ...editUser, company_name: e.target.value })}
+                          className="mt-1 w-full rounded border px-2 py-1"
+                        />
+                      </label>
+                      <label className="text-sm">
+                        Adószám
+                        <input
+                          value={editUser.tax_number ?? ""}
+                          onChange={(e) => setEditUser({ ...editUser, tax_number: e.target.value })}
+                          className="mt-1 w-full rounded border px-2 py-1"
+                        />
+                      </label>
+                    </>
+                  )}
                   <label className="text-sm sm:col-span-2">
                     Számlázási cím
                     <textarea

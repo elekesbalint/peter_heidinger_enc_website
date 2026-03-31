@@ -25,8 +25,11 @@ export async function GET(request: Request) {
   const profileByUser = new Map<
     string,
     {
+      user_type: string | null;
       name: string | null;
       phone: string | null;
+      company_name: string | null;
+      tax_number: string | null;
       billing_address: string | null;
       shipping_address: string | null;
     }
@@ -34,12 +37,15 @@ export async function GET(request: Request) {
   if (ids.length > 0) {
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("auth_user_id, name, phone, billing_address, shipping_address")
+      .select("auth_user_id, user_type, name, phone, company_name, tax_number, billing_address, shipping_address")
       .in("auth_user_id", ids);
     for (const p of profiles ?? []) {
       profileByUser.set(p.auth_user_id, {
+        user_type: p.user_type ?? null,
         name: p.name,
         phone: p.phone,
+        company_name: p.company_name ?? null,
+        tax_number: p.tax_number ?? null,
         billing_address: p.billing_address ?? null,
         shipping_address: p.shipping_address ?? null,
       });
@@ -91,8 +97,11 @@ export async function GET(request: Request) {
       email: u.email ?? null,
       created_at: u.created_at,
       last_sign_in_at: u.last_sign_in_at ?? null,
+      user_type: pr?.user_type ?? null,
       name: pr?.name ?? null,
       phone: pr?.phone ?? null,
+      company_name: pr?.company_name ?? null,
+      tax_number: pr?.tax_number ?? null,
       billing_address: pr?.billing_address ?? null,
       shipping_address: pr?.shipping_address ?? null,
       devices: devicesByUser.get(u.id) ?? [],
