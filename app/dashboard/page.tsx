@@ -41,6 +41,38 @@ export default async function DashboardPage({
   const showProfileRequiredBanner = profileRequired && !profileComplete;
 
   const supabase = createSupabaseAdminClient();
+  const { data: pendingAssignments } = await supabase
+    .from("enc_device_orders")
+    .select("stripe_session_id, device_id")
+    .eq("auth_user_id", user.id)
+    .eq("status", "paid")
+    .eq("assignment_ok", false)
+    .not("device_id", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(20);
+  if ((pendingAssignments ?? []).length > 0) {
+    for (const row of pendingAssignments ?? []) {
+      if (!row.device_id) continue;
+      const { data: repairedRows, error: repairErr } = await supabase
+        .from("devices")
+        .update({
+          status: "sold",
+          auth_user_id: user.id,
+          sold_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", row.device_id)
+        .in("status", ["assigned", "available"])
+        .select("id");
+      if (repairErr) continue;
+      if (repairedRows && repairedRows.length > 0) {
+        await supabase
+          .from("enc_device_orders")
+          .update({ assignment_ok: true })
+          .eq("stripe_session_id", row.stripe_session_id);
+      }
+    }
+  }
   const settings = await getSettingsMap();
   const minBal = getIntSetting(settings, "min_balance_warning_huf", 5000);
   const fxEurToHuf = Math.max(1, getIntSetting(settings, "fx_eur_to_huf", 400));

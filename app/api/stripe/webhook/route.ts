@@ -173,16 +173,35 @@ export async function POST(request: Request) {
               license_plate: licensePlate,
             })
             .eq("id", deviceId)
-            .eq("status", "assigned")
+            .in("status", ["assigned", "available"])
             .select("id");
           updatedRows = devUpdate.data as Array<{ id: string }> | null;
           deviceUpdateError = devUpdate.error ? { message: devUpdate.error.message } : null;
+          if (!deviceUpdateError && (!updatedRows || updatedRows.length === 0)) {
+            const { data: currentDevice, error: currentDeviceErr } = await supabase
+              .from("devices")
+              .select("id, status, auth_user_id")
+              .eq("id", deviceId)
+              .maybeSingle();
+            if (currentDeviceErr) {
+              return new Response(`Device re-check error: ${currentDeviceErr.message}`, { status: 500 });
+            }
+            const alreadyAssignedToUser =
+              currentDevice?.status === "sold" &&
+              currentDevice?.auth_user_id === authUserId;
+            if (alreadyAssignedToUser) {
+              updatedRows = [{ id: String(currentDevice.id) }];
+            } else {
+              return new Response("Reservation payment succeeded, but device assignment failed", {
+                status: 409,
+              });
+            }
+          }
           if (!deviceUpdateError) {
             const { error: reservationPaidErr } = await supabase
               .from("device_payment_reservations")
               .update({ paid_at: paidAt })
               .eq("id", reservationId)
-              .is("paid_at", null)
               .is("cancelled_at", null);
             if (reservationPaidErr) {
               return new Response(`Reservation mark paid error: ${reservationPaidErr.message}`, {
