@@ -413,7 +413,9 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
                   </p>
                 )}
                 {!disabled && (
-                  <p className="mt-2 text-xs text-success">Csomag ár: {amount.toLocaleString("hu-HU")} EUR</p>
+                  <p className="mt-2 text-xs text-success">
+                    Kedvezmény: {Math.min(100, discountPercent).toLocaleString("hu-HU")}%
+                  </p>
                 )}
               </button>
             );
