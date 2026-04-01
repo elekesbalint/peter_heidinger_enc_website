@@ -437,9 +437,33 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
     label: "Kategória IV pontok",
     hint: "Egy sor = egy felsorolási pont.",
   },
+  aszf_title: {
+    label: "ÁSZF oldal cím",
+    hint: "Az ÁSZF oldal főcíme.",
+  },
+  aszf_intro: {
+    label: "ÁSZF bevezető",
+    hint: "Az ÁSZF oldal rövid bevezető szövege.",
+  },
+  aszf_content: {
+    label: "ÁSZF teljes tartalom",
+    hint: "Többsoros mező. Üres sor = új blokk.",
+  },
+  adatvedelem_title: {
+    label: "Adatvédelem oldal cím",
+    hint: "Az Adatvédelmi oldal főcíme.",
+  },
+  adatvedelem_intro: {
+    label: "Adatvédelem bevezető",
+    hint: "Az Adatvédelmi oldal rövid bevezető szövege.",
+  },
+  adatvedelem_content: {
+    label: "Adatvédelem teljes tartalom",
+    hint: "Többsoros mező. Üres sor = új blokk.",
+  },
 };
 
-const CONTENT_SETTING_PREFIXES = ["home_", "dashboard_", "order_"] as const;
+const CONTENT_SETTING_PREFIXES = ["home_", "dashboard_", "order_", "aszf_", "adatvedelem_"] as const;
 const CONTENT_SETTING_KEYS = new Set([
   "referral_section_title",
   "referral_section_subtitle_prefix",
@@ -458,7 +482,11 @@ function isContentSettingKey(key: string): boolean {
 }
 
 function isMultilineContentSettingKey(key: string): boolean {
-  return key.startsWith("order_category_guide_") && key.endsWith("_items");
+  return (
+    (key.startsWith("order_category_guide_") && key.endsWith("_items")) ||
+    key === "aszf_content" ||
+    key === "adatvedelem_content"
+  );
 }
 
 function isHeroImageSettingKey(key: string): boolean {

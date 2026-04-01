@@ -121,6 +121,16 @@ export const SETTINGS_DEFAULTS: Record<string, string> = {
   order_category_guide_ii_items: "Kisteherautó\n2 tengely, magasabb felépítmény\nNagyobb össztömeg vagy méret",
   order_category_guide_iii_items: "Busz\n3 tengely\nNagyobb járműkategória",
   order_category_guide_iv_items: "Nehézteherautó\n4 vagy több tengely\nLegmagasabb díjkategória",
+  aszf_title: "Általános Szerződési Feltételek",
+  aszf_intro:
+    "Ez egy helyőrző oldal. Az első valódi jogi szöveget cseréld le a Google Docs / ügyvédi dokumentum alapján.",
+  aszf_content:
+    "1. Szolgáltatás\nENC eszköz értékesítés, egyenlegfeltöltés, útdíj levonás — részletes leírás szükséges.\n\n2. Fizetés és szállítás\nStripe fizetés; szállítási és garanciális feltételek — pótolni.\n\n3. Panaszkezelés és visszavonás\nPanaszkezelési eljárás, elállás — pótolni.",
+  adatvedelem_title: "Adatvédelmi tájékoztató",
+  adatvedelem_intro:
+    "Helyőrző. Illeszd be a GDPR / 2011. évi CXII. törvény szerinti teljes szöveget, illetve a cookie / marketing beállításokat.",
+  adatvedelem_content:
+    "Adatkezelő\nAdatkezelő megnevezése és elérhetősége — pótolni.\n\nKezelt adatkörök\nFiók, rendelés, fizetés, üzenetek — pótolni.\n\nTárolási idő, jogalapok\nRészletes tárolási idő és jogalapok — pótolni.",
 };
 
 export async function getSettingsMap(): Promise<Record<string, string>> {

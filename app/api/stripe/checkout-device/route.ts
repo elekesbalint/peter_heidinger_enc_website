@@ -81,7 +81,7 @@ export async function POST(request: Request) {
         auth_user_id: user.id,
         user_email: user.email ?? null,
         category: category as DeviceCategoryValue,
-        note: "Nincs szabad keszulek — varolista",
+        note: "Nincs szabad készülék — várólista",
       });
 
       if (waitError) {
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
         ok: true,
         waitlist: true,
         message:
-          "Jelenleg nincs elerheto keszulekunk az altalad valasztott kategoriabol. Ha 2 heten belul utaznal, berelj ENC-t az ENCbérbeadás.hu-n. Ha utazasod kesobbi idopontban tortenik, abban az esetben keresni fogunk, amint erkeznek szabad keszulekeink.",
+          "Jelenleg nincs elérhető készülékünk az általad választott kategóriából. Ha 2 héten belül utaznál, bérelj ENC-t az ENCbérbeadás.hu-n. Ha utazásod későbbi időpontban történik, abban az esetben keresni fogunk, amint érkeznek szabad készülékeink.",
       });
     }
 
