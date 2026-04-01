@@ -90,6 +90,7 @@ export async function POST(request: Request) {
 
   const settings = await getSettingsMap();
   const minBalanceWarningHuf = getIntSetting(settings, "min_balance_warning_huf", 5000);
+  const fxEurToHuf = Math.max(1, getIntSetting(settings, "fx_eur_to_huf", 400));
   const crossedLowBalance = oldBalance >= minBalanceWarningHuf && newBalance < minBalanceWarningHuf;
   if (crossedLowBalance) {
     const { data: deviceRow } = await supabase
@@ -103,10 +104,12 @@ export async function POST(request: Request) {
       const userResp = await supabase.auth.admin.getUserById(authUserId);
       const to = userResp.data.user?.email?.trim() ?? "";
       if (to) {
+        const newBalanceEur = Number((newBalance / fxEurToHuf).toFixed(2));
+        const minBalanceWarningEur = Number((minBalanceWarningHuf / fxEurToHuf).toFixed(2));
         await sendAppEmail({
           to,
           subject: "AdriaGo — alacsony egyenleg figyelmeztetés",
-          text: `Az eszközöd (${deviceIdentifier}) egyenlege ${newBalance} Ft-ra változott, ami az alacsony egyenleg küszöb (${minBalanceWarningHuf} Ft) alatt van. Kérjük töltsd fel az egyenleget.`,
+          text: `Az eszközöd (${deviceIdentifier}) egyenlege ${newBalanceEur.toLocaleString("hu-HU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR-ra változott, ami az alacsony egyenleg küszöb (${minBalanceWarningEur.toLocaleString("hu-HU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR) alatt van. Kérjük töltsd fel az egyenleget.`,
         }).catch((err) => {
           console.error("[wallet-adjust] low-balance email failed:", err);
         });
