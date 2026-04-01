@@ -380,11 +380,18 @@ export async function POST(request: Request) {
             console.info("[eracuni] Topup invoice request sent successfully.");
           }
 
+          const settings = await getSettingsMap();
+          const fxEurToHuf = Math.max(1, getIntSetting(settings, "fx_eur_to_huf", 400));
+          const creditedEur = Number((amountHuf / fxEurToHuf).toFixed(2));
+
           if (userEmail) {
             await sendAppEmail({
               to: userEmail,
               subject: "AdriaGo — sikeres egyenlegfeltöltés",
-              text: `Feltöltés: ${amountEur.toLocaleString("hu-HU", {
+              text: `Feltöltött összeg: ${creditedEur.toLocaleString("hu-HU", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })} EUR, fizetett összeg: ${amountEur.toLocaleString("hu-HU", {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
               })} EUR, eszköz: ${deviceIdentifier}.`,
@@ -394,7 +401,14 @@ export async function POST(request: Request) {
                 rows: [
                   { label: "Eszköz", value: deviceIdentifier ?? "-" },
                   {
-                    label: "Feltöltés",
+                    label: "Feltöltött összeg",
+                    value: `${creditedEur.toLocaleString("hu-HU", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })} EUR`,
+                  },
+                  {
+                    label: "Fizetett összeg",
                     value: `${amountEur.toLocaleString("hu-HU", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
@@ -408,7 +422,6 @@ export async function POST(request: Request) {
             });
           }
 
-          const settings = await getSettingsMap();
           const minBal = getIntSetting(settings, "min_balance_warning_huf", 5000);
 
           const { data: w } = await supabase
