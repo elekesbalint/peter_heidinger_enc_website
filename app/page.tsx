@@ -119,6 +119,9 @@ export default async function Home() {
   const heroSubtitle =
     settings.home_hero_subtitle?.trim() ||
     "Eszközrendelés, egyenlegfeltöltés, útvonaladatok kezelése és adminisztráció — prémium felületen, biztonságos fizetéssel.";
+  const heroBgDesktop = settings.hero_bg_desktop?.trim() || "/images/enc-hero-bg.png";
+  const heroBgTablet = settings.hero_bg_tablet?.trim() || heroBgDesktop;
+  const heroBgMobile = settings.hero_bg_mobile?.trim() || heroBgTablet;
 
   return (
     <>
@@ -126,11 +129,15 @@ export default async function Home() {
       <section className="relative px-4 pt-6 pb-14 sm:px-6 md:pt-8 md:pb-20">
         <div className="relative mx-auto max-w-6xl">
           <div className="relative overflow-hidden rounded-[1.75rem] border border-white/65 shadow-2xl shadow-slate-900/8 ring-1 ring-slate-900/[0.03] md:rounded-[2.25rem]">
-            <div
-              className="absolute inset-0 rounded-[inherit] bg-cover bg-center"
-              style={{ backgroundImage: "url('/images/enc-hero-bg.png')" }}
-              aria-hidden
-            />
+            <picture className="absolute inset-0 block overflow-hidden rounded-[inherit]" aria-hidden>
+              <source media="(max-width: 767px)" srcSet={heroBgMobile} />
+              <source media="(max-width: 1279px)" srcSet={heroBgTablet} />
+              <img
+                src={heroBgDesktop}
+                alt=""
+                className="h-full w-full object-cover object-center"
+              />
+            </picture>
             {/* Olvashatósági rétegek a háttérkép fölé */}
             <div
               className="absolute inset-0 rounded-[inherit] bg-gradient-to-b from-white/86 via-white/80 to-white/74"

@@ -153,6 +153,18 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
     label: "Ajánlói kedvezmény készülékvásárlásra (Ft)",
     hint: "A meghívott user első sikeres készülékvásárlásakor ennyivel csökken az ár.",
   },
+  hero_bg_desktop: {
+    label: "Főoldali banner kép (asztali)",
+    hint: "Desktop nézetben használt hero háttérkép. Feltölthető fájl vagy URL/data URI.",
+  },
+  hero_bg_tablet: {
+    label: "Főoldali banner kép (tablet)",
+    hint: "Tablet nézetben használt hero háttérkép. Feltölthető fájl vagy URL/data URI.",
+  },
+  hero_bg_mobile: {
+    label: "Főoldali banner kép (mobil)",
+    hint: "Mobil nézetben használt hero háttérkép. Feltölthető fájl vagy URL/data URI.",
+  },
   mpl_sender_country: {
     label: "MPL feladó ország",
     hint: "A csomagfeladás feladó címének országa.",
@@ -449,6 +461,10 @@ function isMultilineContentSettingKey(key: string): boolean {
   return key.startsWith("order_category_guide_") && key.endsWith("_items");
 }
 
+function isHeroImageSettingKey(key: string): boolean {
+  return key === "hero_bg_desktop" || key === "hero_bg_tablet" || key === "hero_bg_mobile";
+}
+
 function normalizeAddressForDisplay(raw: string | null): string {
   if (!raw) return "—";
   const parts = raw
@@ -568,6 +584,36 @@ export function AdminWorkspace() {
   const [walletAdjustLoading, setWalletAdjustLoading] = useState(false);
   const [walletAdjustErr, setWalletAdjustErr] = useState<string | null>(null);
   const [walletAdjustMsg, setWalletAdjustMsg] = useState<string | null>(null);
+
+  async function fileToDataUrl(file: File): Promise<string> {
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result ?? ""));
+      reader.onerror = () => reject(new Error("Nem sikerült beolvasni a fájlt."));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function uploadHeroImageToSetting(settingKey: string, file: File | null) {
+    if (!file) return;
+    setSetErr(null);
+    setSetMsg(null);
+    if (!file.type.startsWith("image/")) {
+      setSetErr("Csak képfájl tölthető fel.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setSetErr("A kép mérete legfeljebb 5 MB lehet.");
+      return;
+    }
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      setSetDraft((d) => ({ ...d, [settingKey]: dataUrl }));
+      setSetMsg(`Kép betöltve: ${file.name}. Mentsd el az „Összes mentése” gombbal.`);
+    } catch (e) {
+      setSetErr(e instanceof Error ? e.message : "Kép feltöltési hiba.");
+    }
+  }
 
   const loadEnc = useCallback(async () => {
     setEncLoading(true);
@@ -2346,11 +2392,27 @@ export function AdminWorkspace() {
                     <p className="text-xs text-muted">{SETTINGS_META[s.key]?.hint ?? "Technikai beállítás."}</p>
                     <p className="mt-0.5 font-mono text-[10px] text-slate-400">{s.key}</p>
                   </div>
-                  <input
-                    value={setDraft[s.key] ?? ""}
-                    onChange={(e) => setSetDraft((d) => ({ ...d, [s.key]: e.target.value }))}
-                    className="min-w-[200px] flex-1 rounded border px-2 py-1"
-                  />
+                  <div className="min-w-[200px] flex-1 space-y-2">
+                    <input
+                      value={setDraft[s.key] ?? ""}
+                      onChange={(e) => setSetDraft((d) => ({ ...d, [s.key]: e.target.value }))}
+                      className="w-full rounded border px-2 py-1"
+                    />
+                    {isHeroImageSettingKey(s.key) && (
+                      <label className="inline-flex cursor-pointer items-center gap-2 rounded border border-blue-200 bg-blue-50 px-2 py-1 text-xs text-blue-900 hover:bg-blue-100">
+                        Kép feltöltése
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            void uploadHeroImageToSetting(s.key, e.target.files?.[0] ?? null);
+                            e.currentTarget.value = "";
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
                 </div>
               ))}
               {!setLoading && settings.filter((s) => !isContentSettingKey(s.key)).length === 0 && (

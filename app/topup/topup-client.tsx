@@ -313,20 +313,26 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
           )}
         </div>
         {selectedDevice && selectedDestination && (
-          <div className="mt-4 rounded-xl border border-indigo-200 bg-indigo-50/70 px-4 py-3 text-sm text-indigo-950">
-            <p>
-              Jelenlegi egyenleg: <strong>{currentBalanceEur.toLocaleString("hu-HU")} EUR</strong> | Úticélhoz ajánlott:
-              <strong> {destinationRequiredEur.toLocaleString("hu-HU")} EUR</strong>
-            </p>
-            {minimumRequiredTopup > 0 ? (
-              <p className="mt-1">
-                Minimum szükséges feltöltés:{" "}
-                <strong>{minimumRequiredTopup.toLocaleString("hu-HU")} EUR</strong>
+          <>
+            <div className="mt-4 rounded-xl border border-indigo-200 bg-indigo-50/70 px-4 py-3 text-sm text-indigo-950">
+              <p>
+                Jelenlegi egyenleg: <strong>{currentBalanceEur.toLocaleString("hu-HU")} EUR</strong> | Úticélhoz ajánlott:
+                <strong> {destinationRequiredEur.toLocaleString("hu-HU")} EUR</strong>
               </p>
-            ) : (
-              <p className="mt-1">A jelenlegi egyenleg elegendő, egyedi feltöltés opcionális.</p>
-            )}
-          </div>
+              {minimumRequiredTopup > 0 ? (
+                <p className="mt-1">
+                  Minimum szükséges feltöltés:{" "}
+                  <strong>{minimumRequiredTopup.toLocaleString("hu-HU")} EUR</strong>
+                </p>
+              ) : (
+                <p className="mt-1">A jelenlegi egyenleg elegendő, egyedi feltöltés opcionális.</p>
+              )}
+            </div>
+            <p className="mt-2 text-xs text-slate-600">
+              A hozzávetőlegesen kalkulált útdíj Letenye határátkelővel értendő. Amennyiben más határátkelőt választ, érdemes
+              magasabb összeggel feltölteni a készüléket, mert az út más szakaszon drágább lehet.
+            </p>
+          </>
         )}
       </div>
 

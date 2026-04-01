@@ -13,6 +13,9 @@ export const SETTINGS_DEFAULTS: Record<string, string> = {
   /** Vesszovel elvalasztott kategoriak (pl. ii,iii,iv): ezekhez nem valaszthato a legkisebb topup csomag. */
   topup_block_smallest_for_categories: "ii,iii,iv",
   referral_device_discount_huf: "25000",
+  hero_bg_desktop: "/images/enc-hero-bg.png",
+  hero_bg_tablet: "/images/enc-hero-bg.png",
+  hero_bg_mobile: "/images/enc-hero-bg.png",
   mpl_sender_country: "Magyarország",
   mpl_sender_zip: "1138",
   mpl_sender_city: "Budapest",
