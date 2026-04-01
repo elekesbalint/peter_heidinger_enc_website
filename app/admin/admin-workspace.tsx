@@ -2247,10 +2247,12 @@ export function AdminWorkspace() {
                               )}
                               <button
                                 type="button"
-                                className="rounded border border-blue-200 bg-blue-50 px-1 py-0.5 text-[10px] text-blue-900"
+                                className="inline-flex h-5 w-5 items-center justify-center rounded border border-slate-300 bg-white text-[11px] font-bold text-slate-700 hover:bg-slate-50"
                                 onClick={() => quickAdjustUserDeviceBalance(d.identifier, d.balance_huf)}
+                                title="Egyenleg állítás"
+                                aria-label="Egyenleg állítás"
                               >
-                                Állítás
+                                $
                               </button>
                             </div>
                           );
