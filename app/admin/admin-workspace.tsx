@@ -445,6 +445,10 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
     label: "ÁSZF bevezető",
     hint: "Az ÁSZF oldal rövid bevezető szövege.",
   },
+  aszf_document_url: {
+    label: "ÁSZF dokumentum (PDF/Word)",
+    hint: "Feltölthető dokumentum link/data URI, ami az oldalon letöltésként jelenik meg.",
+  },
   aszf_content: {
     label: "ÁSZF teljes tartalom",
     hint: "Többsoros mező. Üres sor = új blokk.",
@@ -456,6 +460,10 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
   adatvedelem_intro: {
     label: "Adatvédelem bevezető",
     hint: "Az Adatvédelmi oldal rövid bevezető szövege.",
+  },
+  adatvedelem_document_url: {
+    label: "Adatvédelem dokumentum (PDF/Word)",
+    hint: "Feltölthető dokumentum link/data URI, ami az oldalon letöltésként jelenik meg.",
   },
   adatvedelem_content: {
     label: "Adatvédelem teljes tartalom",
@@ -491,6 +499,10 @@ function isMultilineContentSettingKey(key: string): boolean {
 
 function isHeroImageSettingKey(key: string): boolean {
   return key === "hero_bg_desktop" || key === "hero_bg_tablet" || key === "hero_bg_mobile";
+}
+
+function isLegalDocumentSettingKey(key: string): boolean {
+  return key === "aszf_document_url" || key === "adatvedelem_document_url";
 }
 
 function normalizeAddressForDisplay(raw: string | null): string {
@@ -640,6 +652,34 @@ export function AdminWorkspace() {
       setSetMsg(`Kép betöltve: ${file.name}. Mentsd el az „Összes mentése” gombbal.`);
     } catch (e) {
       setSetErr(e instanceof Error ? e.message : "Kép feltöltési hiba.");
+    }
+  }
+
+  async function uploadLegalDocumentToSetting(settingKey: string, file: File | null) {
+    if (!file) return;
+    setSetErr(null);
+    setSetMsg(null);
+    const allowedExt = [".pdf", ".doc", ".docx"];
+    const lowerName = file.name.toLowerCase();
+    const extOk = allowedExt.some((ext) => lowerName.endsWith(ext));
+    const typeOk =
+      file.type === "application/pdf" ||
+      file.type === "application/msword" ||
+      file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    if (!extOk && !typeOk) {
+      setSetErr("Csak PDF vagy Word (.doc/.docx) dokumentum tölthető fel.");
+      return;
+    }
+    if (file.size > 12 * 1024 * 1024) {
+      setSetErr("A dokumentum mérete legfeljebb 12 MB lehet.");
+      return;
+    }
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      setSetDraft((d) => ({ ...d, [settingKey]: dataUrl }));
+      setSetMsg(`Dokumentum betöltve: ${file.name}. Mentsd el az „Összes mentése” gombbal.`);
+    } catch (e) {
+      setSetErr(e instanceof Error ? e.message : "Dokumentum feltöltési hiba.");
     }
   }
 
@@ -2505,19 +2545,35 @@ export function AdminWorkspace() {
                     <p className="text-xs text-muted">{SETTINGS_META[s.key]?.hint ?? "Szöveg beállítás."}</p>
                     <p className="mt-0.5 font-mono text-[10px] text-slate-400">{s.key}</p>
                   </div>
-                  {isMultilineContentSettingKey(s.key) ? (
-                    <textarea
-                      value={setDraft[s.key] ?? ""}
-                      onChange={(e) => setSetDraft((d) => ({ ...d, [s.key]: e.target.value }))}
-                      className="min-h-[96px] min-w-[200px] flex-1 rounded border px-2 py-1"
-                    />
-                  ) : (
-                    <input
-                      value={setDraft[s.key] ?? ""}
-                      onChange={(e) => setSetDraft((d) => ({ ...d, [s.key]: e.target.value }))}
-                      className="min-w-[200px] flex-1 rounded border px-2 py-1"
-                    />
-                  )}
+                  <div className="min-w-[200px] flex-1 space-y-2">
+                    {isMultilineContentSettingKey(s.key) ? (
+                      <textarea
+                        value={setDraft[s.key] ?? ""}
+                        onChange={(e) => setSetDraft((d) => ({ ...d, [s.key]: e.target.value }))}
+                        className="min-h-[96px] w-full rounded border px-2 py-1"
+                      />
+                    ) : (
+                      <input
+                        value={setDraft[s.key] ?? ""}
+                        onChange={(e) => setSetDraft((d) => ({ ...d, [s.key]: e.target.value }))}
+                        className="w-full rounded border px-2 py-1"
+                      />
+                    )}
+                    {isLegalDocumentSettingKey(s.key) && (
+                      <label className="inline-flex cursor-pointer items-center gap-2 rounded border border-indigo-200 bg-indigo-50 px-2 py-1 text-xs text-indigo-900 hover:bg-indigo-100">
+                        Dokumentum feltöltése
+                        <input
+                          type="file"
+                          accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                          className="hidden"
+                          onChange={(e) => {
+                            void uploadLegalDocumentToSetting(s.key, e.target.files?.[0] ?? null);
+                            e.currentTarget.value = "";
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
                 </div>
               ))}
               {!setLoading && settings.filter((s) => isContentSettingKey(s.key)).length === 0 && (

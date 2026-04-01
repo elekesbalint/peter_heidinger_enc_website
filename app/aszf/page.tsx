@@ -7,6 +7,7 @@ export default async function AszfPage() {
   const intro =
     settings.aszf_intro?.trim() ||
     "Ez egy helyőrző oldal. Az első valódi jogi szöveget cseréld le a Google Docs / ügyvédi dokumentum alapján.";
+  const documentUrl = settings.aszf_document_url?.trim() || "";
   const content =
     settings.aszf_content?.trim() ||
     "1. Szolgáltatás\nENC eszköz értékesítés, egyenlegfeltöltés, útdíj levonás — részletes leírás szükséges.\n\n2. Fizetés és szállítás\nStripe fizetés; szállítási és garanciális feltételek — pótolni.\n\n3. Panaszkezelés és visszavonás\nPanaszkezelési eljárás, elállás — pótolni.";
@@ -22,6 +23,16 @@ export default async function AszfPage() {
       </Link>
       <h1 className="mt-6 text-3xl font-bold tracking-tight">{title}</h1>
       <p className="mt-4 text-muted">{intro}</p>
+      {documentUrl && (
+        <a
+          href={documentUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-4 inline-flex rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-900 hover:bg-indigo-100"
+        >
+          ÁSZF dokumentum megnyitása / letöltése
+        </a>
+      )}
       <div className="mt-8 space-y-6 text-sm leading-relaxed text-foreground">
         {blocks.map((block, idx) => (
           <div key={`${idx}-${block.slice(0, 24)}`} className="rounded-2xl border border-border bg-card p-6 shadow-sm">

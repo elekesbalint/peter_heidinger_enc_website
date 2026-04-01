@@ -7,6 +7,7 @@ export default async function AdatvedelemPage() {
   const intro =
     settings.adatvedelem_intro?.trim() ||
     "Helyőrző. Illeszd be a GDPR / 2011. évi CXII. törvény szerinti teljes szöveget, illetve a cookie / marketing beállításokat.";
+  const documentUrl = settings.adatvedelem_document_url?.trim() || "";
   const content =
     settings.adatvedelem_content?.trim() ||
     "Adatkezelő\nAdatkezelő megnevezése és elérhetősége — pótolni.\n\nKezelt adatkörök\nFiók, rendelés, fizetés, üzenetek — pótolni.\n\nTárolási idő, jogalapok\nRészletes tárolási idő és jogalapok — pótolni.";
@@ -22,6 +23,16 @@ export default async function AdatvedelemPage() {
       </Link>
       <h1 className="mt-6 text-3xl font-bold tracking-tight">{title}</h1>
       <p className="mt-4 text-muted">{intro}</p>
+      {documentUrl && (
+        <a
+          href={documentUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-4 inline-flex rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-900 hover:bg-indigo-100"
+        >
+          Adatvédelmi dokumentum megnyitása / letöltése
+        </a>
+      )}
       <div className="mt-8 space-y-6 text-sm leading-relaxed text-foreground">
         {blocks.map((block, idx) => (
           <div key={`${idx}-${block.slice(0, 24)}`} className="rounded-2xl border border-border bg-card p-6 shadow-sm">

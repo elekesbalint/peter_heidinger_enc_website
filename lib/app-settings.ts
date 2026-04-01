@@ -124,11 +124,13 @@ export const SETTINGS_DEFAULTS: Record<string, string> = {
   aszf_title: "Általános Szerződési Feltételek",
   aszf_intro:
     "Ez egy helyőrző oldal. Az első valódi jogi szöveget cseréld le a Google Docs / ügyvédi dokumentum alapján.",
+  aszf_document_url: "",
   aszf_content:
     "1. Szolgáltatás\nENC eszköz értékesítés, egyenlegfeltöltés, útdíj levonás — részletes leírás szükséges.\n\n2. Fizetés és szállítás\nStripe fizetés; szállítási és garanciális feltételek — pótolni.\n\n3. Panaszkezelés és visszavonás\nPanaszkezelési eljárás, elállás — pótolni.",
   adatvedelem_title: "Adatvédelmi tájékoztató",
   adatvedelem_intro:
     "Helyőrző. Illeszd be a GDPR / 2011. évi CXII. törvény szerinti teljes szöveget, illetve a cookie / marketing beállításokat.",
+  adatvedelem_document_url: "",
   adatvedelem_content:
     "Adatkezelő\nAdatkezelő megnevezése és elérhetősége — pótolni.\n\nKezelt adatkörök\nFiók, rendelés, fizetés, üzenetek — pótolni.\n\nTárolási idő, jogalapok\nRészletes tárolási idő és jogalapok — pótolni.",
 };
