@@ -7,6 +7,12 @@ import {
   DEVICE_CATEGORY_VALUES,
   type DeviceCategoryValue,
 } from "@/lib/device-categories";
+import {
+  createEmptyHomeBlogPost,
+  parseHomeBlogPosts,
+  stringifyHomeBlogPosts,
+  type HomeBlogPost,
+} from "@/lib/home-blog";
 import { AdminDataPanels } from "./admin-data-panels";
 import { ImportDevicesForm } from "./import-devices-form";
 import { ImportRoutesForm } from "./import-routes-form";
@@ -273,18 +279,10 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
   home_blog_title: { label: "Blog cím", hint: "Főoldali blog szekció főcíme." },
   home_blog_subtitle: { label: "Blog alcím", hint: "Főoldali blog szekció leírása." },
   home_blog_read_more_label: { label: "Blog link felirat", hint: "Pl.: Tovább olvasom." },
-  home_blog_1_title: { label: "Blog #1 cím", hint: "Első blog kártya címe." },
-  home_blog_1_excerpt: { label: "Blog #1 kivonat", hint: "Első blog kártya rövid szöveg." },
-  home_blog_1_date: { label: "Blog #1 dátum", hint: "Pl.: 2026-03-30." },
-  home_blog_1_url: { label: "Blog #1 link", hint: "Teljes URL (https://...)." },
-  home_blog_2_title: { label: "Blog #2 cím", hint: "Második blog kártya címe." },
-  home_blog_2_excerpt: { label: "Blog #2 kivonat", hint: "Második blog kártya rövid szöveg." },
-  home_blog_2_date: { label: "Blog #2 dátum", hint: "Pl.: 2026-03-30." },
-  home_blog_2_url: { label: "Blog #2 link", hint: "Teljes URL (https://...)." },
-  home_blog_3_title: { label: "Blog #3 cím", hint: "Harmadik blog kártya címe." },
-  home_blog_3_excerpt: { label: "Blog #3 kivonat", hint: "Harmadik blog kártya rövid szöveg." },
-  home_blog_3_date: { label: "Blog #3 dátum", hint: "Pl.: 2026-03-30." },
-  home_blog_3_url: { label: "Blog #3 link", hint: "Teljes URL (https://...)." },
+  home_blog_posts_json: {
+    label: "Blog bejegyzések (JSON)",
+    hint: "A bejegyzések listája. Ezt a Blog fül kezeli automatikusan.",
+  },
   home_final_title: {
     label: "Főoldal záró cím",
     hint: "Alsó CTA blokk címe.",
@@ -517,7 +515,6 @@ function isTechnicalSettingKey(key: string): boolean {
 function isMultilineContentSettingKey(key: string): boolean {
   return (
     (key.startsWith("order_category_guide_") && key.endsWith("_items")) ||
-    (key.startsWith("home_blog_") && key.endsWith("_excerpt")) ||
     key === "aszf_content" ||
     key === "adatvedelem_content"
   );
@@ -706,6 +703,50 @@ export function AdminWorkspace() {
       setSetMsg(`Dokumentum betöltve: ${file.name}. Mentsd el az „Összes mentése” gombbal.`);
     } catch (e) {
       setSetErr(e instanceof Error ? e.message : "Dokumentum feltöltési hiba.");
+    }
+  }
+
+  const blogPosts = parseHomeBlogPosts(setDraft.home_blog_posts_json);
+
+  function setBlogPosts(nextPosts: HomeBlogPost[]) {
+    setSetDraft((d) => ({ ...d, home_blog_posts_json: stringifyHomeBlogPosts(nextPosts) }));
+  }
+
+  function updateBlogPost(id: string, patch: Partial<HomeBlogPost>) {
+    setBlogPosts(
+      blogPosts.map((post) => {
+        if (post.id !== id) return post;
+        return { ...post, ...patch };
+      }),
+    );
+  }
+
+  function addBlogPost() {
+    setBlogPosts([...blogPosts, createEmptyHomeBlogPost()]);
+  }
+
+  function deleteBlogPost(id: string) {
+    setBlogPosts(blogPosts.filter((post) => post.id !== id));
+  }
+
+  async function uploadBlogImage(postId: string, file: File | null) {
+    if (!file) return;
+    setSetErr(null);
+    setSetMsg(null);
+    if (!file.type.startsWith("image/")) {
+      setSetErr("Csak képfájl tölthető fel.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setSetErr("A kép mérete legfeljebb 5 MB lehet.");
+      return;
+    }
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      updateBlogPost(postId, { image_url: dataUrl });
+      setSetMsg(`Blog kép betöltve: ${file.name}. Mentsd el az „Összes mentése” gombbal.`);
+    } catch (e) {
+      setSetErr(e instanceof Error ? e.message : "Blog kép feltöltési hiba.");
     }
   }
 
@@ -2612,7 +2653,7 @@ export function AdminWorkspace() {
 
         {tab === "Blog" && (
           <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <h2 className="text-xl font-semibold">Blog</h2>
               <button type="button" onClick={() => loadSettings()} className="rounded border px-2 py-1 text-sm">
                 Frissítés
@@ -2625,40 +2666,155 @@ export function AdminWorkspace() {
               >
                 {setSaving ? "Mentés folyamatban..." : "Összes mentése"}
               </button>
+              <button
+                type="button"
+                onClick={addBlogPost}
+                className="rounded border border-emerald-300 bg-emerald-50 px-2 py-1 text-sm font-medium text-emerald-900 hover:bg-emerald-100"
+              >
+                + Új blog hozzáadása
+              </button>
             </div>
             <p className="mt-2 text-sm text-muted">
-              A főoldali blog címét, alcímét, valamint a 3 kiemelt cikket itt tudod szerkeszteni.
+              Itt szerkesztheted a főoldali blog szekciót, a bejegyzéseket, képeket, és innen tudsz új bejegyzést hozzáadni vagy törölni.
             </p>
             {setErr && <p className="mt-2 text-sm text-red-600">{setErr}</p>}
             {!setErr && setMsg && <p className="mt-2 text-sm text-emerald-700">{setMsg}</p>}
-            <div className="mt-4 space-y-2">
-              {settings.filter((s) => isBlogSettingKey(s.key)).map((s) => (
-                <div key={s.key} className="flex flex-wrap items-start gap-2 text-sm">
-                  <div className="w-56 shrink-0">
-                    <p className="font-medium text-foreground">{SETTINGS_META[s.key]?.label ?? s.key}</p>
-                    <p className="text-xs text-muted">{SETTINGS_META[s.key]?.hint ?? "Blog beállítás."}</p>
-                    <p className="mt-0.5 font-mono text-[10px] text-slate-400">{s.key}</p>
+            <div className="mt-4 space-y-3">
+              <div className="flex flex-wrap items-start gap-2 text-sm">
+                <div className="w-56 shrink-0">
+                  <p className="font-medium text-foreground">{SETTINGS_META.home_blog_title?.label ?? "Blog cím"}</p>
+                  <p className="text-xs text-muted">{SETTINGS_META.home_blog_title?.hint ?? "Szekció cím."}</p>
+                  <p className="mt-0.5 font-mono text-[10px] text-slate-400">home_blog_title</p>
+                </div>
+                <div className="min-w-[200px] flex-1">
+                  <input
+                    value={setDraft.home_blog_title ?? ""}
+                    onChange={(e) => setSetDraft((d) => ({ ...d, home_blog_title: e.target.value }))}
+                    className="w-full rounded border px-2 py-1"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-wrap items-start gap-2 text-sm">
+                <div className="w-56 shrink-0">
+                  <p className="font-medium text-foreground">
+                    {SETTINGS_META.home_blog_subtitle?.label ?? "Blog alcím"}
+                  </p>
+                  <p className="text-xs text-muted">{SETTINGS_META.home_blog_subtitle?.hint ?? "Szekció leírás."}</p>
+                  <p className="mt-0.5 font-mono text-[10px] text-slate-400">home_blog_subtitle</p>
+                </div>
+                <div className="min-w-[200px] flex-1">
+                  <input
+                    value={setDraft.home_blog_subtitle ?? ""}
+                    onChange={(e) => setSetDraft((d) => ({ ...d, home_blog_subtitle: e.target.value }))}
+                    className="w-full rounded border px-2 py-1"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-wrap items-start gap-2 text-sm">
+                <div className="w-56 shrink-0">
+                  <p className="font-medium text-foreground">
+                    {SETTINGS_META.home_blog_read_more_label?.label ?? "Tovább gomb felirat"}
+                  </p>
+                  <p className="text-xs text-muted">
+                    {SETTINGS_META.home_blog_read_more_label?.hint ?? "Kártya alján lévő link felirata."}
+                  </p>
+                  <p className="mt-0.5 font-mono text-[10px] text-slate-400">home_blog_read_more_label</p>
+                </div>
+                <div className="min-w-[200px] flex-1">
+                  <input
+                    value={setDraft.home_blog_read_more_label ?? ""}
+                    onChange={(e) => setSetDraft((d) => ({ ...d, home_blog_read_more_label: e.target.value }))}
+                    className="w-full rounded border px-2 py-1"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-4">
+              {blogPosts.map((post, index) => (
+                <div key={post.id} className="rounded-xl border border-border bg-white/70 p-4">
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-foreground">Blog #{index + 1}</h3>
+                    <button
+                      type="button"
+                      onClick={() => deleteBlogPost(post.id)}
+                      className="rounded border border-red-300 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100"
+                    >
+                      Törlés
+                    </button>
                   </div>
-                  <div className="min-w-[200px] flex-1 space-y-2">
-                    {isMultilineContentSettingKey(s.key) ? (
-                      <textarea
-                        value={setDraft[s.key] ?? ""}
-                        onChange={(e) => setSetDraft((d) => ({ ...d, [s.key]: e.target.value }))}
-                        className="min-h-[96px] w-full rounded border px-2 py-1"
-                      />
-                    ) : (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <label className="text-xs text-slate-600">
+                      Cím
                       <input
-                        value={setDraft[s.key] ?? ""}
-                        onChange={(e) => setSetDraft((d) => ({ ...d, [s.key]: e.target.value }))}
-                        className="w-full rounded border px-2 py-1"
+                        value={post.title}
+                        onChange={(e) => updateBlogPost(post.id, { title: e.target.value })}
+                        className="mt-1 w-full rounded border px-2 py-1 text-sm"
                       />
+                    </label>
+                    <label className="text-xs text-slate-600">
+                      Dátum
+                      <input
+                        value={post.date}
+                        onChange={(e) => updateBlogPost(post.id, { date: e.target.value })}
+                        className="mt-1 w-full rounded border px-2 py-1 text-sm"
+                        placeholder="2026-03-30"
+                      />
+                    </label>
+                    <label className="text-xs text-slate-600 md:col-span-2">
+                      Rövid kivonat (kártyán látszik)
+                      <textarea
+                        rows={3}
+                        value={post.excerpt}
+                        onChange={(e) => updateBlogPost(post.id, { excerpt: e.target.value })}
+                        className="mt-1 w-full rounded border px-2 py-1 text-sm"
+                      />
+                    </label>
+                    <label className="text-xs text-slate-600 md:col-span-2">
+                      Teljes blog tartalom (részletes oldalon látszik)
+                      <textarea
+                        rows={8}
+                        value={post.content}
+                        onChange={(e) => updateBlogPost(post.id, { content: e.target.value })}
+                        className="mt-1 w-full rounded border px-2 py-1 text-sm"
+                      />
+                    </label>
+                    <label className="text-xs text-slate-600 md:col-span-2">
+                      Kép URL / data URI
+                      <input
+                        value={post.image_url}
+                        onChange={(e) => updateBlogPost(post.id, { image_url: e.target.value })}
+                        className="mt-1 w-full rounded border px-2 py-1 text-sm"
+                        placeholder="https://... vagy feltöltött data URI"
+                      />
+                    </label>
+                    <div className="md:col-span-2">
+                      <label className="inline-flex cursor-pointer items-center gap-2 rounded border border-blue-200 bg-blue-50 px-2 py-1 text-xs text-blue-900 hover:bg-blue-100">
+                        Kép feltöltése
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            void uploadBlogImage(post.id, e.target.files?.[0] ?? null);
+                            e.currentTarget.value = "";
+                          }}
+                        />
+                      </label>
+                    </div>
+                    {post.image_url && (
+                      <div className="md:col-span-2">
+                        <img
+                          src={post.image_url}
+                          alt={post.title || "Blog kép előnézet"}
+                          className="h-28 w-full rounded-lg object-cover"
+                        />
+                      </div>
                     )}
                   </div>
                 </div>
               ))}
-              {!setLoading && settings.filter((s) => isBlogSettingKey(s.key)).length === 0 && (
-                <p className="text-sm text-muted">Nincs blog beállítás.</p>
-              )}
+              {blogPosts.length === 0 && <p className="text-sm text-muted">Még nincs blog bejegyzés.</p>}
             </div>
             {setLoading && <p className="mt-2 text-sm text-muted">Betöltés…</p>}
           </div>

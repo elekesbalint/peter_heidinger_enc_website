@@ -1,6 +1,7 @@
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 import { getTopupBlockSmallestCategoriesFromString } from "@/lib/topup-calculations";
+import { DEFAULT_HOME_BLOG_POSTS } from "./home-blog";
 
 export const SETTINGS_DEFAULTS: Record<string, string> = {
   device_price_huf: "499000",
@@ -78,21 +79,7 @@ export const SETTINGS_DEFAULTS: Record<string, string> = {
   home_blog_title: "Blog",
   home_blog_subtitle: "Hírek, tippek és hasznos tudnivalók ENC használathoz.",
   home_blog_read_more_label: "Tovább olvasom",
-  home_blog_1_title: "Hogyan válassz járműkategóriát ENC rendelésnél?",
-  home_blog_1_excerpt:
-    "Összeszedtük röviden, melyik kategória mire való, hogy a rendelés során könnyebben tudj dönteni.",
-  home_blog_1_date: "2026-03-30",
-  home_blog_1_url: "",
-  home_blog_2_title: "Mikor érdemes egyenleget feltölteni?",
-  home_blog_2_excerpt:
-    "Mutatjuk, mire figyelj úticél választáskor, és hogyan kerülheted el az alacsony egyenleget indulás előtt.",
-  home_blog_2_date: "2026-03-30",
-  home_blog_2_url: "",
-  home_blog_3_title: "Mit látsz a dashboardon?",
-  home_blog_3_excerpt:
-    "Lépésről lépésre bemutatjuk, hol találod az eszközeidet, az egyenlegeket és a feltöltési előzményeket.",
-  home_blog_3_date: "2026-03-30",
-  home_blog_3_url: "",
+  home_blog_posts_json: JSON.stringify(DEFAULT_HOME_BLOG_POSTS),
   home_final_title: "Készen állsz?",
   home_final_subtitle:
     "Hozd létre a fiókodat és rendeld meg az ENC készülékedet néhány perc alatt.",
