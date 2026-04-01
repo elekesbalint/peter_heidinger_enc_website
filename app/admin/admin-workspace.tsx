@@ -1334,6 +1334,15 @@ export function AdminWorkspace() {
       deviceIdentifiers.some((idf) => idf.includes(normalizedUsrQuery))
     );
   });
+  const filteredDebtDeviceIds = Array.from(
+    new Set(
+      filteredUsers.flatMap((u) =>
+        u.devices
+          .filter((d) => Number(d.balance_huf ?? 0) < 0)
+          .map((d) => d.identifier),
+      ),
+    ),
+  );
 
   function selectAllActiveOrders() {
     const ids = filteredEncOrders.filter(isOrderActive).map((o) => o.id);
@@ -2154,6 +2163,20 @@ export function AdminWorkspace() {
                 className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-sm text-amber-900"
               >
                 Tartozás figyelmeztető e-mail (kijelöltek)
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedDebtDevices(new Set(filteredDebtDeviceIds))}
+                className="rounded border px-2 py-1 text-sm"
+              >
+                Összes tartozás kijelölése
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedDebtDevices(new Set())}
+                className="rounded border px-2 py-1 text-sm"
+              >
+                Kijelölés törlése
               </button>
               <button type="button" onClick={() => loadUsers()} className="rounded border px-2 py-1 text-sm">
                 Frissítés

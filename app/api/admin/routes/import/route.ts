@@ -1,5 +1,7 @@
 import { getCurrentUser, isAdminEmail } from "@/lib/auth-server";
+import { getIntSetting, getSettingsMap } from "@/lib/app-settings";
 import { parseEncCsv } from "@/lib/enc-csv";
+import { sendAppEmail } from "@/lib/notify-email";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 export async function POST(request: Request) {
@@ -39,11 +41,23 @@ export async function POST(request: Request) {
 
     const { data: devices, error: devicesError } = await supabase
       .from("devices")
-      .select("id, identifier")
+      .select("id, identifier, auth_user_id")
       .in("identifier", uniqueDeviceNumbers);
     if (devicesError) throw devicesError;
 
     const deviceMap = new Map((devices ?? []).map((d) => [d.identifier, d.id]));
+    const authUserByIdentifier = new Map(
+      (devices ?? []).map((d) => [d.identifier, d.auth_user_id ?? null] as const),
+    );
+    const settings = await getSettingsMap();
+    const minBalanceWarningHuf = getIntSetting(settings, "min_balance_warning_huf", 5000);
+    const { data: walletsBefore } = await supabase
+      .from("device_wallets")
+      .select("device_identifier, balance_huf")
+      .in("device_identifier", uniqueDeviceNumbers);
+    const oldBalanceByIdentifier = new Map(
+      (walletsBefore ?? []).map((w) => [w.device_identifier, Number(w.balance_huf ?? 0)] as const),
+    );
 
     const createData = rows.map((row) => ({
       relation_label: row.relationLabel,
@@ -85,6 +99,42 @@ export async function POST(request: Request) {
       Boolean(row.device_id),
     ).length;
 
+    const { data: walletsAfter } = await supabase
+      .from("device_wallets")
+      .select("device_identifier, balance_huf")
+      .in("device_identifier", uniqueDeviceNumbers);
+    const newBalanceByIdentifier = new Map(
+      (walletsAfter ?? []).map((w) => [w.device_identifier, Number(w.balance_huf ?? 0)] as const),
+    );
+
+    const crossedLowIdentifiers = uniqueDeviceNumbers.filter((identifier) => {
+      const oldBalance = oldBalanceByIdentifier.get(identifier) ?? 0;
+      const newBalance = newBalanceByIdentifier.get(identifier) ?? oldBalance;
+      return oldBalance >= minBalanceWarningHuf && newBalance < minBalanceWarningHuf;
+    });
+
+    const notifyByAuthUser = new Map<string, { email: string; items: string[] }>();
+    for (const identifier of crossedLowIdentifiers) {
+      const authUserId = authUserByIdentifier.get(identifier);
+      if (!authUserId) continue;
+      const userResp = await supabase.auth.admin.getUserById(authUserId);
+      const email = userResp.data.user?.email?.trim() ?? "";
+      if (!email) continue;
+      const prev = notifyByAuthUser.get(authUserId);
+      if (prev) prev.items.push(identifier);
+      else notifyByAuthUser.set(authUserId, { email, items: [identifier] });
+    }
+
+    for (const row of notifyByAuthUser.values()) {
+      await sendAppEmail({
+        to: row.email,
+        subject: "AdriaGo — egyenleg figyelmeztetés",
+        text: `Az alábbi eszköz(ök) egyenlege a küszöb alá csökkent: ${row.items.join(", ")}. Kérjük töltsd fel az egyenleget.`,
+      }).catch((err) => {
+        console.error("[routes-import] low-balance email failed:", err);
+      });
+    }
+
     return Response.json({
       ok: true,
       fileName: file.name,
@@ -92,6 +142,7 @@ export async function POST(request: Request) {
       insertedRows: inserted,
       skippedRows: skipped,
       linkedDeviceRows,
+      warnedUsers: notifyByAuthUser.size,
     });
   } catch (error) {
     const message =
