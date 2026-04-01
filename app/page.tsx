@@ -114,6 +114,15 @@ export default async function Home() {
       ),
     },
   ];
+  const blogReadMoreLabel = text("home_blog_read_more_label", "Tovább olvasom");
+  const blogPosts = [1, 2, 3]
+    .map((idx) => ({
+      title: text(`home_blog_${idx}_title`, ""),
+      excerpt: text(`home_blog_${idx}_excerpt`, ""),
+      date: text(`home_blog_${idx}_date`, ""),
+      url: text(`home_blog_${idx}_url`, ""),
+    }))
+    .filter((post) => post.title || post.excerpt);
   const heroTitle =
     settings.home_hero_title?.trim() || "ENC vásárlás és útdíjkezelés egyetlen modern rendszerben.";
   const heroSubtitle =
@@ -286,6 +295,45 @@ export default async function Home() {
           ))}
         </div>
       </section>
+
+      {blogPosts.length > 0 && (
+        <section className="relative mx-auto max-w-6xl px-6 pb-8">
+          <div className="adria-animate-in text-center">
+            <h2 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+              {text("home_blog_title", "Blog")}
+            </h2>
+            <p className="mx-auto mt-3 max-w-2xl text-muted">
+              {text("home_blog_subtitle", "Hírek, tippek és hasznos tudnivalók ENC használathoz.")}
+            </p>
+          </div>
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
+            {blogPosts.map((post, i) => (
+              <article
+                key={`${post.title}-${i}`}
+                className={`adria-glass adria-animate-in rounded-2xl p-5 ${
+                  i === 0 ? "adria-delay-1" : i === 1 ? "adria-delay-2" : "adria-delay-3"
+                }`}
+              >
+                {post.date && (
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-blue-700/70">{post.date}</p>
+                )}
+                <h3 className="mt-2 text-lg font-semibold text-foreground">{post.title || "Blog bejegyzés"}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted">{post.excerpt || "Rövid leírás hamarosan."}</p>
+                {post.url && (
+                  <a
+                    href={post.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-4 inline-flex text-sm font-semibold text-primary hover:underline"
+                  >
+                    {blogReadMoreLabel}
+                  </a>
+                )}
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="relative border-t border-white/30 py-20">
         <div className="absolute inset-0 bg-gradient-to-b from-white/25 to-transparent" />

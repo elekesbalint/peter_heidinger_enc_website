@@ -20,6 +20,7 @@ const TABS = [
   "Tartozás",
   "Felhasználók",
   "Szövegek",
+  "Blog",
   "Beállítások",
   "Audit / napló",
 ] as const;
@@ -269,6 +270,21 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
   home_faq_3_answer: { label: "GYIK 3 válasz", hint: "Főoldal GYIK 3. válasza." },
   home_faq_4_question: { label: "GYIK 4 kérdés", hint: "Főoldal GYIK 4. kérdése." },
   home_faq_4_answer: { label: "GYIK 4 válasz", hint: "Főoldal GYIK 4. válasza." },
+  home_blog_title: { label: "Blog cím", hint: "Főoldali blog szekció főcíme." },
+  home_blog_subtitle: { label: "Blog alcím", hint: "Főoldali blog szekció leírása." },
+  home_blog_read_more_label: { label: "Blog link felirat", hint: "Pl.: Tovább olvasom." },
+  home_blog_1_title: { label: "Blog #1 cím", hint: "Első blog kártya címe." },
+  home_blog_1_excerpt: { label: "Blog #1 kivonat", hint: "Első blog kártya rövid szöveg." },
+  home_blog_1_date: { label: "Blog #1 dátum", hint: "Pl.: 2026-03-30." },
+  home_blog_1_url: { label: "Blog #1 link", hint: "Teljes URL (https://...)." },
+  home_blog_2_title: { label: "Blog #2 cím", hint: "Második blog kártya címe." },
+  home_blog_2_excerpt: { label: "Blog #2 kivonat", hint: "Második blog kártya rövid szöveg." },
+  home_blog_2_date: { label: "Blog #2 dátum", hint: "Pl.: 2026-03-30." },
+  home_blog_2_url: { label: "Blog #2 link", hint: "Teljes URL (https://...)." },
+  home_blog_3_title: { label: "Blog #3 cím", hint: "Harmadik blog kártya címe." },
+  home_blog_3_excerpt: { label: "Blog #3 kivonat", hint: "Harmadik blog kártya rövid szöveg." },
+  home_blog_3_date: { label: "Blog #3 dátum", hint: "Pl.: 2026-03-30." },
+  home_blog_3_url: { label: "Blog #3 link", hint: "Teljes URL (https://...)." },
   home_final_title: {
     label: "Főoldal záró cím",
     hint: "Alsó CTA blokk címe.",
@@ -486,12 +502,22 @@ const CONTENT_SETTING_KEYS = new Set([
 ]);
 
 function isContentSettingKey(key: string): boolean {
+  if (isBlogSettingKey(key)) return false;
   return CONTENT_SETTING_PREFIXES.some((prefix) => key.startsWith(prefix)) || CONTENT_SETTING_KEYS.has(key);
+}
+
+function isBlogSettingKey(key: string): boolean {
+  return key.startsWith("home_blog_");
+}
+
+function isTechnicalSettingKey(key: string): boolean {
+  return !isContentSettingKey(key) && !isBlogSettingKey(key);
 }
 
 function isMultilineContentSettingKey(key: string): boolean {
   return (
     (key.startsWith("order_category_guide_") && key.endsWith("_items")) ||
+    (key.startsWith("home_blog_") && key.endsWith("_excerpt")) ||
     key === "aszf_content" ||
     key === "adatvedelem_content"
   );
@@ -905,7 +931,7 @@ export function AdminWorkspace() {
     if (tab === "Készülékre vár") loadWait();
     if (tab === "Elérhető eszközök") loadDevices("");
     if (tab === "Úticélok") loadDest();
-    if (tab === "Beállítások" || tab === "Szövegek") loadSettings();
+    if (tab === "Beállítások" || tab === "Szövegek" || tab === "Blog") loadSettings();
     if (tab === "Felhasználók") loadUsers();
     if (tab === "Tartozás") loadWallets();
   }, [tab, loadEnc, loadWait, loadDevices, loadDest, loadSettings, loadUsers]);
@@ -2478,7 +2504,7 @@ export function AdminWorkspace() {
             {setErr && <p className="mt-2 text-sm text-red-600">{setErr}</p>}
             {!setErr && setMsg && <p className="mt-2 text-sm text-emerald-700">{setMsg}</p>}
             <div className="mt-4 space-y-2">
-              {settings.filter((s) => !isContentSettingKey(s.key)).map((s) => (
+              {settings.filter((s) => isTechnicalSettingKey(s.key)).map((s) => (
                 <div key={s.key} className="flex flex-wrap items-start gap-2 text-sm">
                   <div className="w-56 shrink-0">
                     <p className="font-medium text-foreground">{SETTINGS_META[s.key]?.label ?? s.key}</p>
@@ -2508,7 +2534,7 @@ export function AdminWorkspace() {
                   </div>
                 </div>
               ))}
-              {!setLoading && settings.filter((s) => !isContentSettingKey(s.key)).length === 0 && (
+              {!setLoading && settings.filter((s) => isTechnicalSettingKey(s.key)).length === 0 && (
                 <p className="text-sm text-muted">Nincs technikai beállítás.</p>
               )}
             </div>
@@ -2538,7 +2564,7 @@ export function AdminWorkspace() {
             {setErr && <p className="mt-2 text-sm text-red-600">{setErr}</p>}
             {!setErr && setMsg && <p className="mt-2 text-sm text-emerald-700">{setMsg}</p>}
             <div className="mt-4 space-y-2">
-              {settings.filter((s) => isContentSettingKey(s.key)).map((s) => (
+              {settings.filter((s) => isContentSettingKey(s.key) && !isBlogSettingKey(s.key)).map((s) => (
                 <div key={s.key} className="flex flex-wrap items-start gap-2 text-sm">
                   <div className="w-56 shrink-0">
                     <p className="font-medium text-foreground">{SETTINGS_META[s.key]?.label ?? s.key}</p>
@@ -2576,8 +2602,62 @@ export function AdminWorkspace() {
                   </div>
                 </div>
               ))}
-              {!setLoading && settings.filter((s) => isContentSettingKey(s.key)).length === 0 && (
+              {!setLoading && settings.filter((s) => isContentSettingKey(s.key) && !isBlogSettingKey(s.key)).length === 0 && (
                 <p className="text-sm text-muted">Nincs szerkeszthető szöveg.</p>
+              )}
+            </div>
+            {setLoading && <p className="mt-2 text-sm text-muted">Betöltés…</p>}
+          </div>
+        )}
+
+        {tab === "Blog" && (
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+            <div className="flex gap-2">
+              <h2 className="text-xl font-semibold">Blog</h2>
+              <button type="button" onClick={() => loadSettings()} className="rounded border px-2 py-1 text-sm">
+                Frissítés
+              </button>
+              <button
+                type="button"
+                onClick={saveSettings}
+                disabled={setSaving || setLoading}
+                className="rounded bg-primary px-2 py-1 text-sm text-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {setSaving ? "Mentés folyamatban..." : "Összes mentése"}
+              </button>
+            </div>
+            <p className="mt-2 text-sm text-muted">
+              A főoldali blog címét, alcímét, valamint a 3 kiemelt cikket itt tudod szerkeszteni.
+            </p>
+            {setErr && <p className="mt-2 text-sm text-red-600">{setErr}</p>}
+            {!setErr && setMsg && <p className="mt-2 text-sm text-emerald-700">{setMsg}</p>}
+            <div className="mt-4 space-y-2">
+              {settings.filter((s) => isBlogSettingKey(s.key)).map((s) => (
+                <div key={s.key} className="flex flex-wrap items-start gap-2 text-sm">
+                  <div className="w-56 shrink-0">
+                    <p className="font-medium text-foreground">{SETTINGS_META[s.key]?.label ?? s.key}</p>
+                    <p className="text-xs text-muted">{SETTINGS_META[s.key]?.hint ?? "Blog beállítás."}</p>
+                    <p className="mt-0.5 font-mono text-[10px] text-slate-400">{s.key}</p>
+                  </div>
+                  <div className="min-w-[200px] flex-1 space-y-2">
+                    {isMultilineContentSettingKey(s.key) ? (
+                      <textarea
+                        value={setDraft[s.key] ?? ""}
+                        onChange={(e) => setSetDraft((d) => ({ ...d, [s.key]: e.target.value }))}
+                        className="min-h-[96px] w-full rounded border px-2 py-1"
+                      />
+                    ) : (
+                      <input
+                        value={setDraft[s.key] ?? ""}
+                        onChange={(e) => setSetDraft((d) => ({ ...d, [s.key]: e.target.value }))}
+                        className="w-full rounded border px-2 py-1"
+                      />
+                    )}
+                  </div>
+                </div>
+              ))}
+              {!setLoading && settings.filter((s) => isBlogSettingKey(s.key)).length === 0 && (
+                <p className="text-sm text-muted">Nincs blog beállítás.</p>
               )}
             </div>
             {setLoading && <p className="mt-2 text-sm text-muted">Betöltés…</p>}
