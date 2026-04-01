@@ -797,7 +797,7 @@ export function AdminWorkspace() {
     );
     if (rawAmount == null) return;
     const parsed = Number.parseFloat(rawAmount.trim().replace(",", "."));
-    if (!Number.isFinite(parsed) || parsed < 0) {
+    if (!Number.isFinite(parsed)) {
       setUsrErr("Érvénytelen EUR összeg.");
       return;
     }
@@ -892,7 +892,7 @@ export function AdminWorkspace() {
       return;
     }
     const newBalanceEur = Number.parseFloat(newBalanceEurText);
-    if (!Number.isFinite(newBalanceEur) || newBalanceEur < 0) {
+    if (!Number.isFinite(newBalanceEur)) {
       setWalletAdjustErr("Érvénytelen EUR összeg.");
       return;
     }

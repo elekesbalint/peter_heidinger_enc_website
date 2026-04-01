@@ -32,9 +32,9 @@ export async function POST(request: Request) {
   }
 
   const newBalance = parseIntStrict(body.new_balance_huf);
-  if (newBalance === null || newBalance < 0) {
+  if (newBalance === null) {
     return Response.json(
-      { ok: false, error: "Érvénytelen `new_balance_huf` (egész szám, 0 vagy nagyobb)." },
+      { ok: false, error: "Érvénytelen `new_balance_huf` (egész szám)." },
       { status: 400 },
     );
   }
