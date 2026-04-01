@@ -543,6 +543,7 @@ export function AdminWorkspace() {
   const [usrLoading, setUsrLoading] = useState(false);
   const [usrErr, setUsrErr] = useState<string | null>(null);
   const [usrMsg, setUsrMsg] = useState<string | null>(null);
+  const [usrQuery, setUsrQuery] = useState("");
   const [editUser, setEditUser] = useState<UserRow | null>(null);
   const [selectedDebtDevices, setSelectedDebtDevices] = useState<Set<string>>(new Set());
 
@@ -1273,6 +1274,19 @@ export function AdminWorkspace() {
     if (encFilter === "archived") return Boolean(o.archived_at);
     if (encFilter === "cancelled") return Boolean(o.cancelled_at);
     return true;
+  });
+
+  const normalizedUsrQuery = usrQuery.trim().toLowerCase();
+  const filteredUsers = users.filter((u) => {
+    if (!normalizedUsrQuery) return true;
+    const email = (u.email ?? "").toLowerCase();
+    const name = (u.name ?? "").toLowerCase();
+    const deviceIdentifiers = u.devices.map((d) => d.identifier.toLowerCase());
+    return (
+      email.includes(normalizedUsrQuery) ||
+      name.includes(normalizedUsrQuery) ||
+      deviceIdentifiers.some((idf) => idf.includes(normalizedUsrQuery))
+    );
   });
 
   function selectAllActiveOrders() {
@@ -2101,6 +2115,23 @@ export function AdminWorkspace() {
             </div>
             {usrErr && <p className="mt-2 text-sm text-red-600">{usrErr}</p>}
             {usrMsg && <p className="mt-2 text-sm text-emerald-700">{usrMsg}</p>}
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <input
+                value={usrQuery}
+                onChange={(e) => setUsrQuery(e.target.value)}
+                placeholder="Keresés: név, e-mail vagy eszközazonosító"
+                className="min-w-[280px] flex-1 rounded-xl border border-border bg-white px-3 py-2 text-sm"
+              />
+              {usrQuery.trim().length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setUsrQuery("")}
+                  className="rounded border px-2 py-1 text-sm"
+                >
+                  Törlés
+                </button>
+              )}
+            </div>
             <table className="mt-4 w-full table-fixed text-left text-xs">
               <thead>
                 <tr className="border-b text-slate-500">
@@ -2112,7 +2143,7 @@ export function AdminWorkspace() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((u) => (
+                {filteredUsers.map((u) => (
                   <tr key={u.id} className="border-b border-border/60">
                     <td className="px-1.5 py-1.5">
                       <div className="font-medium">{u.email ?? "—"}</div>
@@ -2193,6 +2224,9 @@ export function AdminWorkspace() {
                 ))}
               </tbody>
             </table>
+            {!usrLoading && filteredUsers.length === 0 && (
+              <p className="mt-2 text-sm text-muted">Nincs találat a megadott szűrésre.</p>
+            )}
             {usrLoading && <p className="mt-2 text-sm text-muted">Betöltés…</p>}
             {editUser && (
               <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50/40 p-6">

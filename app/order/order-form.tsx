@@ -28,7 +28,7 @@ export function OrderForm({
   categoryGuideSubtitle,
   categoryGuideItems,
 }: OrderFormProps) {
-  const [category, setCategory] = useState<DeviceCategoryValue>("ii");
+  const [category, setCategory] = useState<DeviceCategoryValue>("i");
   const [licensePlate, setLicensePlate] = useState("");
   const [contractAccepted, setContractAccepted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
