@@ -1,4 +1,5 @@
 import {
+  applyTopupDiscount,
   getIntSetting,
   getSettingsMap,
   getTopupPackagesFromSettings,
@@ -27,6 +28,7 @@ export async function POST(request: Request) {
 
     const body = (await request.json()) as {
       topupAmountEur?: number;
+      selectedPackageEur?: number | null;
       deviceIdentifier?: string;
       travelDestination?: string;
     };
@@ -117,8 +119,18 @@ export async function POST(request: Request) {
       );
     }
 
-    const appliedDiscountPct = 0;
-    const chargedEur = amountEur;
+    const selectedPackageEur = Number(body.selectedPackageEur ?? NaN);
+    const packageMatch = Number.isFinite(selectedPackageEur)
+      ? packages.some((p) => Math.abs(Number(p) - selectedPackageEur) < 0.001)
+      : false;
+    const selectedPackageMatchesAmount =
+      Number.isFinite(selectedPackageEur) && Math.abs(amountEur - selectedPackageEur) < 0.001;
+    const discountSetting = Math.max(0, getIntSetting(settings, "topup_discount_percent", 0));
+    const applyPackageDiscount = packageMatch && selectedPackageMatchesAmount;
+    const appliedDiscountPct = applyPackageDiscount ? discountSetting : 0;
+    const chargedEur = applyPackageDiscount
+      ? Number(applyTopupDiscount(amountEur, appliedDiscountPct).toFixed(2))
+      : amountEur;
     const chargedHuf = Math.max(1, Math.round(chargedEur * fxEurToHuf));
     const baseAmountHuf = Math.max(1, Math.round(amountEur * fxEurToHuf));
 

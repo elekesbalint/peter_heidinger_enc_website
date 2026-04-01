@@ -35,6 +35,7 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
   const [config, setConfig] = useState<ConfigResponse | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [customAmount, setCustomAmount] = useState("");
+  const [selectedPackageAmount, setSelectedPackageAmount] = useState<number | null>(null);
   const [deviceIdentifier, setDeviceIdentifier] = useState("");
   const [travelDestination, setTravelDestination] = useState("");
   const [destinationMode, setDestinationMode] = useState<"list" | "custom">("list");
@@ -105,15 +106,14 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
 
   const currentBalanceEur = Number(selectedDevice?.balance_eur ?? 0);
   const minimumRequiredTopup = Math.max(0, destinationRequiredEur - currentBalanceEur);
+  const discountPercent = Math.max(0, Number(config?.discountPercent ?? 0));
   useEffect(() => {
-    setCustomAmount((prev) => {
-      const n = Number.parseFloat(prev);
-      if (!Number.isFinite(n) || n < minimumRequiredTopup) {
-        return minimumRequiredTopup > 0 ? minimumRequiredTopup.toFixed(2) : prev;
-      }
-      return prev;
-    });
-  }, [minimumRequiredTopup]);
+    const current = Number.parseFloat(customAmount);
+    if (!Number.isFinite(current) || current < minimumRequiredTopup) {
+      setCustomAmount(minimumRequiredTopup > 0 ? minimumRequiredTopup.toFixed(2) : customAmount);
+      setSelectedPackageAmount(null);
+    }
+  }, [minimumRequiredTopup, customAmount]);
 
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
@@ -161,6 +161,7 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           topupAmountEur: effectiveAmount,
+          selectedPackageEur: selectedPackageAmount,
           deviceIdentifier: dev,
           travelDestination: dest,
         }),
@@ -197,6 +198,11 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
   }
 
   const charged = Math.max(minimumRequiredTopup, Number.parseFloat(customAmount || "0") || 0);
+  const packageDiscountedCharged =
+    selectedPackageAmount != null && discountPercent > 0
+      ? Number((charged * (100 - Math.min(100, discountPercent))) / 100).toFixed(2)
+      : charged.toFixed(2);
+  const payable = Number(packageDiscountedCharged);
 
   return (
     <section className="mt-8 space-y-6">
@@ -344,16 +350,25 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
             min={minimumRequiredTopup}
             step={0.01}
             value={customAmount}
-            onChange={(e) => setCustomAmount(e.target.value)}
+            onChange={(e) => {
+              setCustomAmount(e.target.value);
+              setSelectedPackageAmount(null);
+            }}
             placeholder={`${minimumRequiredTopup.toLocaleString("hu-HU")} vagy több`}
             className="w-full rounded-xl border border-border/80 bg-white/90 px-4 py-2.5 text-sm shadow-sm transition"
           />
+          {selectedPackageAmount == null ? (
+            <p className="text-xs text-slate-600">
+              Ennél a feltöltésnél a topup kedvezmény nem érvényes; minimum:{" "}
+              {minimumRequiredTopup.toLocaleString("hu-HU")} EUR.
+            </p>
+          ) : (
+            <p className="text-xs text-slate-600">
+              Csomag kedvezmény: {discountPercent}%.
+            </p>
+          )}
           <p className="text-xs text-slate-600">
-            Ennél a feltöltésnél a topup kedvezmény nem érvényes; minimum:{" "}
-            {minimumRequiredTopup.toLocaleString("hu-HU")} EUR.
-          </p>
-          <p className="text-xs text-slate-600">
-            Fizetendő: <strong>{charged.toLocaleString("hu-HU")} EUR</strong>
+            Fizetendő: <strong>{payable.toLocaleString("hu-HU")} EUR</strong>
           </p>
         </div>
         {packages.length > 0 && (
@@ -369,7 +384,10 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
                 key={amount}
                 type="button"
                 disabled={disabled}
-                onClick={() => setCustomAmount(String(amount))}
+                onClick={() => {
+                  setCustomAmount(String(amount));
+                  setSelectedPackageAmount(amount);
+                }}
                 className={`rounded-2xl border px-5 py-5 text-left transition duration-200 ${
                   disabled
                     ? "cursor-not-allowed border-slate-200 bg-slate-100 opacity-50"
@@ -380,12 +398,23 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
               >
                 <p className="text-xs font-medium uppercase tracking-wider text-muted">Csomag</p>
                 <p className="mt-2 text-2xl font-bold text-foreground">{amount.toLocaleString("hu-HU")} EUR</p>
+                <p className="mt-2 text-xs text-success">
+                  Kedvezmény után:{" "}
+                  {Number(
+                    discountPercent > 0
+                      ? Number((amount * (100 - Math.min(100, discountPercent))) / 100).toFixed(2)
+                      : amount.toFixed(2)
+                  ).toLocaleString("hu-HU")}{" "}
+                  EUR
+                </p>
                 {disabled && (
                   <p className="mt-2 text-xs text-amber-700">
                     Ennél az úticélnál legalább {minimumRequiredTopup.toLocaleString("hu-HU")} EUR szükséges
                   </p>
                 )}
-                {!disabled && <p className="mt-2 text-xs text-success">Fizetendő: {amount.toLocaleString("hu-HU")} EUR</p>}
+                {!disabled && (
+                  <p className="mt-2 text-xs text-success">Csomag ár: {amount.toLocaleString("hu-HU")} EUR</p>
+                )}
               </button>
             );
           })}
