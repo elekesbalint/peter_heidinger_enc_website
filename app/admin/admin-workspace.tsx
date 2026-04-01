@@ -536,7 +536,9 @@ export function AdminWorkspace() {
 
   const [settings, setSettings] = useState<SettingRow[]>([]);
   const [setLoading, setSetLoading] = useState(false);
+  const [setSaving, setSetSaving] = useState(false);
   const [setErr, setSetErr] = useState<string | null>(null);
+  const [setMsg, setSetMsg] = useState<string | null>(null);
   const [setDraft, setSetDraft] = useState<Record<string, string>>({});
 
   const [users, setUsers] = useState<UserRow[]>([]);
@@ -1251,18 +1253,27 @@ export function AdminWorkspace() {
 
   async function saveSettings() {
     setSetErr(null);
+    setSetMsg(null);
+    setSetSaving(true);
     const entries = Object.entries(setDraft).map(([key, value]) => ({ key, value }));
-    const res = await fetch("/api/admin/settings", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ entries }),
-    });
-    const data = (await res.json()) as { ok: boolean; error?: string };
-    if (!data.ok) {
-      setSetErr(data.error ?? "Hiba");
-      return;
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entries }),
+      });
+      const data = (await res.json()) as { ok: boolean; error?: string };
+      if (!data.ok) {
+        setSetErr(data.error ?? "Hiba");
+        return;
+      }
+      await loadSettings();
+      setSetMsg(`Mentés kész (${new Date().toLocaleTimeString("hu-HU")}).`);
+    } catch {
+      setSetErr("Hálózati hiba");
+    } finally {
+      setSetSaving(false);
     }
-    await loadSettings();
   }
 
   function toggleOrderSel(id: string) {
@@ -2313,11 +2324,17 @@ export function AdminWorkspace() {
               <button type="button" onClick={() => loadSettings()} className="rounded border px-2 py-1 text-sm">
                 Frissítés
               </button>
-              <button type="button" onClick={saveSettings} className="rounded bg-primary px-2 py-1 text-sm text-white">
-                Összes mentése
+              <button
+                type="button"
+                onClick={saveSettings}
+                disabled={setSaving || setLoading}
+                className="rounded bg-primary px-2 py-1 text-sm text-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {setSaving ? "Mentés folyamatban..." : "Összes mentése"}
               </button>
             </div>
             {setErr && <p className="mt-2 text-sm text-red-600">{setErr}</p>}
+            {!setErr && setMsg && <p className="mt-2 text-sm text-emerald-700">{setMsg}</p>}
             <div className="mt-4 space-y-2">
               {settings.filter((s) => !isContentSettingKey(s.key)).map((s) => (
                 <div key={s.key} className="flex flex-wrap items-start gap-2 text-sm">
@@ -2348,14 +2365,20 @@ export function AdminWorkspace() {
               <button type="button" onClick={() => loadSettings()} className="rounded border px-2 py-1 text-sm">
                 Frissítés
               </button>
-              <button type="button" onClick={saveSettings} className="rounded bg-primary px-2 py-1 text-sm text-white">
-                Összes mentése
+              <button
+                type="button"
+                onClick={saveSettings}
+                disabled={setSaving || setLoading}
+                className="rounded bg-primary px-2 py-1 text-sm text-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {setSaving ? "Mentés folyamatban..." : "Összes mentése"}
               </button>
             </div>
             <p className="mt-2 text-sm text-muted">
               Itt szerkeszthetők a főoldal, dashboard, rendelés és ajánlói panel felhasználói szövegei.
             </p>
             {setErr && <p className="mt-2 text-sm text-red-600">{setErr}</p>}
+            {!setErr && setMsg && <p className="mt-2 text-sm text-emerald-700">{setMsg}</p>}
             <div className="mt-4 space-y-2">
               {settings.filter((s) => isContentSettingKey(s.key)).map((s) => (
                 <div key={s.key} className="flex flex-wrap items-start gap-2 text-sm">
