@@ -15,6 +15,7 @@ export default async function AszfPage() {
     .split(/\n\s*\n/g)
     .map((b) => b.trim())
     .filter(Boolean);
+  const hasDocument = Boolean(documentUrl);
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-16">
@@ -22,8 +23,8 @@ export default async function AszfPage() {
         ← Főoldal
       </Link>
       <h1 className="mt-6 text-3xl font-bold tracking-tight">{title}</h1>
-      <p className="mt-4 text-muted">{intro}</p>
-      {documentUrl && (
+      {!hasDocument && <p className="mt-4 text-muted">{intro}</p>}
+      {hasDocument && (
         <a
           href={documentUrl}
           target="_blank"
@@ -33,13 +34,15 @@ export default async function AszfPage() {
           ÁSZF dokumentum megnyitása / letöltése
         </a>
       )}
-      <div className="mt-8 space-y-6 text-sm leading-relaxed text-foreground">
-        {blocks.map((block, idx) => (
-          <div key={`${idx}-${block.slice(0, 24)}`} className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-            <p className="whitespace-pre-wrap text-muted">{block}</p>
-          </div>
-        ))}
-      </div>
+      {!hasDocument && (
+        <div className="mt-8 space-y-6 text-sm leading-relaxed text-foreground">
+          {blocks.map((block, idx) => (
+            <div key={`${idx}-${block.slice(0, 24)}`} className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+              <p className="whitespace-pre-wrap text-muted">{block}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
