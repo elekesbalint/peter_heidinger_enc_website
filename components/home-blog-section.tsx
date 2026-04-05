@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import type { HomeBlogPost } from "@/lib/home-blog";
 
-const PAGE_SIZE = 6;
+const PAGE_SIZE = 3;
 
 type HomeBlogSectionProps = {
   posts: HomeBlogPost[];
