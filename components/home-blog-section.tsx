@@ -72,7 +72,7 @@ export function HomeBlogSection({
           <button
             type="button"
             onClick={() => setVisible((v) => Math.min(v + PAGE_SIZE, posts.length))}
-            className="rounded-2xl border border-slate-300/85 bg-white/90 px-8 py-3 text-sm font-bold text-slate-800 shadow-sm transition-all hover:border-primary/40 hover:bg-primary/5"
+            className="rounded-2xl border border-slate-300/85 bg-white/95 px-8 py-3 text-sm font-bold text-slate-900 shadow-sm transition-all hover:border-primary/50 hover:bg-slate-50"
           >
             {loadMoreLabel}
           </button>
