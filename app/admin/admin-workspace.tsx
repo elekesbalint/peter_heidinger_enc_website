@@ -614,6 +614,9 @@ export function AdminWorkspace() {
   const [encOrders, setEncOrders] = useState<EncOrder[]>([]);
   const [encLoading, setEncLoading] = useState(false);
   const [encErr, setEncErr] = useState<string | null>(null);
+  const [encPage, setEncPage] = useState(1);
+  const [encPerPage, setEncPerPage] = useState<10 | 100 | 200>(10);
+  const [encTotal, setEncTotal] = useState(0);
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [encFilter, setEncFilter] = useState<"all" | "active" | "shipped" | "archived" | "cancelled">("all");
   const [encQuery, setEncQuery] = useState("");
@@ -819,21 +822,33 @@ export function AdminWorkspace() {
     setEncLoading(true);
     setEncErr(null);
     try {
-      const res = await fetch("/api/admin/enc-device-orders/list");
-      const data = (await res.json()) as { ok: boolean; items?: EncOrder[]; error?: string };
+      const res = await fetch(
+        `/api/admin/enc-device-orders/list?page=${encPage}&perPage=${encPerPage}`,
+      );
+      const data = (await res.json()) as {
+        ok: boolean;
+        items?: EncOrder[];
+        total?: number;
+        error?: string;
+      };
       if (!data.ok) {
         setEncErr(data.error ?? "Hiba");
         return;
       }
-      const items = data.items ?? [];
-      setEncOrders(items);
-      setAdminBadgeEnc(items.filter(isOrderActive).length);
+      const total = data.total ?? 0;
+      setEncTotal(total);
+      const maxPage = Math.max(1, Math.ceil(total / encPerPage));
+      if (encPage > maxPage) {
+        setEncPage(maxPage);
+        return;
+      }
+      setEncOrders(data.items ?? []);
     } catch {
       setEncErr("Hálózati hiba");
     } finally {
       setEncLoading(false);
     }
-  }, []);
+  }, [encPage, encPerPage]);
 
   const loadWait = useCallback(async () => {
     setWaitLoading(true);
@@ -858,15 +873,15 @@ export function AdminWorkspace() {
   const refreshAdminBadges = useCallback(async () => {
     try {
       const [encRes, waitRes, walletRes] = await Promise.all([
-        fetch("/api/admin/enc-device-orders/list"),
+        fetch("/api/admin/enc-device-orders/list?activeTotal=1"),
         fetch("/api/admin/device-waitlist/list"),
         fetch("/api/admin/device-wallets/list"),
       ]);
-      const encData = (await encRes.json()) as { ok?: boolean; items?: EncOrder[] };
+      const encData = (await encRes.json()) as { ok?: boolean; activeTotal?: number };
       const waitData = (await waitRes.json()) as { ok?: boolean; items?: WaitRow[] };
       const walletData = (await walletRes.json()) as { ok?: boolean; items?: WalletRow[] };
-      if (encData.ok && Array.isArray(encData.items)) {
-        setAdminBadgeEnc(encData.items.filter(isOrderActive).length);
+      if (encData.ok && typeof encData.activeTotal === "number") {
+        setAdminBadgeEnc(encData.activeTotal);
       }
       if (waitData.ok && Array.isArray(waitData.items)) {
         setAdminBadgeWait(waitData.items.length);
@@ -1631,6 +1646,8 @@ export function AdminWorkspace() {
     });
   }
 
+  const encTotalPages = Math.max(1, Math.ceil(encTotal / encPerPage));
+
   const filteredEncOrders = encOrders.filter((o) => {
     const q = encQuery.trim().toLowerCase();
     const byText =
@@ -1765,6 +1782,50 @@ export function AdminWorkspace() {
               >
                 Összes aktív kijelölése
               </button>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-700">
+              <label className="flex items-center gap-2">
+                <span className="text-muted">Sor / oldal</span>
+                <select
+                  value={encPerPage}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    if (v === 10 || v === 100 || v === 200) {
+                      setEncPerPage(v);
+                      setEncPage(1);
+                    }
+                  }}
+                  className="rounded-lg border border-border bg-white px-2 py-1.5 text-sm"
+                >
+                  <option value={10}>10</option>
+                  <option value={100}>100</option>
+                  <option value={200}>200</option>
+                </select>
+              </label>
+              <span className="text-muted">
+                Összesen <strong className="text-foreground">{encTotal}</strong> rendelés
+              </span>
+              <div className="flex flex-wrap items-center gap-1">
+                <button
+                  type="button"
+                  disabled={encPage <= 1 || encLoading}
+                  onClick={() => setEncPage((p) => Math.max(1, p - 1))}
+                  className="rounded-lg border border-border bg-white px-2.5 py-1 text-sm font-medium hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Előző
+                </button>
+                <span className="px-2 tabular-nums">
+                  {encPage} / {encTotalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={encPage >= encTotalPages || encLoading}
+                  onClick={() => setEncPage((p) => p + 1)}
+                  className="rounded-lg border border-border bg-white px-2.5 py-1 text-sm font-medium hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Következő
+                </button>
+              </div>
             </div>
             {selectedOrders.size > 0 && (
               <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/70 px-3 py-2">

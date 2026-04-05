@@ -133,7 +133,7 @@ export function AdminDataPanels(props: AdminDataPanelsProps = {}) {
     setIsLoadingEncOrders(true);
     setEncOrdersError(null);
     try {
-      const response = await fetch("/api/admin/enc-device-orders/list");
+      const response = await fetch("/api/admin/enc-device-orders/list?page=1&perPage=100");
       const data = (await response.json()) as ApiResult<EncOrderItem>;
       if (!data.ok) {
         setEncOrdersError(data.error ?? "Ismeretlen hiba.");

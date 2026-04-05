@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { HomeBlogSection } from "@/components/home-blog-section";
 import { getSettingsMap } from "@/lib/app-settings";
+import { getCurrentUser } from "@/lib/auth-server";
 import { parseHomeBlogPosts } from "@/lib/home-blog";
 
 export default async function Home() {
-  const settings = await getSettingsMap();
+  const [settings, user] = await Promise.all([getSettingsMap(), getCurrentUser()]);
   const text = (key: string, fallback: string) => settings[key]?.trim() || fallback;
   const steps = [
     {
@@ -302,34 +303,36 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="relative border-t border-white/30 py-20">
-        <div className="absolute inset-0 bg-gradient-to-b from-white/25 to-transparent" />
-        <div className="relative mx-auto max-w-3xl px-6 text-center">
-          <h2 className="text-2xl font-bold tracking-tight md:text-3xl">
-            {text("home_final_title", "Készen állsz?")}
-          </h2>
-          <p className="mt-3 text-muted">
-            {text(
-              "home_final_subtitle",
-              "Hozd létre a fiókodat és rendeld meg az ENC készülékedet néhány perc alatt.",
-            )}
-          </p>
-          <div className="mt-10 flex flex-wrap justify-center gap-4">
-            <Link
-              href="/register"
-              className="rounded-2xl bg-gradient-to-r from-primary to-indigo-600 px-8 py-3.5 text-sm font-bold !text-white shadow-lg shadow-primary/30 transition-all duration-300 hover:scale-[1.03] hover:shadow-xl hover:shadow-primary/40"
-            >
-              {text("home_final_register_cta", "Ingyenes regisztráció")}
-            </Link>
-            <Link
-              href="/kapcsolat"
-              className="adria-glass rounded-2xl px-8 py-3.5 text-sm font-bold text-foreground transition-all duration-300 hover:scale-[1.03]"
-            >
-              {text("home_final_contact_cta", "Kapcsolatfelvétel")}
-            </Link>
+      {!user && (
+        <section className="relative border-t border-white/30 py-20">
+          <div className="absolute inset-0 bg-gradient-to-b from-white/25 to-transparent" />
+          <div className="relative mx-auto max-w-3xl px-6 text-center">
+            <h2 className="text-2xl font-bold tracking-tight md:text-3xl">
+              {text("home_final_title", "Készen állsz?")}
+            </h2>
+            <p className="mt-3 text-muted">
+              {text(
+                "home_final_subtitle",
+                "Hozd létre a fiókodat és rendeld meg az ENC készülékedet néhány perc alatt.",
+              )}
+            </p>
+            <div className="mt-10 flex flex-wrap justify-center gap-4">
+              <Link
+                href="/register"
+                className="rounded-2xl bg-gradient-to-r from-primary to-indigo-600 px-8 py-3.5 text-sm font-bold !text-white shadow-lg shadow-primary/30 transition-all duration-300 hover:scale-[1.03] hover:shadow-xl hover:shadow-primary/40"
+              >
+                {text("home_final_register_cta", "Ingyenes regisztráció")}
+              </Link>
+              <Link
+                href="/kapcsolat"
+                className="adria-glass rounded-2xl px-8 py-3.5 text-sm font-bold text-foreground transition-all duration-300 hover:scale-[1.03]"
+              >
+                {text("home_final_contact_cta", "Kapcsolatfelvétel")}
+              </Link>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
     </>
   );
 }
