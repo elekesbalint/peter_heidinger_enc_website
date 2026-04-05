@@ -22,7 +22,7 @@ export default async function OrderPage() {
     1,
     getIntSetting(settings, "device_price_huf", getDevicePriceHuf()),
   );
-  const referralDiscountHuf = Math.max(
+  const referralWalletBonusCapHuf = Math.max(
     0,
     getIntSetting(settings, "referral_device_discount_huf", 25000),
   );
@@ -35,7 +35,7 @@ export default async function OrderPage() {
     .order("accepted_at", { ascending: true, nullsFirst: false })
     .limit(1)
     .maybeSingle();
-  const referralWalletBonusHuf = activeReferral ? Math.min(price, referralDiscountHuf) : 0;
+  const referralWalletBonusHuf = activeReferral ? Math.min(price, referralWalletBonusCapHuf) : 0;
   const categoryGuideTitle =
     settings.order_category_guide_title?.trim() || "Kategória magyarázó";
   const categoryGuideSubtitle =

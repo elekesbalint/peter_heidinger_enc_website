@@ -119,7 +119,7 @@ export default async function DashboardPage({
     .order("executed_at", { ascending: false })
     .limit(50);
 
-  const referralDiscountHuf = getIntSetting(settings, "referral_device_discount_huf", 25000);
+  const referralWalletBonusCapHuf = getIntSetting(settings, "referral_device_discount_huf", 25000);
   let referralInvites: Array<{
     id: string;
     invited_email: string;
@@ -337,7 +337,7 @@ export default async function DashboardPage({
       </section>
 
       <ReferralPanel
-        discountHuf={referralDiscountHuf}
+        walletBonusCapHuf={referralWalletBonusCapHuf}
         invites={referralInvites}
         text={{
           title: text("referral_section_title", "Ajánlás"),
@@ -352,7 +352,7 @@ export default async function DashboardPage({
           emptyMessage: text("referral_empty_message", "Még nincs kiküldött meghívó."),
           statusSent: text("referral_status_sent", "Kiküldve"),
           statusRegistered: text("referral_status_registered", "Regisztrált"),
-          statusDiscountUsed: text("referral_status_discount_used", "Kedvezmény felhasználva"),
+          statusDiscountUsed: text("referral_status_discount_used", "Induló egyenleg felhasználva"),
         }}
       />
 

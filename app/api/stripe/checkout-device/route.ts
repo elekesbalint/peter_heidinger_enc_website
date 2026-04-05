@@ -108,7 +108,7 @@ export async function POST(request: Request) {
     }
 
     const settings = await getSettingsMap();
-    const referralDiscountHuf = Math.max(
+    const referralWalletBonusCapHuf = Math.max(
       0,
       getIntSetting(settings, "referral_device_discount_huf", 25000),
     );
@@ -126,7 +126,7 @@ export async function POST(request: Request) {
       getIntSetting(settings, "device_price_huf", getDevicePriceHuf()),
     );
     /** Meghívó: teljes ár Stripe-ban; a bónusz a fizetés után a készülék walletjébe kerül (webhook). */
-    const referralWalletBonusHuf = activeReferral ? Math.min(basePriceHuf, referralDiscountHuf) : 0;
+    const referralWalletBonusHuf = activeReferral ? Math.min(basePriceHuf, referralWalletBonusCapHuf) : 0;
     const priceHuf = basePriceHuf;
     const stripe = getStripe();
     const baseUrl = getBaseUrl();

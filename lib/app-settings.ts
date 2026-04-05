@@ -15,6 +15,7 @@ export const SETTINGS_DEFAULTS: Record<string, string> = {
   topup_package_3_huf: "100",
   /** Vesszovel elvalasztott kategoriak (pl. ii,iii,iv): ezekhez nem valaszthato a legkisebb topup csomag. */
   topup_block_smallest_for_categories: "ii,iii,iv",
+  /** Meghívott első készülékvásárlásakor ennyi Ft (max) kerül a készülék walletjébe; a Stripe-ban a teljes készülékár fizetendő. */
   referral_device_discount_huf: "25000",
   hero_bg_desktop: "/images/enc-hero-bg.png",
   hero_bg_tablet: "/images/enc-hero-bg.png",
@@ -121,7 +122,7 @@ export const SETTINGS_DEFAULTS: Record<string, string> = {
   referral_empty_message: "Még nincs kiküldött meghívó.",
   referral_status_sent: "Kiküldve",
   referral_status_registered: "Regisztrált",
-  referral_status_discount_used: "Kedvezmény felhasználva",
+  referral_status_discount_used: "Induló egyenleg felhasználva",
   order_category_guide_title: "Kategória magyarázó",
   order_category_guide_subtitle: "Válaszd ki a kategóriát, és ellenőrizd a fő szempontokat.",
   order_category_guide_ia_items: "Motorkerékpár\n2 tengely\nAlacsonyabb járműmagasság",

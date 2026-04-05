@@ -309,7 +309,7 @@ export async function POST(request: Request) {
               title: "Sikeres rendelés",
               intro:
                 referralWalletBonusHuf > 0
-                  ? "Köszönjük a vásárlást, a rendelésedet sikeresen rögzítettük. Az ajánlói kedvezmény a készülékhez tartozó egyenlegre került jóváírásra (útdíj / feltöltés rendszerben használható)."
+                  ? "Köszönjük a vásárlást, a rendelésedet sikeresen rögzítettük. Az ajánlói induló egyenleg a megvásárolt készülék walletjébe került jóváírásra (útdíj / feltöltés rendszerben használható). A készülék teljes árát a Stripe-ban fizetted."
                   : "Köszönjük a vásárlást, a rendelésedet sikeresen rögzítettük.",
               rows: [
                 { label: "Eszköz", value: deviceIdentifier ?? "-" },

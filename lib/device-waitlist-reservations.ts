@@ -127,7 +127,7 @@ export async function createWaitlistPaymentReservation(params: {
     waitlist.auth_user_id,
   );
   const settings = await getSettingsMap();
-  const referralDiscountHuf = Math.max(
+  const referralWalletBonusCapHuf = Math.max(
     0,
     getIntSetting(settings, "referral_device_discount_huf", 25000),
   );
@@ -145,7 +145,7 @@ export async function createWaitlistPaymentReservation(params: {
     .maybeSingle();
 
   const referralWalletBonusHuf = activeReferral
-    ? Math.min(basePriceHuf, referralDiscountHuf)
+    ? Math.min(basePriceHuf, referralWalletBonusCapHuf)
     : 0;
   const payableHuf = basePriceHuf;
   const nowIso = new Date().toISOString();

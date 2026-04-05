@@ -164,7 +164,8 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
   },
   referral_device_discount_huf: {
     label: "Ajánlói induló egyenleg (Ft)",
-    hint: "A meghívott első készülékvásárlásakor ennyi Ft kerül a készülék walletjébe (teljes ár fizetve Stripe-ban).",
+    hint:
+      "Meghívott első készülékvásárlásakor legfeljebb ennyi Ft kerül a vásárolt készülék walletjébe. A Stripe-ban a teljes készülékár (device_price_huf) fizetendő — ez az összeg nem kerül levonásra az árból. Kulcs neve: referral_device_discount_huf (történelmi név).",
   },
   hero_bg_desktop: {
     label: "Főoldali banner kép (asztali)",
@@ -399,11 +400,11 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
   },
   referral_section_subtitle_prefix: {
     label: "Referral alcím eleje",
-    hint: "Kedvezmény összege elé kerülő rész.",
+    hint: "Az induló egyenleg (Ft) összege elé kerülő rész — ne „árkedvezményt” írj, hanem wallet / induló egyenleget.",
   },
   referral_section_subtitle_suffix: {
     label: "Referral alcím vége",
-    hint: "Kedvezmény összege utáni rész.",
+    hint: "Az induló egyenleg összege utáni rész (pl. „Ft induló egyenleg a készülék walletjében, teljes ár a Stripe-ban”).",
   },
   referral_email_placeholder: {
     label: "Referral email placeholder",
@@ -430,8 +431,8 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
     hint: "Táblázat státusz felirat.",
   },
   referral_status_discount_used: {
-    label: "Referral státusz: kedvezmény felhasználva",
-    hint: "Táblázat státusz felirat.",
+    label: "Referral státusz: induló egyenleg felhasználva",
+    hint: "Ha a meghívott már elhasználta az első vásárláshoz járó ajánlói wallet-jóváírást.",
   },
   order_category_guide_title: {
     label: "Rendelés kategória-magyarázó cím",
