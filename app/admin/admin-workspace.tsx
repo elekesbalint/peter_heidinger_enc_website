@@ -286,7 +286,7 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
   home_blog_read_more_label: { label: "Blog link felirat", hint: "Pl.: Tovább olvasom." },
   home_blog_load_more_label: {
     label: "További blog gomb",
-    hint: "Pl.: Következő blogcikkek — ha több mint 3 cikk van a főoldalon.",
+    hint: "Pl.: Következő blogcikkek — a főoldalon egyszerre 3 cikk látszik; a gomb további 3-3 cikket tölt be.",
   },
   home_blog_posts_json: {
     label: "Blog bejegyzések (JSON)",
@@ -2748,7 +2748,8 @@ export function AdminWorkspace() {
                     {SETTINGS_META.home_blog_load_more_label?.label ?? "További blog gomb"}
                   </p>
                   <p className="text-xs text-muted">
-                    {SETTINGS_META.home_blog_load_more_label?.hint ?? "3 cikk után megjelenő gomb felirata."}
+                    {SETTINGS_META.home_blog_load_more_label?.hint ??
+                      "Egyszerre 3 cikk a főoldalon; a gomb további 3-at tölt be."}
                   </p>
                   <p className="mt-0.5 font-mono text-[10px] text-slate-400">home_blog_load_more_label</p>
                 </div>
