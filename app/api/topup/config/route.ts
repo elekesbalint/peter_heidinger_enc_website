@@ -1,4 +1,5 @@
 import {
+  getFloatSetting,
   getIntSetting,
   getSettingsMap,
   getTopupBlockSmallestCategories,
@@ -18,6 +19,10 @@ export async function GET() {
     const settings = await getSettingsMap();
     const packages = getTopupPackagesFromSettings(settings);
     const discountPercent = getIntSetting(settings, "topup_discount_percent", 0);
+    const customDestinationMinEur = Math.max(
+      0,
+      Number(getFloatSetting(settings, "topup_custom_destination_min_eur", 30).toFixed(2)),
+    );
     const minBalanceWarningHuf = getIntSetting(settings, "min_balance_warning_huf", 5000);
     const fxEurToHuf = Math.max(1, getIntSetting(settings, "fx_eur_to_huf", 400));
     const minBalanceWarningEur = Number((minBalanceWarningHuf / fxEurToHuf).toFixed(2));
@@ -80,6 +85,7 @@ export async function GET() {
       ok: true,
       packages,
       discountPercent,
+      customDestinationMinEur,
       minBalanceWarningEur,
       fxEurToHuf,
       blockedCategoriesForSmallestPackage: blockedCategories,

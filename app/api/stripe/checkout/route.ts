@@ -1,5 +1,6 @@
 import {
   applyTopupDiscount,
+  getFloatSetting,
   getIntSetting,
   getSettingsMap,
   getTopupPackagesFromSettings,
@@ -104,16 +105,26 @@ export async function POST(request: Request) {
         }
       : {};
     const destinationRequiredEur = Math.max(0, Number(byCategory[categoryKey] ?? 0));
-    const minTopupRequiredEur = Math.max(
+    const hasPricedListDestination = Boolean(destinationRow && destinationRequiredEur > 0);
+    let minTopupRequiredEur = Math.max(
       0,
       Number((destinationRequiredEur - currentBalanceEur).toFixed(2)),
     );
+    const customDestinationMinFloor = Math.max(
+      0,
+      Number(getFloatSetting(settings, "topup_custom_destination_min_eur", 30).toFixed(2)),
+    );
+    if (!hasPricedListDestination && customDestinationMinFloor > 0) {
+      minTopupRequiredEur = Math.max(minTopupRequiredEur, customDestinationMinFloor);
+    }
 
-    if (minTopupRequiredEur > 0 && amountEur < minTopupRequiredEur) {
+    if (amountEur < minTopupRequiredEur) {
       return Response.json(
         {
           ok: false,
-          error: `Legalabb ${minTopupRequiredEur.toLocaleString("hu-HU")} EUR feltoltes szukseges ehhez az uticelhoz.`,
+          error: hasPricedListDestination
+            ? `Legalább ${minTopupRequiredEur.toLocaleString("hu-HU")} EUR feltöltés szükséges ehhez az úticélhoz.`
+            : `Egyéni vagy nem árazott úticél esetén legalább ${minTopupRequiredEur.toLocaleString("hu-HU")} EUR feltöltés szükséges.`,
         },
         { status: 400 },
       );

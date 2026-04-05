@@ -7,6 +7,8 @@ export const SETTINGS_DEFAULTS: Record<string, string> = {
   device_price_huf: "499000",
   min_balance_warning_huf: "5000",
   topup_discount_percent: "0",
+  /** Egyéni (listán kívüli) úticél esetén a minimum feltöltendő összeg EUR-ban. 0 = nincs külön padló (csak az általános minimum). */
+  topup_custom_destination_min_eur: "30",
   fx_eur_to_huf: "400",
   topup_package_1_huf: "40",
   topup_package_2_huf: "60",
@@ -155,6 +157,13 @@ export async function getSettingsMap(): Promise<Record<string, string>> {
 export function getIntSetting(map: Record<string, string>, key: string, fallback: number): number {
   const v = map[key];
   const n = v ? Number.parseInt(v, 10) : NaN;
+  return Number.isFinite(n) ? n : fallback;
+}
+
+export function getFloatSetting(map: Record<string, string>, key: string, fallback: number): number {
+  const raw = map[key];
+  if (raw == null || String(raw).trim() === "") return fallback;
+  const n = Number.parseFloat(String(raw).replace(",", "."));
   return Number.isFinite(n) ? n : fallback;
 }
 

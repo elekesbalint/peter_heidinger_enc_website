@@ -144,6 +144,10 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
     label: "Topup kedvezmény (%)",
     hint: "Pl. 10 esetén a fizetendő ár 10%-kal kevesebb.",
   },
+  topup_custom_destination_min_eur: {
+    label: "Egyéni úticél minimum feltöltés (EUR)",
+    hint: "Ha a felhasználó nem a listából választ úticélt, legalább ennyi EUR-t kell feltöltenie (0 = nincs ilyen kötelező minimum).",
+  },
   topup_package_1_huf: {
     label: "1. topup csomag (EUR)",
     hint: "A legkisebb feltöltési csomag ára EUR-ban.",

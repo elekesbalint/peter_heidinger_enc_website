@@ -16,6 +16,8 @@ type ConfigResponse = {
   error?: string;
   packages?: number[];
   discountPercent?: number;
+  /** Egyéni úticél (vagy nem árazott listaelem) esetén alkalmazott minimum EUR; admin: topup_custom_destination_min_eur */
+  customDestinationMinEur?: number;
   minBalanceWarningEur?: number;
   fxEurToHuf?: number;
   blockedCategoriesForSmallestPackage?: string[];
@@ -105,7 +107,13 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
   }, [selectedDestination, selectedDevice]);
 
   const currentBalanceEur = Number(selectedDevice?.balance_eur ?? 0);
-  const minimumRequiredTopup = Math.max(0, destinationRequiredEur - currentBalanceEur);
+  const customDestinationMinEur = Math.max(0, Number(config?.customDestinationMinEur ?? 30));
+  const hasPricedListDestination = Boolean(selectedDestination && destinationRequiredEur > 0);
+  const gapToDestinationEur = Math.max(0, destinationRequiredEur - currentBalanceEur);
+  let minimumRequiredTopup = hasPricedListDestination ? gapToDestinationEur : 0;
+  if (!hasPricedListDestination && customDestinationMinEur > 0 && selectedDevice && travelDestination.trim().length >= 2) {
+    minimumRequiredTopup = Math.max(gapToDestinationEur, customDestinationMinEur);
+  }
   const discountPercent = Math.max(0, Number(config?.discountPercent ?? 0));
   useEffect(() => {
     const current = Number.parseFloat(customAmount);
@@ -149,7 +157,9 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
     }
     if (effectiveAmount < minimumRequiredTopup) {
       setError(
-        `Ehhez az úticélhoz legalább ${minimumRequiredTopup.toLocaleString("hu-HU")} EUR feltöltés szükséges.`,
+        hasPricedListDestination
+          ? `Ehhez az úticélhoz legalább ${minimumRequiredTopup.toLocaleString("hu-HU")} EUR feltöltés szükséges.`
+          : `Egyéni vagy nem árazott úticél esetén legalább ${minimumRequiredTopup.toLocaleString("hu-HU")} EUR feltöltés szükséges.`,
       );
       return;
     }
@@ -318,13 +328,31 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
             </>
           )}
         </div>
-        {selectedDevice && selectedDestination && (
+        {selectedDevice &&
+          travelDestination.trim().length >= 2 &&
+          (hasPricedListDestination || destinationMode === "custom" || Boolean(selectedDestination)) && (
           <>
             <div className="mt-4 rounded-xl border border-indigo-200 bg-indigo-50/70 px-4 py-3 text-sm text-indigo-950">
-              <p>
-                Jelenlegi egyenleg: <strong>{currentBalanceEur.toLocaleString("hu-HU")} EUR</strong> | Úticélhoz ajánlott:
-                <strong> {destinationRequiredEur.toLocaleString("hu-HU")} EUR</strong>
-              </p>
+              {hasPricedListDestination ? (
+                <p>
+                  Jelenlegi egyenleg: <strong>{currentBalanceEur.toLocaleString("hu-HU")} EUR</strong> | Úticélhoz ajánlott:
+                  <strong> {destinationRequiredEur.toLocaleString("hu-HU")} EUR</strong>
+                </p>
+              ) : selectedDestination ? (
+                <p>
+                  Úticél: <strong>{selectedDestination.name}</strong>
+                  <span className="mt-1 block text-xs text-indigo-900/85">
+                    Ehhez a járműkategóriához nincs tárolt listaár; minimum feltöltés az admin által beállított érték szerint.
+                  </span>
+                </p>
+              ) : (
+                <p>
+                  <span className="font-medium">Egyéni úticél:</span> {travelDestination.trim()}
+                  <span className="mt-1 block text-xs text-indigo-900/85">
+                    Listaáras ajánlott összeg ehhez a megnevezéshez nem elérhető; minimum feltöltés az admin által beállított érték szerint.
+                  </span>
+                </p>
+              )}
               {minimumRequiredTopup > 0 ? (
                 <p className="mt-1">
                   Minimum szükséges feltöltés:{" "}
@@ -335,8 +363,8 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
               )}
             </div>
             <p className="mt-2 text-xs text-slate-600">
-              A hozzávetőlegesen kalkulált útdíj Letenye határátkelővel értendő. Amennyiben más határátkelőt választ, érdemes
-              magasabb összeggel feltölteni a készüléket, mert az út más szakaszon drágább lehet.
+              A hozzávetőlegesen kalkulált útdíj Letenye határátkelővel értendő. Ha más határátkelőt választasz, érdemes
+              magasabb összeggel feltölteni a készülékedet, mert az út más szakaszon drágább lehet.
             </p>
           </>
         )}
