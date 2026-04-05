@@ -577,6 +577,37 @@ function isOrderActive(order: EncOrder): boolean {
   return !order.archived_at && !order.cancelled_at && !order.shipped_at;
 }
 
+type AdminSidebarBadgeTone = "enc" | "wait" | "debt";
+
+function AdminSidebarTabBadge({
+  count,
+  selected,
+  tone,
+}: {
+  count: number;
+  selected: boolean;
+  tone: AdminSidebarBadgeTone;
+}) {
+  if (count <= 0) return null;
+  const label = count > 99 ? "99+" : String(count);
+  const inactive =
+    tone === "enc"
+      ? "bg-amber-500 text-white"
+      : tone === "wait"
+        ? "bg-sky-600 text-white"
+        : "bg-rose-600 text-white";
+  return (
+    <span
+      className={`inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-bold tabular-nums ${
+        selected ? "bg-white/95 text-primary shadow-sm" : inactive
+      }`}
+      aria-hidden
+    >
+      {label}
+    </span>
+  );
+}
+
 export function AdminWorkspace() {
   const [tab, setTab] = useState<TabId>("Eszközrendelések");
 
@@ -658,6 +689,10 @@ export function AdminWorkspace() {
   const [walletAdjustLoading, setWalletAdjustLoading] = useState(false);
   const [walletAdjustErr, setWalletAdjustErr] = useState<string | null>(null);
   const [walletAdjustMsg, setWalletAdjustMsg] = useState<string | null>(null);
+
+  const [adminBadgeEnc, setAdminBadgeEnc] = useState(0);
+  const [adminBadgeWait, setAdminBadgeWait] = useState(0);
+  const [adminBadgeDebt, setAdminBadgeDebt] = useState(0);
 
   async function fileToDataUrl(file: File): Promise<string> {
     return await new Promise((resolve, reject) => {
@@ -789,7 +824,9 @@ export function AdminWorkspace() {
         setEncErr(data.error ?? "Hiba");
         return;
       }
-      setEncOrders(data.items ?? []);
+      const items = data.items ?? [];
+      setEncOrders(items);
+      setAdminBadgeEnc(items.filter(isOrderActive).length);
     } catch {
       setEncErr("Hálózati hiba");
     } finally {
@@ -807,13 +844,48 @@ export function AdminWorkspace() {
         setWaitErr(data.error ?? "Hiba");
         return;
       }
-      setWaitlist(data.items ?? []);
+      const items = data.items ?? [];
+      setWaitlist(items);
+      setAdminBadgeWait(items.length);
     } catch {
       setWaitErr("Hálózati hiba");
     } finally {
       setWaitLoading(false);
     }
   }, []);
+
+  const refreshAdminBadges = useCallback(async () => {
+    try {
+      const [encRes, waitRes, walletRes] = await Promise.all([
+        fetch("/api/admin/enc-device-orders/list"),
+        fetch("/api/admin/device-waitlist/list"),
+        fetch("/api/admin/device-wallets/list"),
+      ]);
+      const encData = (await encRes.json()) as { ok?: boolean; items?: EncOrder[] };
+      const waitData = (await waitRes.json()) as { ok?: boolean; items?: WaitRow[] };
+      const walletData = (await walletRes.json()) as { ok?: boolean; items?: WalletRow[] };
+      if (encData.ok && Array.isArray(encData.items)) {
+        setAdminBadgeEnc(encData.items.filter(isOrderActive).length);
+      }
+      if (waitData.ok && Array.isArray(waitData.items)) {
+        setAdminBadgeWait(waitData.items.length);
+      }
+      if (walletData.ok && Array.isArray(walletData.items)) {
+        setAdminBadgeDebt(walletData.items.filter((w) => (w.balance_huf ?? 0) < 0).length);
+      }
+    } catch {
+      /* badge refresh best-effort */
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshAdminBadges();
+  }, [refreshAdminBadges]);
+
+  useEffect(() => {
+    const id = setInterval(() => void refreshAdminBadges(), 90_000);
+    return () => clearInterval(id);
+  }, [refreshAdminBadges]);
 
   const loadDevices = useCallback(async (q = devicesQ) => {
     setDevLoading(true);
@@ -1096,6 +1168,7 @@ export function AdminWorkspace() {
         })} EUR).`,
       );
       setWalletAdjustReason("");
+      void refreshAdminBadges();
     } catch (e) {
       setWalletAdjustErr(e instanceof Error ? e.message : "Hálózati hiba");
     } finally {
@@ -1121,7 +1194,9 @@ export function AdminWorkspace() {
       }
       setMinBalanceWarningHuf(data.minBalanceWarningHuf ?? 5000);
       setFxEurToHuf(data.fxEurToHuf ?? 400);
-      setWalletRows(data.items ?? []);
+      const items = data.items ?? [];
+      setWalletRows(items);
+      setAdminBadgeDebt(items.filter((w) => (w.balance_huf ?? 0) < 0).length);
     } catch {
       setWalletErr("Hálózati hiba");
     } finally {
@@ -1578,18 +1653,33 @@ export function AdminWorkspace() {
     <section className="mt-8 grid gap-6 lg:grid-cols-[240px_1fr]">
       <aside className="rounded-2xl border border-border bg-card p-4 shadow-sm">
         <nav className="space-y-1">
-          {TABS.map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              className={`w-full rounded-xl px-3 py-2 text-left text-sm font-medium transition ${
-                tab === t ? "bg-primary text-white" : "text-slate-700 hover:bg-slate-100"
-              }`}
-            >
-              {t}
-            </button>
-          ))}
+          {TABS.map((t) => {
+            const selected = tab === t;
+            const encCount = t === "Eszközrendelések" ? adminBadgeEnc : 0;
+            const waitCount = t === "Készülékre vár" ? adminBadgeWait : 0;
+            const debtCount = t === "Tartozás" ? adminBadgeDebt : 0;
+            const bubbleCount = encCount + waitCount + debtCount;
+            const tone: AdminSidebarBadgeTone | null =
+              t === "Eszközrendelések" ? "enc" : t === "Készülékre vár" ? "wait" : t === "Tartozás" ? "debt" : null;
+            const aria =
+              bubbleCount > 0 && tone
+                ? `${t}, ${bubbleCount} tétel figyelmet igényel`
+                : undefined;
+            return (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTab(t)}
+                aria-label={aria}
+                className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-medium transition ${
+                  selected ? "bg-primary text-white" : "text-slate-700 hover:bg-slate-100"
+                }`}
+              >
+                <span className="min-w-0 flex-1 truncate">{t}</span>
+                {tone ? <AdminSidebarTabBadge count={bubbleCount} selected={selected} tone={tone} /> : null}
+              </button>
+            );
+          })}
         </nav>
       </aside>
 
