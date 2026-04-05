@@ -52,9 +52,9 @@ function slugify(text: string): string {
 }
 
 function normalizePost(input: Partial<HomeBlogPost>, index: number): HomeBlogPost {
-  const title = String(input.title ?? "").trim();
+  const title = String(input.title ?? "");
   const id = String(input.id ?? `blog-${index + 1}`).trim() || `blog-${index + 1}`;
-  const slugFromTitle = slugify(title);
+  const slugFromTitle = slugify(title.trim());
   const fallbackSlug = `blog-${index + 1}`;
   const slug = String(input.slug ?? "").trim() || slugFromTitle || fallbackSlug;
 
@@ -62,8 +62,8 @@ function normalizePost(input: Partial<HomeBlogPost>, index: number): HomeBlogPos
     id,
     slug,
     title,
-    excerpt: String(input.excerpt ?? "").trim(),
-    content: String(input.content ?? "").trim(),
+    excerpt: String(input.excerpt ?? ""),
+    content: String(input.content ?? ""),
     date: String(input.date ?? "").trim(),
     image_url: String(input.image_url ?? "").trim(),
   };
@@ -87,7 +87,9 @@ export function parseHomeBlogPosts(
     if (options?.keepEmptyDrafts) {
       return normalized;
     }
-    return normalized.filter((post) => post.title || post.excerpt || post.content);
+    return normalized.filter(
+      (post) => post.title.trim() || post.excerpt.trim() || post.content.trim(),
+    );
   } catch {
     return [...DEFAULT_HOME_BLOG_POSTS];
   }
