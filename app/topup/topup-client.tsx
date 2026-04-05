@@ -373,7 +373,7 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
                 <p>
                   <span className="font-medium">Egyéni úticél:</span> {travelDestination.trim()}
                   <span className="mt-1 block text-xs text-indigo-900/85">
-                    Listaáras ajánlott összeg ehhez a megnevezéshez nem elérhető; minimum feltöltés az admin által beállított érték szerint.
+                    Listaáras ajánlott összeg ehhez a megnevezéshez nem elérhető;
                   </span>
                 </p>
               )}

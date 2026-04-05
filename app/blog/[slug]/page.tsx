@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSettingsMap } from "@/lib/app-settings";
+import { blogContentToSafeHtml } from "@/lib/blog-content";
 import { parseHomeBlogPosts } from "@/lib/home-blog";
 
 type BlogDetailPageProps = {
@@ -17,10 +18,7 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
     notFound();
   }
 
-  const paragraphs = (post.content || post.excerpt || "")
-    .split(/\n\s*\n/g)
-    .map((part) => part.trim())
-    .filter(Boolean);
+  const bodyHtml = blogContentToSafeHtml(post.content || post.excerpt || "");
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-12">
@@ -37,13 +35,14 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
             className="mt-6 h-64 w-full rounded-xl object-cover md:h-80"
           />
         )}
-        <div className="mt-6 space-y-4 text-base leading-relaxed text-muted">
-          {paragraphs.map((paragraph, idx) => (
-            <p key={`${idx}-${paragraph.slice(0, 32)}`} className="whitespace-pre-wrap">
-              {paragraph}
-            </p>
-          ))}
-        </div>
+        {bodyHtml ? (
+          <div
+            className="blog-prose mt-6 text-base leading-relaxed text-muted"
+            dangerouslySetInnerHTML={{ __html: bodyHtml }}
+          />
+        ) : (
+          <p className="mt-6 text-muted">A cikk tartalma hamarosan.</p>
+        )}
       </article>
     </main>
   );

@@ -13,6 +13,7 @@ import {
   stringifyHomeBlogPosts,
   type HomeBlogPost,
 } from "@/lib/home-blog";
+import { BlogRichEditor } from "@/components/blog-rich-editor";
 import { AdminDataPanels } from "./admin-data-panels";
 import { ImportDevicesForm } from "./import-devices-form";
 import { ImportRoutesForm } from "./import-routes-form";
@@ -283,6 +284,10 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
   home_blog_title: { label: "Blog cím", hint: "Főoldali blog szekció főcíme." },
   home_blog_subtitle: { label: "Blog alcím", hint: "Főoldali blog szekció leírása." },
   home_blog_read_more_label: { label: "Blog link felirat", hint: "Pl.: Tovább olvasom." },
+  home_blog_load_more_label: {
+    label: "További blog gomb",
+    hint: "Pl.: Következő blogcikkek — ha több mint 6 cikk van a főoldalon.",
+  },
   home_blog_posts_json: {
     label: "Blog bejegyzések (JSON)",
     hint: "A bejegyzések listája. Ezt a Blog fül kezeli automatikusan.",
@@ -621,6 +626,7 @@ export function AdminWorkspace() {
   const [setErr, setSetErr] = useState<string | null>(null);
   const [setMsg, setSetMsg] = useState<string | null>(null);
   const [setDraft, setSetDraft] = useState<Record<string, string>>({});
+  const [blogEditId, setBlogEditId] = useState<string | null>(null);
 
   const [users, setUsers] = useState<UserRow[]>([]);
   const [usrLoading, setUsrLoading] = useState(false);
@@ -711,6 +717,7 @@ export function AdminWorkspace() {
   }
 
   const blogPosts = parseHomeBlogPosts(setDraft.home_blog_posts_json);
+  const editingPost = blogEditId ? (blogPosts.find((p) => p.id === blogEditId) ?? null) : null;
 
   function setBlogPosts(nextPosts: HomeBlogPost[]) {
     setSetDraft((d) => ({ ...d, home_blog_posts_json: stringifyHomeBlogPosts(nextPosts) }));
@@ -726,11 +733,14 @@ export function AdminWorkspace() {
   }
 
   function addBlogPost() {
-    setBlogPosts([...blogPosts, createEmptyHomeBlogPost()]);
+    const newPost = createEmptyHomeBlogPost();
+    setBlogPosts([...blogPosts, newPost]);
+    setBlogEditId(newPost.id);
   }
 
   function deleteBlogPost(id: string) {
     setBlogPosts(blogPosts.filter((post) => post.id !== id));
+    setBlogEditId((cur) => (cur === id ? null : cur));
   }
 
   async function uploadBlogImage(postId: string, file: File | null) {
@@ -2732,93 +2742,179 @@ export function AdminWorkspace() {
                   />
                 </div>
               </div>
+              <div className="flex flex-wrap items-start gap-2 text-sm">
+                <div className="w-56 shrink-0">
+                  <p className="font-medium text-foreground">
+                    {SETTINGS_META.home_blog_load_more_label?.label ?? "További blog gomb"}
+                  </p>
+                  <p className="text-xs text-muted">
+                    {SETTINGS_META.home_blog_load_more_label?.hint ?? "6 cikk után megjelenő gomb felirata."}
+                  </p>
+                  <p className="mt-0.5 font-mono text-[10px] text-slate-400">home_blog_load_more_label</p>
+                </div>
+                <div className="min-w-[200px] flex-1">
+                  <input
+                    value={setDraft.home_blog_load_more_label ?? ""}
+                    onChange={(e) => setSetDraft((d) => ({ ...d, home_blog_load_more_label: e.target.value }))}
+                    className="w-full rounded border px-2 py-1"
+                  />
+                </div>
+              </div>
             </div>
 
-            <div className="mt-5 space-y-4">
-              {blogPosts.map((post, index) => (
-                <div key={post.id} className="rounded-xl border border-border bg-white/70 p-4">
-                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="text-sm font-semibold text-foreground">Blog #{index + 1}</h3>
+            <div className="mt-5">
+              <p className="mb-3 text-xs text-muted">
+                A bejegyzések táblázatban láthatók. Kattints a <strong>Szerkesztés</strong> gombra — ott érhető el a
+                formázott szerkesztő (címsor, félkövér, kép, link). A régi, sima szöveges cikkek változatlanul
+                megjelennek; új tartalom HTML-ként mentődik.
+              </p>
+              <div className="overflow-x-auto rounded-lg border border-border bg-white/80">
+                <table className="w-full min-w-[720px] border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                      <th className="px-3 py-2">#</th>
+                      <th className="px-3 py-2">Dátum</th>
+                      <th className="px-3 py-2">Cím</th>
+                      <th className="px-3 py-2">Kivonat</th>
+                      <th className="px-3 py-2">URL (slug)</th>
+                      <th className="px-3 py-2 text-right">Művelet</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {blogPosts.map((post, index) => (
+                      <tr
+                        key={post.id}
+                        className={`border-b border-border last:border-b-0 ${blogEditId === post.id ? "bg-primary/8" : "hover:bg-slate-50/80"}`}
+                      >
+                        <td className="px-3 py-2 align-top text-muted">{index + 1}</td>
+                        <td className="px-3 py-2 align-top whitespace-nowrap text-slate-700">{post.date || "—"}</td>
+                        <td className="px-3 py-2 align-top font-medium text-foreground">
+                          {post.title || <span className="text-muted italic">(névtelen)</span>}
+                        </td>
+                        <td className="max-w-[220px] px-3 py-2 align-top text-slate-600">
+                          {(post.excerpt || "").length > 72 ? `${(post.excerpt || "").slice(0, 72)}…` : post.excerpt || "—"}
+                        </td>
+                        <td className="max-w-[160px] truncate px-3 py-2 align-top font-mono text-xs text-slate-500">
+                          {post.slug || "—"}
+                        </td>
+                        <td className="px-3 py-2 align-top text-right whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => setBlogEditId(post.id)}
+                            className="mr-1 rounded border border-primary/40 bg-primary/10 px-2 py-1 text-xs font-medium text-primary hover:bg-primary/15"
+                          >
+                            Szerkesztés
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteBlogPost(post.id)}
+                            className="rounded border border-red-300 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100"
+                          >
+                            Törlés
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {blogPosts.length === 0 && <p className="mt-3 text-sm text-muted">Még nincs blog bejegyzés.</p>}
+
+              {editingPost && (
+                <div className="mt-6 rounded-xl border-2 border-primary/30 bg-white p-4 shadow-sm">
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-base font-semibold text-foreground">
+                      Bejegyzés szerkesztése
+                      {editingPost.title ? ` — ${editingPost.title}` : ""}
+                    </h3>
                     <button
                       type="button"
-                      onClick={() => deleteBlogPost(post.id)}
-                      className="rounded border border-red-300 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100"
+                      onClick={() => setBlogEditId(null)}
+                      className="rounded border border-slate-300 bg-slate-50 px-3 py-1 text-sm font-medium text-slate-700 hover:bg-slate-100"
                     >
-                      Törlés
+                      Bezárás
                     </button>
                   </div>
                   <div className="grid gap-3 md:grid-cols-2">
                     <label className="text-xs text-slate-600">
                       Cím
                       <input
-                        value={post.title}
-                        onChange={(e) => updateBlogPost(post.id, { title: e.target.value })}
+                        value={editingPost.title}
+                        onChange={(e) => updateBlogPost(editingPost.id, { title: e.target.value })}
                         className="mt-1 w-full rounded border px-2 py-1 text-sm"
                       />
                     </label>
                     <label className="text-xs text-slate-600">
                       Dátum
                       <input
-                        value={post.date}
-                        onChange={(e) => updateBlogPost(post.id, { date: e.target.value })}
+                        value={editingPost.date}
+                        onChange={(e) => updateBlogPost(editingPost.id, { date: e.target.value })}
                         className="mt-1 w-full rounded border px-2 py-1 text-sm"
                         placeholder="2026-03-30"
+                      />
+                    </label>
+                    <label className="text-xs text-slate-600 md:col-span-2">
+                      URL cím (slug) — SEO; üresen a címből generálódik mentéskor
+                      <input
+                        value={editingPost.slug}
+                        onChange={(e) => updateBlogPost(editingPost.id, { slug: e.target.value })}
+                        className="mt-1 w-full rounded border px-2 py-1 font-mono text-sm"
+                        placeholder="pl. uj-hir-cikk"
                       />
                     </label>
                     <label className="text-xs text-slate-600 md:col-span-2">
                       Rövid kivonat (kártyán látszik)
                       <textarea
                         rows={3}
-                        value={post.excerpt}
-                        onChange={(e) => updateBlogPost(post.id, { excerpt: e.target.value })}
+                        value={editingPost.excerpt}
+                        onChange={(e) => updateBlogPost(editingPost.id, { excerpt: e.target.value })}
                         className="mt-1 w-full rounded border px-2 py-1 text-sm"
                       />
                     </label>
+                    <div className="md:col-span-2">
+                      <p className="text-xs text-slate-600">Teljes tartalom (részletes oldal)</p>
+                      <div className="mt-1">
+                        <BlogRichEditor
+                          value={editingPost.content}
+                          onChange={(html) => updateBlogPost(editingPost.id, { content: html })}
+                        />
+                      </div>
+                    </div>
                     <label className="text-xs text-slate-600 md:col-span-2">
-                      Teljes blog tartalom (részletes oldalon látszik)
-                      <textarea
-                        rows={8}
-                        value={post.content}
-                        onChange={(e) => updateBlogPost(post.id, { content: e.target.value })}
-                        className="mt-1 w-full rounded border px-2 py-1 text-sm"
-                      />
-                    </label>
-                    <label className="text-xs text-slate-600 md:col-span-2">
-                      Kép URL / data URI
+                      Borítókép URL / data URI
                       <input
-                        value={post.image_url}
-                        onChange={(e) => updateBlogPost(post.id, { image_url: e.target.value })}
+                        value={editingPost.image_url}
+                        onChange={(e) => updateBlogPost(editingPost.id, { image_url: e.target.value })}
                         className="mt-1 w-full rounded border px-2 py-1 text-sm"
                         placeholder="https://... vagy feltöltött data URI"
                       />
                     </label>
                     <div className="md:col-span-2">
                       <label className="inline-flex cursor-pointer items-center gap-2 rounded border border-blue-200 bg-blue-50 px-2 py-1 text-xs text-blue-900 hover:bg-blue-100">
-                        Kép feltöltése
+                        Borítókép feltöltése
                         <input
                           type="file"
                           accept="image/*"
                           className="hidden"
                           onChange={(e) => {
-                            void uploadBlogImage(post.id, e.target.files?.[0] ?? null);
+                            void uploadBlogImage(editingPost.id, e.target.files?.[0] ?? null);
                             e.currentTarget.value = "";
                           }}
                         />
                       </label>
                     </div>
-                    {post.image_url && (
+                    {editingPost.image_url && (
                       <div className="md:col-span-2">
                         <img
-                          src={post.image_url}
-                          alt={post.title || "Blog kép előnézet"}
-                          className="h-28 w-full rounded-lg object-cover"
+                          src={editingPost.image_url}
+                          alt={editingPost.title || "Blog kép előnézet"}
+                          className="h-36 w-full max-w-md rounded-lg object-cover"
                         />
                       </div>
                     )}
                   </div>
                 </div>
-              ))}
-              {blogPosts.length === 0 && <p className="text-sm text-muted">Még nincs blog bejegyzés.</p>}
+              )}
             </div>
             {setLoading && <p className="mt-2 text-sm text-muted">Betöltés…</p>}
           </div>

@@ -81,6 +81,7 @@ export const SETTINGS_DEFAULTS: Record<string, string> = {
   home_blog_title: "Blog",
   home_blog_subtitle: "Hírek, tippek és hasznos tudnivalók ENC használathoz.",
   home_blog_read_more_label: "Tovább olvasom",
+  home_blog_load_more_label: "Következő blogcikkek",
   home_blog_posts_json: JSON.stringify(DEFAULT_HOME_BLOG_POSTS),
   home_final_title: "Készen állsz?",
   home_final_subtitle:
