@@ -1,17 +1,13 @@
 import "server-only";
 
-import createDOMPurify from "dompurify";
-import { JSDOM } from "jsdom";
+import sanitizeHtml from "sanitize-html";
 
 import { looksLikeBlogHtml, plainBlogTextToHtml } from "./blog-content-plain";
 
 export { looksLikeBlogHtml, plainBlogTextToHtml } from "./blog-content-plain";
 
-const domWindow = new JSDOM("").window;
-const purify = createDOMPurify(domWindow as unknown as Parameters<typeof createDOMPurify>[0]);
-
-const SANITIZE_CONFIG: Parameters<typeof purify.sanitize>[1] = {
-  ALLOWED_TAGS: [
+const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
+  allowedTags: [
     "p",
     "br",
     "strong",
@@ -33,12 +29,20 @@ const SANITIZE_CONFIG: Parameters<typeof purify.sanitize>[1] = {
     "pre",
     "hr",
   ],
-  ALLOWED_ATTR: ["href", "src", "alt", "title", "class", "width", "height", "target", "rel"],
-  ALLOW_DATA_ATTR: false,
+  allowedAttributes: {
+    a: ["href", "target", "rel", "title"],
+    img: ["src", "alt", "width", "height", "title"],
+    "*": ["class"],
+  },
+  allowedSchemes: ["http", "https", "mailto"],
+  allowedSchemesByTag: {
+    img: ["http", "https", "data"],
+  },
+  allowProtocolRelative: false,
 };
 
 export function sanitizeBlogHtml(dirty: string): string {
-  return purify.sanitize(dirty, SANITIZE_CONFIG) as string;
+  return sanitizeHtml(dirty, SANITIZE_OPTIONS);
 }
 
 export function blogContentToSafeHtml(content: string): string {
