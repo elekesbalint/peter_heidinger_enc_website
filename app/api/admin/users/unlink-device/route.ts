@@ -3,7 +3,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 /**
  * Removes a device from a user's account (clears auth_user_id).
- * The user will no longer see the device or be able to top it up.
+ * Also clears enc_device_orders.device_id for this device so the dashboard "repair"
+ * loop cannot re-assign the device on next page load.
  * Wallet balance stays tied to device_identifier. Device returns to stock as "available"
  * unless it was archived.
  */
@@ -49,6 +50,19 @@ export async function POST(request: Request) {
   const now = new Date().toISOString();
   const status = String(row.status ?? "").toLowerCase();
   const nextStatus = status === "archived" ? "archived" : "available";
+
+  const { error: orderErr } = await supabase
+    .from("enc_device_orders")
+    .update({
+      device_id: null,
+      device_identifier: null,
+      assignment_ok: false,
+    })
+    .eq("device_id", row.id);
+
+  if (orderErr) {
+    return Response.json({ ok: false, error: orderErr.message }, { status: 500 });
+  }
 
   const { error: updErr } = await supabase
     .from("devices")
