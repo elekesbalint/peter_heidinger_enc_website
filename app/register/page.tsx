@@ -6,6 +6,22 @@ import { useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { isReservedAdminEmail } from "@/lib/admin-email";
 
+function formatAuthErrorMessage(raw: string): string {
+  const m = raw.toLowerCase();
+  if (
+    m.includes("rate limit") ||
+    m.includes("too many requests") ||
+    m.includes("email rate limit")
+  ) {
+    return (
+      "Az e-mail megerősítő küldését a Supabase Auth ideiglenesen korlátozta (túl sok kérés). " +
+      "Próbáld újra később (általában néhány perc–óra), vagy a Supabase irányítópulton: Authentication → Rate Limits; " +
+      "éles használathoz érdemes saját SMTP-t beállítani (Authentication → Providers → Email), mert a beépített küldőnek szigorú óránkénti plafonja van."
+    );
+  }
+  return raw;
+}
+
 export default function RegisterPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -61,7 +77,7 @@ export default function RegisterPage() {
       });
 
       if (signUpError) {
-        setError(signUpError.message);
+        setError(formatAuthErrorMessage(signUpError.message));
         return;
       }
 
