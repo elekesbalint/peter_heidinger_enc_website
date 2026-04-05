@@ -1,48 +1,9 @@
 import { getIntSetting, getSettingsMap } from "@/lib/app-settings";
+import { buildEmailHtml } from "@/lib/email-html";
 import { createEracuniInvoiceStub } from "@/lib/eracuni";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import { sendAppEmail } from "@/lib/notify-email";
 import { getStripe } from "@/lib/stripe";
-
-function escapeHtml(input: string): string {
-  return input
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
-function buildEmailHtml(params: { title: string; intro: string; rows: Array<{ label: string; value: string }> }): string {
-  const rowsHtml = params.rows
-    .map(
-      (r) => `
-        <tr>
-          <td style="padding:6px 0;color:#64748b;font-size:13px;">${escapeHtml(r.label)}</td>
-          <td style="padding:6px 0;color:#0f172a;font-size:13px;font-weight:600;">${escapeHtml(r.value)}</td>
-        </tr>`,
-    )
-    .join("");
-
-  return `
-  <div style="background:#f8fafc;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
-    <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;">
-      <div style="padding:16px 20px;background:linear-gradient(135deg,#1d4ed8,#4f46e5);color:#ffffff;">
-        <div style="font-size:12px;opacity:0.9;letter-spacing:.04em;text-transform:uppercase;">AdriaGo</div>
-        <div style="font-size:20px;font-weight:700;margin-top:6px;">${escapeHtml(params.title)}</div>
-      </div>
-      <div style="padding:18px 20px;">
-        <p style="margin:0 0 12px 0;color:#334155;font-size:14px;line-height:1.5;">${escapeHtml(params.intro)}</p>
-        <table role="presentation" cellspacing="0" cellpadding="0" width="100%" style="border-collapse:collapse;">
-          ${rowsHtml}
-        </table>
-      </div>
-      <div style="padding:12px 20px;background:#f8fafc;color:#64748b;font-size:12px;">
-        Ez egy automatikus üzenet, kérjük ne válaszolj rá.
-      </div>
-    </div>
-  </div>`;
-}
 
 function parseAmountHuf(sessionAmountTotal: number | null, metadataAmountHuf: string | undefined): number {
   const metaAmount = metadataAmountHuf ? Number.parseInt(metadataAmountHuf, 10) : NaN;

@@ -7,6 +7,7 @@ import {
   DEVICE_CATEGORY_VALUES,
   type DeviceCategoryValue,
 } from "@/lib/device-categories";
+import type { OrderWaitlistMessageSegment } from "@/lib/order-waitlist-message";
 
 type CategoryGuideItems = Record<DeviceCategoryValue, string>;
 
@@ -32,13 +33,13 @@ export function OrderForm({
   const [licensePlate, setLicensePlate] = useState("");
   const [contractAccepted, setContractAccepted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [waitlistSegments, setWaitlistSegments] = useState<OrderWaitlistMessageSegment[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setMessage(null);
+    setWaitlistSegments(null);
     if (!contractAccepted) {
       setError("Fogadd el a vásárlási feltételeket a folytatáshoz.");
       return;
@@ -65,13 +66,16 @@ export function OrderForm({
         url?: string | null;
         waitlist?: boolean;
         message?: string;
+        waitlistSegments?: OrderWaitlistMessageSegment[];
       };
       if (!data.ok) {
         setError(data.error ?? "Hiba történt.");
         return;
       }
-      if (data.waitlist && data.message) {
-        setMessage(data.message);
+      if (data.waitlist && (data.waitlistSegments?.length || data.message)) {
+        setWaitlistSegments(
+          data.waitlistSegments?.length ? data.waitlistSegments : [{ type: "text", text: data.message ?? "" }],
+        );
         return;
       }
       if (data.url) {
@@ -188,9 +192,27 @@ export function OrderForm({
           {error}
         </div>
       )}
-      {message && (
+      {waitlistSegments && waitlistSegments.length > 0 && (
         <div className="rounded-xl border border-amber-200 bg-warning-light px-4 py-3 text-sm text-amber-900">
-          {message}
+          <p className="leading-relaxed">
+            {waitlistSegments.map((seg, i) =>
+              seg.type === "link" ? (
+                <a
+                  key={i}
+                  href={seg.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`text-amber-950 underline decoration-amber-700/60 underline-offset-2 transition hover:decoration-amber-900 ${
+                    seg.bold ? "font-bold" : ""
+                  }`}
+                >
+                  {seg.text}
+                </a>
+              ) : (
+                <span key={i}>{seg.text}</span>
+              ),
+            )}
+          </p>
         </div>
       )}
 

@@ -45,6 +45,8 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const destinationPickerRef = useRef<HTMLDivElement | null>(null);
+  /** Előző kötelező minimum — csak emelkedéskor / első 0→pozitív szinkronnál írjuk felül a mezőt; üres mezőt gépeléshez megtartjuk. */
+  const prevMinimumTopupRef = useRef<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -116,17 +118,42 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
   }
   const discountPercent = Math.max(0, Number(config?.discountPercent ?? 0));
 
-  /** Csak akkor kényszerítjük a minimumot, ha az úticél/eszköz változása miatt változik a küszöb — gépelés közben nem írjuk felül a mezőt. */
+  /**
+   * Minimum követése: első alkalommal (0 → pozitív) kitöltjük a mezőt; ha a minimum emelkedik, a számot felhúzzuk.
+   * Üres vagy részleges bevitel nem íródik felül — kitörölhető a 87, majd beírható pl. 150.
+   */
   useEffect(() => {
-    if (minimumRequiredTopup <= 0) return;
+    setSelectedPackageAmount(null);
+
+    const prevStored = prevMinimumTopupRef.current;
+    const prevMinSafe = prevStored ?? 0;
+
+    if (minimumRequiredTopup <= 0) {
+      prevMinimumTopupRef.current = minimumRequiredTopup;
+      return;
+    }
+
     setCustomAmount((prev) => {
-      const current = Number.parseFloat(String(prev).replace(",", "."));
-      if (!Number.isFinite(current) || current < minimumRequiredTopup) {
+      const trimmed = String(prev).trim();
+
+      if (trimmed === "") {
+        if (minimumRequiredTopup > prevMinSafe && prevMinSafe === 0) {
+          return minimumRequiredTopup.toFixed(2);
+        }
+        return prev;
+      }
+
+      const current = Number.parseFloat(trimmed.replace(",", "."));
+      if (!Number.isFinite(current)) return prev;
+
+      if (minimumRequiredTopup > prevMinSafe && current < minimumRequiredTopup) {
         return minimumRequiredTopup.toFixed(2);
       }
+
       return prev;
     });
-    setSelectedPackageAmount(null);
+
+    prevMinimumTopupRef.current = minimumRequiredTopup;
   }, [minimumRequiredTopup]);
 
   useEffect(() => {
@@ -144,15 +171,14 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
 
   function normalizeTopupAmountOnBlur() {
     const raw = customAmount.trim().replace(",", ".");
+    if (raw === "") return;
     const n = Number.parseFloat(raw);
-    if (minimumRequiredTopup > 0) {
-      if (!Number.isFinite(n) || n < minimumRequiredTopup) {
-        setCustomAmount(minimumRequiredTopup.toFixed(2));
-        return;
-      }
-    } else if (!Number.isFinite(n) || n <= 0) {
+    if (!Number.isFinite(n)) return;
+    if (minimumRequiredTopup > 0 && n < minimumRequiredTopup) {
+      setCustomAmount(minimumRequiredTopup.toFixed(2));
       return;
     }
+    if (minimumRequiredTopup <= 0 && n <= 0) return;
     setCustomAmount(Number(n.toFixed(2)).toFixed(2));
   }
 

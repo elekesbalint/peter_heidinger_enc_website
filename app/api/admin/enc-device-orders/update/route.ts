@@ -1,6 +1,8 @@
 import { requireAdmin } from "@/lib/admin-guard";
 import { getSettingsMap } from "@/lib/app-settings";
+import { buildEmailHtml, type EmailHtmlRow } from "@/lib/email-html";
 import { sendAppEmail } from "@/lib/notify-email";
+import { buildPostaTrackingPageUrl } from "@/lib/posta-tracking-url";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import {
   createMplSandboxShipmentAndLabel,
@@ -339,7 +341,7 @@ export async function POST(request: Request) {
     .from("enc_device_orders")
     .update(patch)
     .eq("id", id)
-    .select("id, user_email, tracking_number")
+    .select("id, user_email, tracking_number, device_identifier, category")
     .maybeSingle();
 
   if (error) {
@@ -352,32 +354,58 @@ export async function POST(request: Request) {
   if (action === "ship") {
     const email = typeof data.user_email === "string" ? data.user_email.trim() : "";
     const tracking = typeof data.tracking_number === "string" ? data.tracking_number.trim() : "";
-    if (email && tracking) {
+    const deviceIdf =
+      typeof data.device_identifier === "string" && data.device_identifier.trim()
+        ? data.device_identifier.trim()
+        : "—";
+    const categoryLabel =
+      typeof data.category === "string" && data.category.trim()
+        ? data.category.trim().toUpperCase()
+        : "—";
+
+    if (email) {
+      const trackingUrl = tracking ? buildPostaTrackingPageUrl(tracking) : "";
+      const intro = tracking
+        ? "A megrendelt ENC csomagod feladásra került. A szállítást a Magyar Posta (MPL) végzi. A követési számra kattintva a Posta nyomkövető oldalán ellenőrizheted a küldemény állapotát."
+        : "A megrendelt ENC csomagod feladásra került. A szállítást a Magyar Posta (MPL) végzi. Ha a követési szám még nem szerepel az adatbázisban, a küldeményt a Posta rendszerében a címzett adatai alapján is nyomon követheted, vagy hamarosan külön értesítést kapsz.";
+
+      const rows: EmailHtmlRow[] = [
+        { label: "Szállító", value: "Magyar Posta (MPL)" },
+        { label: "Eszköz azonosító", value: deviceIdf },
+        { label: "Kategória", value: categoryLabel },
+      ];
+      if (tracking) {
+        if (trackingUrl.startsWith("https://")) {
+          rows.push({
+            label: "Csomagkövetési szám",
+            linkHref: trackingUrl,
+            linkText: tracking,
+          });
+        } else {
+          rows.push({ label: "Csomagkövetési szám", value: tracking });
+        }
+      }
+
+      const textLines = [
+        "A megrendelt ENC csomagod feladásra került.",
+        "Szállító: Magyar Posta (MPL)",
+        `Eszköz: ${deviceIdf}`,
+        `Kategória: ${categoryLabel}`,
+      ];
+      if (tracking) {
+        textLines.push(`Csomagkövetési szám: ${tracking}`);
+        textLines.push(`Nyomkövetés (posta.hu): ${trackingUrl}`);
+      }
+
       await sendAppEmail({
         to: email,
-        subject: "AdriaGo — csomagfeladás megtörtént",
-        text: `A csomagod feladásra került. Csomagkövetési azonosító: ${tracking}`,
-        html: `
-        <div style="background:#f8fafc;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
-          <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;">
-            <div style="padding:16px 20px;background:linear-gradient(135deg,#1d4ed8,#4f46e5);color:#ffffff;">
-              <div style="font-size:12px;opacity:0.9;letter-spacing:.04em;text-transform:uppercase;">AdriaGo</div>
-              <div style="font-size:20px;font-weight:700;margin-top:6px;">Csomagfeladás megtörtént</div>
-            </div>
-            <div style="padding:18px 20px;">
-              <p style="margin:0 0 12px 0;color:#334155;font-size:14px;line-height:1.5;">A csomagod feladásra került.</p>
-              <table role="presentation" cellspacing="0" cellpadding="0" width="100%" style="border-collapse:collapse;">
-                <tr>
-                  <td style="padding:6px 0;color:#64748b;font-size:13px;">Csomagkövetési azonosító</td>
-                  <td style="padding:6px 0;color:#0f172a;font-size:13px;font-weight:600;">${tracking}</td>
-                </tr>
-              </table>
-            </div>
-            <div style="padding:12px 20px;background:#f8fafc;color:#64748b;font-size:12px;">
-              Ez egy automatikus üzenet, kérjük ne válaszolj rá.
-            </div>
-          </div>
-        </div>`,
+        subject: "AdriaGo — csomagod feladásra került (MPL)",
+        text: textLines.join("\n"),
+        html: buildEmailHtml({
+          title: "Csomagfeladás — MPL",
+          intro,
+          rows,
+        }),
       }).catch((err) => {
         console.error("[email] Csomagfeladás e-mail küldés sikertelen:", err);
       });

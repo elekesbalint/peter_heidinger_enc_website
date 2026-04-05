@@ -8,6 +8,10 @@ import { isProfileComplete } from "@/lib/profile-completion";
 import { getBaseUrl, getStripe } from "@/lib/stripe";
 import { getIntSetting, getSettingsMap } from "@/lib/app-settings";
 import { releaseExpiredDeviceReservations } from "@/lib/device-waitlist-reservations";
+import {
+  ORDER_WAITLIST_MESSAGE_SEGMENTS,
+  orderWaitlistMessagePlain,
+} from "@/lib/order-waitlist-message";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 function toStripeHufAmount(hufAmount: number): number {
@@ -91,8 +95,8 @@ export async function POST(request: Request) {
       return Response.json({
         ok: true,
         waitlist: true,
-        message:
-          "Jelenleg nincs elérhető készülékünk az általad választott kategóriából. Ha 2 héten belül utaznál, bérelj ENC-t az ENCbérbeadás.hu-n. Ha utazásod későbbi időpontban történik, abban az esetben keresni fogunk, amint érkeznek szabad készülékeink.",
+        message: orderWaitlistMessagePlain(),
+        waitlistSegments: ORDER_WAITLIST_MESSAGE_SEGMENTS,
       });
     }
 
