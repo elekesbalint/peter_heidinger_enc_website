@@ -14,7 +14,7 @@ import {
   type HomeBlogPost,
 } from "@/lib/home-blog";
 import { BlogRichEditor } from "@/components/blog-rich-editor";
-import { compressImageToJpegDataUrl } from "@/lib/image-compress-browser";
+import { compressImageToJpegBlob, compressImageToJpegDataUrl } from "@/lib/image-compress-browser";
 import { AdminDataPanels } from "./admin-data-panels";
 import { ImportDevicesForm } from "./import-devices-form";
 import { ImportRoutesForm } from "./import-routes-form";
@@ -761,10 +761,18 @@ export function AdminWorkspace() {
       return;
     }
     try {
-      const dataUrl = await compressImageToJpegDataUrl(file);
-      updateBlogPost(postId, { image_url: dataUrl });
+      const blob = await compressImageToJpegBlob(file, { maxBytes: 420_000 });
+      const fd = new FormData();
+      fd.append("file", new File([blob], "cover.jpg", { type: "image/jpeg" }));
+      fd.append("kind", "cover");
+      const res = await fetch("/api/admin/upload/blog-image", { method: "POST", body: fd });
+      const data = (await res.json()) as { ok?: boolean; error?: string; url?: string };
+      if (!res.ok || !data.ok || !data.url) {
+        throw new Error(data.error ?? `Feltöltés sikertelen (${res.status}).`);
+      }
+      updateBlogPost(postId, { image_url: data.url });
       setSetMsg(
-        `Borítókép betöltve és tömörítve: ${file.name}. Mentsd el az „Összes mentése” gombbal.`,
+        `Borítókép feltöltve (tárhely URL): ${file.name}. Mentsd el az „Összes mentése” gombbal.`,
       );
     } catch (e) {
       setSetErr(e instanceof Error ? e.message : "Blog kép feltöltési hiba.");
@@ -2934,7 +2942,7 @@ export function AdminWorkspace() {
                       </div>
                     </div>
                     <label className="text-xs text-slate-600 md:col-span-2">
-                      Borítókép URL / data URI
+                      Borítókép URL (feltöltés → Supabase Storage; vagy ide írhatsz külső linket)
                       <input
                         value={editingPost.image_url}
                         onChange={(e) => updateBlogPost(editingPost.id, { image_url: e.target.value })}

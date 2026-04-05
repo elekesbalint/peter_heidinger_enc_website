@@ -7,6 +7,7 @@ import StarterKit from "@tiptap/starter-kit";
 import { useEffect, useRef, type ReactNode } from "react";
 
 import { looksLikeBlogHtml, plainBlogTextToHtml } from "@/lib/blog-content-plain";
+import { compressImageToJpegBlob } from "@/lib/image-compress-browser";
 
 type BlogRichEditorProps = {
   value: string;
@@ -123,17 +124,27 @@ export function BlogRichEditor({ value, onChange, disabled }: BlogRichEditorProp
     input.type = "file";
     input.accept = "image/*";
     input.onchange = () => {
-      const file = input.files?.[0];
-      if (!file || file.size > 5 * 1024 * 1024) {
-        window.alert("Legfeljebb 5 MB-os képet válassz.");
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = () => {
-        const src = typeof reader.result === "string" ? reader.result : "";
-        if (src) editor.chain().focus().setImage({ src }).run();
-      };
-      reader.readAsDataURL(file);
+      void (async () => {
+        const file = input.files?.[0];
+        if (!file || file.size > 5 * 1024 * 1024) {
+          window.alert("Legfeljebb 5 MB-os képet válassz.");
+          return;
+        }
+        try {
+          const blob = await compressImageToJpegBlob(file, { maxBytes: 400_000 });
+          const fd = new FormData();
+          fd.append("file", new File([blob], "inline.jpg", { type: "image/jpeg" }));
+          fd.append("kind", "content");
+          const res = await fetch("/api/admin/upload/blog-image", { method: "POST", body: fd });
+          const data = (await res.json()) as { ok?: boolean; error?: string; url?: string };
+          if (!res.ok || !data.ok || !data.url) {
+            throw new Error(data.error ?? `Feltöltés sikertelen (${res.status}).`);
+          }
+          editor.chain().focus().setImage({ src: data.url }).run();
+        } catch (e) {
+          window.alert(e instanceof Error ? e.message : "Kép feltöltési hiba.");
+        }
+      })();
     };
     input.click();
   };
