@@ -14,6 +14,7 @@ import {
   type HomeBlogPost,
 } from "@/lib/home-blog";
 import { BlogRichEditor } from "@/components/blog-rich-editor";
+import { compressImageToJpegDataUrl } from "@/lib/image-compress-browser";
 import { AdminDataPanels } from "./admin-data-panels";
 import { ImportDevicesForm } from "./import-devices-form";
 import { ImportRoutesForm } from "./import-routes-form";
@@ -680,9 +681,13 @@ export function AdminWorkspace() {
       return;
     }
     try {
-      const dataUrl = await fileToDataUrl(file);
+      const dataUrl = await compressImageToJpegDataUrl(file, {
+        maxEdge: 1920,
+        quality: 0.82,
+        maxChars: 900_000,
+      });
       setSetDraft((d) => ({ ...d, [settingKey]: dataUrl }));
-      setSetMsg(`Kép betöltve: ${file.name}. Mentsd el az „Összes mentése” gombbal.`);
+      setSetMsg(`Kép betöltve (tömörítve): ${file.name}. Mentsd el az „Összes mentése” gombbal.`);
     } catch (e) {
       setSetErr(e instanceof Error ? e.message : "Kép feltöltési hiba.");
     }
@@ -756,9 +761,11 @@ export function AdminWorkspace() {
       return;
     }
     try {
-      const dataUrl = await fileToDataUrl(file);
+      const dataUrl = await compressImageToJpegDataUrl(file);
       updateBlogPost(postId, { image_url: dataUrl });
-      setSetMsg(`Blog kép betöltve: ${file.name}. Mentsd el az „Összes mentése” gombbal.`);
+      setSetMsg(
+        `Borítókép betöltve és tömörítve: ${file.name}. Mentsd el az „Összes mentése” gombbal.`,
+      );
     } catch (e) {
       setSetErr(e instanceof Error ? e.message : "Blog kép feltöltési hiba.");
     }
@@ -842,6 +849,12 @@ export function AdminWorkspace() {
     try {
       const res = await fetch("/api/admin/settings");
       const data = (await res.json()) as { ok: boolean; items?: SettingRow[]; error?: string };
+      if (res.status === 413) {
+        setSetErr(
+          "A beállítások válasza túl nagy (nagy képek a tárolt adatban). Töröld vagy cseréld le a nagy data URI képeket az adatbázisban, vagy írj a fejlesztőnek (tárhelyes képfeltöltés).",
+        );
+        return;
+      }
       if (!data.ok) {
         setSetErr(data.error ?? "Hiba");
         return;
@@ -1426,19 +1439,58 @@ export function AdminWorkspace() {
     setSetMsg(null);
     setSetSaving(true);
     const entries = Object.entries(setDraft).map(([key, value]) => ({ key, value }));
-    try {
-      const res = await fetch("/api/admin/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ entries }),
-      });
-      const data = (await res.json()) as { ok: boolean; error?: string };
-      if (!data.ok) {
-        setSetErr(data.error ?? "Hiba");
+    const maxJsonChars = 3_000_000;
+    const chunks: { key: string; value: string }[][] = [];
+    let cur: { key: string; value: string }[] = [];
+    for (const e of entries) {
+      const next = [...cur, e];
+      if (JSON.stringify({ entries: next }).length <= maxJsonChars) {
+        cur = next;
+        continue;
+      }
+      if (cur.length > 0) {
+        chunks.push(cur);
+        cur = [e];
+      } else {
+        cur = [e];
+      }
+      if (JSON.stringify({ entries: cur }).length > maxJsonChars) {
+        setSetErr(
+          `A(z) „${e.key}” értéke túl nagy egy kéréshez (pl. nagy kép). Használj kisebb képet, tömörített feltöltést, vagy külső kép URL-t.`,
+        );
+        setSetSaving(false);
         return;
       }
+    }
+    if (cur.length) chunks.push(cur);
+
+    try {
+      for (let i = 0; i < chunks.length; i++) {
+        const res = await fetch("/api/admin/settings", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ entries: chunks[i] }),
+        });
+        let data: { ok: boolean; error?: string } = { ok: false };
+        try {
+          data = (await res.json()) as { ok: boolean; error?: string };
+        } catch {
+          /* üres / nem JSON válasz */
+        }
+        if (res.status === 413) {
+          setSetErr(
+            "A mentés mérete túl nagy a szerver számára. Csökkentsd a feltöltött képek méretét, vagy használj kép URL-t a data URI helyett.",
+          );
+          return;
+        }
+        if (!res.ok || !data.ok) {
+          setSetErr(data.error ?? `Mentési hiba (${res.status}).`);
+          return;
+        }
+      }
       await loadSettings();
-      setSetMsg(`Mentés kész (${new Date().toLocaleTimeString("hu-HU")}).`);
+      const part = chunks.length > 1 ? ` (${chunks.length} részletben)` : "";
+      setSetMsg(`Mentés kész${part} (${new Date().toLocaleTimeString("hu-HU")}).`);
     } catch {
       setSetErr("Hálózati hiba");
     } finally {
