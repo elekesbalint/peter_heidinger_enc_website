@@ -716,7 +716,7 @@ export function AdminWorkspace() {
     }
   }
 
-  const blogPosts = parseHomeBlogPosts(setDraft.home_blog_posts_json);
+  const blogPosts = parseHomeBlogPosts(setDraft.home_blog_posts_json, { keepEmptyDrafts: true });
   const editingPost = blogEditId ? (blogPosts.find((p) => p.id === blogEditId) ?? null) : null;
 
   function setBlogPosts(nextPosts: HomeBlogPost[]) {

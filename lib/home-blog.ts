@@ -69,14 +69,25 @@ function normalizePost(input: Partial<HomeBlogPost>, index: number): HomeBlogPos
   };
 }
 
-export function parseHomeBlogPosts(raw: string | null | undefined): HomeBlogPost[] {
+export type ParseHomeBlogPostsOptions = {
+  /** Admin: új, még üres bejegyzés is maradjon a listában (főoldal / publikus nézetben ne). */
+  keepEmptyDrafts?: boolean;
+};
+
+export function parseHomeBlogPosts(
+  raw: string | null | undefined,
+  options?: ParseHomeBlogPostsOptions,
+): HomeBlogPost[] {
   try {
     const parsed = JSON.parse(String(raw ?? "[]")) as unknown;
     if (!Array.isArray(parsed)) return [...DEFAULT_HOME_BLOG_POSTS];
-    const normalized = parsed
-      .map((item, index) => normalizePost((item ?? {}) as Partial<HomeBlogPost>, index))
-      .filter((post) => post.title || post.excerpt || post.content);
-    return normalized;
+    const normalized = parsed.map((item, index) =>
+      normalizePost((item ?? {}) as Partial<HomeBlogPost>, index),
+    );
+    if (options?.keepEmptyDrafts) {
+      return normalized;
+    }
+    return normalized.filter((post) => post.title || post.excerpt || post.content);
   } catch {
     return [...DEFAULT_HOME_BLOG_POSTS];
   }
