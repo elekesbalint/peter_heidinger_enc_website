@@ -202,7 +202,7 @@ export function OrderForm({
                   href={seg.href}
                   target="_blank"
                   rel="noreferrer"
-                  className={`text-amber-950 underline decoration-amber-700/60 underline-offset-2 transition hover:decoration-amber-900 ${
+                  className={`text-amber-950 !underline decoration-amber-800 underline-offset-2 decoration-2 transition hover:decoration-amber-950 ${
                     seg.bold ? "font-bold" : ""
                   }`}
                 >
