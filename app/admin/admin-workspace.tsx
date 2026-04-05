@@ -128,7 +128,7 @@ const DEVICE_STATUS_LABELS: Record<(typeof DEVICE_STATUSES)[number], string> = {
 const SETTINGS_META: Record<string, { label: string; hint: string }> = {
   device_price_huf: {
     label: "Készülék alapár (Ft)",
-    hint: "ENC készülék listaára, referral előtt.",
+    hint: "ENC készülék teljes ára (Stripe); az ajánló bónusz külön a walletbe kerül.",
   },
   fx_eur_to_huf: {
     label: "EUR -> HUF árfolyam",
@@ -163,8 +163,8 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
     hint: "A legnagyobb feltöltési csomag ára EUR-ban.",
   },
   referral_device_discount_huf: {
-    label: "Ajánlói kedvezmény készülékvásárlásra (Ft)",
-    hint: "A meghívott user első sikeres készülékvásárlásakor ennyivel csökken az ár.",
+    label: "Ajánlói induló egyenleg (Ft)",
+    hint: "A meghívott első készülékvásárlásakor ennyi Ft kerül a készülék walletjébe (teljes ár fizetve Stripe-ban).",
   },
   hero_bg_desktop: {
     label: "Főoldali banner kép (asztali)",

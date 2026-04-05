@@ -345,7 +345,7 @@ export default async function DashboardPage({
             "referral_section_subtitle_prefix",
             "Meghívó küldése e-mailben. A meghívott első készülékvásárlása",
           ),
-          subtitleSuffix: text("referral_section_subtitle_suffix", "Ft kedvezményt kap."),
+          subtitleSuffix: text("referral_section_subtitle_suffix", "Ft induló egyenleg kerül a készülékhez (wallet)."),
           emailPlaceholder: text("referral_email_placeholder", "meghivott@pelda.hu"),
           sendButton: text("referral_send_button", "Meghívó küldése"),
           successMessage: text("referral_success_message", "Meghívó elküldve."),

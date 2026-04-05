@@ -35,10 +35,7 @@ export default async function OrderPage() {
     .order("accepted_at", { ascending: true, nullsFirst: false })
     .limit(1)
     .maybeSingle();
-  const appliedReferralDiscountHuf = activeReferral
-    ? Math.min(price, referralDiscountHuf)
-    : 0;
-  const payablePriceHuf = Math.max(1, price - appliedReferralDiscountHuf);
+  const referralWalletBonusHuf = activeReferral ? Math.min(price, referralDiscountHuf) : 0;
   const categoryGuideTitle =
     settings.order_category_guide_title?.trim() || "Kategória magyarázó";
   const categoryGuideSubtitle =
@@ -84,15 +81,15 @@ export default async function OrderPage() {
           <span>Aktuális készülékár:</span>
           <span className="font-bold tabular-nums">{price.toLocaleString("hu-HU")} Ft</span>
         </div>
-        {appliedReferralDiscountHuf > 0 && (
+        {referralWalletBonusHuf > 0 && (
           <div className="adria-animate-in adria-delay-4 mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
             <p>
-              Ajánlói kedvezmény alkalmazva:{" "}
-              <strong>-{appliedReferralDiscountHuf.toLocaleString("hu-HU")} Ft</strong>
+              Ajánlói juttatás: első készülékvásárlásod után{" "}
+              <strong>{referralWalletBonusHuf.toLocaleString("hu-HU")} Ft</strong> induló egyenleg kerül a készülékhez
+              (útdíj / feltöltés a fiókban).
             </p>
             <p className="mt-1">
-              Fizetendő összeg:{" "}
-              <strong>{payablePriceHuf.toLocaleString("hu-HU")} Ft</strong>
+              A készülék teljes ára: <strong>{price.toLocaleString("hu-HU")} Ft</strong> — a Stripe-ban is ezt fizeted.
             </p>
           </div>
         )}

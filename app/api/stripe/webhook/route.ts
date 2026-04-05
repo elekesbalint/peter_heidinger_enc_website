@@ -241,7 +241,31 @@ export async function POST(request: Request) {
         }
 
         const referralInviteId = (metadata.referral_invite_id ?? "").trim();
-        if (referralInviteId) {
+        const referralWalletBonusHuf = Math.max(
+          0,
+          Number.parseInt(String(metadata.referral_wallet_bonus_huf ?? "").trim(), 10) || 0,
+        );
+
+        if (
+          referralWalletBonusHuf > 0 &&
+          referralInviteId &&
+          deviceIdentifier &&
+          assignmentOk
+        ) {
+          const { error: refWalletErr } = await supabase.rpc("apply_topup", {
+            p_device_identifier: deviceIdentifier,
+            p_amount_huf: referralWalletBonusHuf,
+            p_stripe_session_id: `${session.id}:referral_bonus`,
+            p_user_email: userEmail ?? "",
+          });
+          if (refWalletErr) {
+            return new Response(`Referral wallet bonus error: ${refWalletErr.message}`, {
+              status: 500,
+            });
+          }
+        }
+
+        if (referralInviteId && assignmentOk) {
           const { error: referralUseError } = await supabase
             .from("referral_invites")
             .update({
@@ -252,7 +276,7 @@ export async function POST(request: Request) {
             .eq("invited_auth_user_id", authUserId)
             .is("discount_used_at", null);
           if (referralUseError) {
-            console.error("[referral] Discount mark failed:", referralUseError.message);
+            console.error("[referral] Invite mark failed:", referralUseError.message);
           }
         }
 
@@ -273,16 +297,31 @@ export async function POST(request: Request) {
         }
 
         if (userEmail) {
+          const bonusLine =
+            referralWalletBonusHuf > 0
+              ? ` Ajánlói jóváírás a készülék egyenlegén: ${referralWalletBonusHuf.toLocaleString("hu-HU")} Ft.`
+              : "";
           await sendAppEmail({
             to: userEmail,
             subject: "AdriaGo — sikeres ENC rendelés",
-            text: `Köszönjük a vásárlást. Eszköz: ${deviceIdentifier ?? "-"}. Összeg: ${amountHuf} Ft.`,
+            text: `Köszönjük a vásárlást. Eszköz: ${deviceIdentifier ?? "-"}. Fizetett összeg: ${amountHuf} Ft.${bonusLine}`,
             html: buildEmailHtml({
               title: "Sikeres rendelés",
-              intro: "Köszönjük a vásárlást, a rendelésedet sikeresen rögzítettük.",
+              intro:
+                referralWalletBonusHuf > 0
+                  ? "Köszönjük a vásárlást, a rendelésedet sikeresen rögzítettük. Az ajánlói kedvezmény a készülékhez tartozó egyenlegre került jóváírásra (útdíj / feltöltés rendszerben használható)."
+                  : "Köszönjük a vásárlást, a rendelésedet sikeresen rögzítettük.",
               rows: [
                 { label: "Eszköz", value: deviceIdentifier ?? "-" },
-                { label: "Összeg", value: `${amountHuf} Ft` },
+                { label: "Fizetett összeg", value: `${amountHuf.toLocaleString("hu-HU")} Ft` },
+                ...(referralWalletBonusHuf > 0
+                  ? [
+                      {
+                        label: "Induló egyenleg (ajánló)",
+                        value: `${referralWalletBonusHuf.toLocaleString("hu-HU")} Ft`,
+                      },
+                    ]
+                  : []),
                 { label: "Rendelés azonosító", value: session.id },
               ],
             }),
@@ -296,14 +335,22 @@ export async function POST(request: Request) {
           await sendAppEmail({
             to: adminEmail,
             subject: "AdriaGo admin — új ENC rendelés",
-            text: `Rendelés: ${deviceIdentifier}, ${userEmail}, ${amountHuf} Ft.`,
+            text: `Rendelés: ${deviceIdentifier}, ${userEmail}, ${amountHuf} Ft.${referralWalletBonusHuf > 0 ? ` Ajánlói wallet: ${referralWalletBonusHuf} Ft.` : ""}`,
             html: buildEmailHtml({
               title: "Új ENC rendelés",
               intro: "Új sikeres rendelés érkezett a rendszerbe.",
               rows: [
                 { label: "Felhasználó", value: userEmail ?? "-" },
                 { label: "Eszköz", value: deviceIdentifier ?? "-" },
-                { label: "Összeg", value: `${amountHuf} Ft` },
+                { label: "Fizetett összeg", value: `${amountHuf.toLocaleString("hu-HU")} Ft` },
+                ...(referralWalletBonusHuf > 0
+                  ? [
+                      {
+                        label: "Ajánlói wallet jóváírás",
+                        value: `${referralWalletBonusHuf.toLocaleString("hu-HU")} Ft`,
+                      },
+                    ]
+                  : []),
                 { label: "Stripe session", value: session.id },
               ],
             }),

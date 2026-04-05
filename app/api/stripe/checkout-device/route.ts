@@ -125,8 +125,9 @@ export async function POST(request: Request) {
       1,
       getIntSetting(settings, "device_price_huf", getDevicePriceHuf()),
     );
-    const appliedReferralDiscountHuf = activeReferral ? Math.min(basePriceHuf, referralDiscountHuf) : 0;
-    const priceHuf = Math.max(1, basePriceHuf - appliedReferralDiscountHuf);
+    /** Meghívó: teljes ár Stripe-ban; a bónusz a fizetés után a készülék walletjébe kerül (webhook). */
+    const referralWalletBonusHuf = activeReferral ? Math.min(basePriceHuf, referralDiscountHuf) : 0;
+    const priceHuf = basePriceHuf;
     const stripe = getStripe();
     const baseUrl = getBaseUrl();
 
@@ -157,7 +158,7 @@ export async function POST(request: Request) {
         category,
         amount_huf: String(priceHuf),
         base_amount_huf: String(basePriceHuf),
-        referral_discount_huf: String(appliedReferralDiscountHuf),
+        referral_wallet_bonus_huf: String(referralWalletBonusHuf),
         referral_invite_id: activeReferral?.id ?? "",
         license_plate: licensePlate,
       },

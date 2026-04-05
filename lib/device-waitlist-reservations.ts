@@ -144,10 +144,10 @@ export async function createWaitlistPaymentReservation(params: {
     .limit(1)
     .maybeSingle();
 
-  const appliedReferralDiscountHuf = activeReferral
+  const referralWalletBonusHuf = activeReferral
     ? Math.min(basePriceHuf, referralDiscountHuf)
     : 0;
-  const payableHuf = Math.max(1, basePriceHuf - appliedReferralDiscountHuf);
+  const payableHuf = basePriceHuf;
   const nowIso = new Date().toISOString();
   const expiresAtIso = new Date(Date.now() + RESERVATION_TTL_HOURS * 60 * 60 * 1000).toISOString();
   const reservationId = randomUUID();
@@ -183,7 +183,7 @@ export async function createWaitlistPaymentReservation(params: {
       category: waitlist.category,
       amount_huf: String(payableHuf),
       base_amount_huf: String(basePriceHuf),
-      referral_discount_huf: String(appliedReferralDiscountHuf),
+      referral_wallet_bonus_huf: String(referralWalletBonusHuf),
       referral_invite_id: activeReferral?.id ?? "",
     },
   });
