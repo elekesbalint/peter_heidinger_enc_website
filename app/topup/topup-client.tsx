@@ -115,13 +115,19 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
     minimumRequiredTopup = Math.max(gapToDestinationEur, customDestinationMinEur);
   }
   const discountPercent = Math.max(0, Number(config?.discountPercent ?? 0));
+
+  /** Csak akkor kényszerítjük a minimumot, ha az úticél/eszköz változása miatt változik a küszöb — gépelés közben nem írjuk felül a mezőt. */
   useEffect(() => {
-    const current = Number.parseFloat(customAmount);
-    if (!Number.isFinite(current) || current < minimumRequiredTopup) {
-      setCustomAmount(minimumRequiredTopup > 0 ? minimumRequiredTopup.toFixed(2) : customAmount);
-      setSelectedPackageAmount(null);
-    }
-  }, [minimumRequiredTopup, customAmount]);
+    if (minimumRequiredTopup <= 0) return;
+    setCustomAmount((prev) => {
+      const current = Number.parseFloat(String(prev).replace(",", "."));
+      if (!Number.isFinite(current) || current < minimumRequiredTopup) {
+        return minimumRequiredTopup.toFixed(2);
+      }
+      return prev;
+    });
+    setSelectedPackageAmount(null);
+  }, [minimumRequiredTopup]);
 
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
@@ -136,9 +142,23 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
     };
   }, []);
 
+  function normalizeTopupAmountOnBlur() {
+    const raw = customAmount.trim().replace(",", ".");
+    const n = Number.parseFloat(raw);
+    if (minimumRequiredTopup > 0) {
+      if (!Number.isFinite(n) || n < minimumRequiredTopup) {
+        setCustomAmount(minimumRequiredTopup.toFixed(2));
+        return;
+      }
+    } else if (!Number.isFinite(n) || n <= 0) {
+      return;
+    }
+    setCustomAmount(Number(n.toFixed(2)).toFixed(2));
+  }
+
   async function startCheckout() {
     setError(null);
-    const manualAmountValue = Number.parseFloat(customAmount.trim());
+    const manualAmountValue = Number.parseFloat(customAmount.trim().replace(",", "."));
     const effectiveAmount = manualAmountValue;
 
     if (!effectiveAmount || !Number.isFinite(effectiveAmount)) {
@@ -207,7 +227,11 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
     );
   }
 
-  const charged = Math.max(minimumRequiredTopup, Number.parseFloat(customAmount || "0") || 0);
+  const parsedCustomAmount = Number.parseFloat(String(customAmount || "0").replace(",", "."));
+  const charged = Math.max(
+    minimumRequiredTopup,
+    Number.isFinite(parsedCustomAmount) ? parsedCustomAmount : 0,
+  );
   const packageDiscountedCharged =
     selectedPackageAmount != null && discountPercent > 0
       ? Number((charged * (100 - Math.min(100, discountPercent))) / 100).toFixed(2)
@@ -374,14 +398,14 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
         <h2 className="text-lg font-semibold">Feltöltés összege</h2>
         <div className="mt-4 space-y-2">
           <input
-            type="number"
-            min={minimumRequiredTopup}
-            step={0.01}
+            type="text"
+            inputMode="decimal"
             value={customAmount}
             onChange={(e) => {
               setCustomAmount(e.target.value);
               setSelectedPackageAmount(null);
             }}
+            onBlur={() => normalizeTopupAmountOnBlur()}
             placeholder={`${minimumRequiredTopup.toLocaleString("hu-HU")} vagy több`}
             className="w-full rounded-xl border border-border/80 bg-white/90 px-4 py-2.5 text-sm shadow-sm transition"
           />
@@ -404,7 +428,7 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
             <p className="mt-4 text-xs text-muted">Gyors választás (automatikusan kitölti az összeget):</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           {packages.map((amount) => {
-            const selectedAmount = Number.parseFloat(customAmount || "0");
+            const selectedAmount = Number.parseFloat(String(customAmount || "0").replace(",", "."));
             const active = Math.abs(selectedAmount - amount) < 0.001;
             const disabled = amount < minimumRequiredTopup;
             return (
