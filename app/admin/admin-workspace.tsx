@@ -667,6 +667,7 @@ export function AdminWorkspace() {
   const [usrQuery, setUsrQuery] = useState("");
   const [editUser, setEditUser] = useState<UserRow | null>(null);
   const [selectedDebtDevices, setSelectedDebtDevices] = useState<Set<string>>(new Set());
+  const [unlinkingUserDevice, setUnlinkingUserDevice] = useState<string | null>(null);
 
   const [routesQ, setRoutesQ] = useState("");
 
@@ -1007,6 +1008,46 @@ export function AdminWorkspace() {
       else next.add(identifier);
       return next;
     });
+  }
+
+  async function unlinkUserDevice(userId: string, deviceIdentifier: string) {
+    const ok = window.confirm(
+      `Leválasztod a(z) ${deviceIdentifier} készüléket erről a fiókról?\n\n` +
+        "A felhasználó nem fogja látni az eszközt, és nem tud rá feltölteni. " +
+        "A készülék egyenlege változatlan marad az azonosítóhoz kötve. " +
+        "Az eszköz státusza „elérhető” lesz (kivéve archív), így újra kiosztható.",
+    );
+    if (!ok) return;
+    const key = `${userId}:${deviceIdentifier}`;
+    setUnlinkingUserDevice(key);
+    setUsrErr(null);
+    try {
+      const res = await fetch("/api/admin/users/unlink-device", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ auth_user_id: userId, device_identifier: deviceIdentifier }),
+      });
+      const data = (await res.json()) as { ok: boolean; error?: string };
+      if (!data.ok) {
+        setUsrErr(data.error ?? "Hiba");
+        return;
+      }
+      setSelectedDebtDevices((prev) => {
+        const next = new Set(prev);
+        next.delete(deviceIdentifier);
+        return next;
+      });
+      setEditUser((e) =>
+        e && e.id === userId
+          ? { ...e, devices: e.devices.filter((d) => d.identifier !== deviceIdentifier) }
+          : e,
+      );
+      await loadUsers();
+    } catch {
+      setUsrErr("Hálózati hiba");
+    } finally {
+      setUnlinkingUserDevice(null);
+    }
   }
 
   async function sendDebtWarnings(identifiers: string[]) {
@@ -2575,6 +2616,15 @@ export function AdminWorkspace() {
                                 aria-label="Egyenleg állítás"
                               >
                                 $
+                              </button>
+                              <button
+                                type="button"
+                                disabled={unlinkingUserDevice === `${u.id}:${d.identifier}`}
+                                className="rounded border border-red-200 bg-red-50 px-1 py-0.5 text-[10px] font-medium text-red-800 hover:bg-red-100 disabled:opacity-50"
+                                title="Készülék leválasztása a fiókról (nem tud majd tölteni)"
+                                onClick={() => unlinkUserDevice(u.id, d.identifier)}
+                              >
+                                {unlinkingUserDevice === `${u.id}:${d.identifier}` ? "…" : "Leválaszt"}
                               </button>
                             </div>
                           );
