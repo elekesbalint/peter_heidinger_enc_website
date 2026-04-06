@@ -25,7 +25,7 @@ function formatAuthError(message: string): string {
     text.includes("too many requests") ||
     text.includes("email rate limit")
   ) {
-    return "Too many signup attempts right now. Please wait a little and try again.";
+    return "Túl sok regisztrációs próbálkozás történt. Kérlek, próbáld újra később.";
   }
   return message;
 }
@@ -77,12 +77,12 @@ export function AuthScreen() {
       }
 
       if (!data.session) {
-        setSuccess("Account created. Check your email for confirmation, then login.");
+        setSuccess("Fiók létrehozva. Erősítsd meg e-mailben, majd jelentkezz be.");
       } else {
-        setSuccess("Registration successful.");
+        setSuccess("Sikeres regisztráció.");
       }
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Unknown auth error.";
+      const message = e instanceof Error ? e.message : "Ismeretlen hitelesítési hiba.";
       setError(formatAuthError(message));
     } finally {
       setLoading(false);
@@ -97,7 +97,7 @@ export function AuthScreen() {
       <View style={styles.card}>
         <Text style={styles.title}>AdriaGo Mobile</Text>
         <Text style={styles.subtitle}>
-          {mode === "login" ? "Login to your account." : "Create account for ENC services."}
+          {mode === "login" ? "Jelentkezz be a fiókodba." : "Hozd létre a fiókodat ENC szolgáltatáshoz."}
         </Text>
 
         <View style={styles.toggleRow}>
@@ -105,14 +105,14 @@ export function AuthScreen() {
             style={[styles.toggleBtn, mode === "login" && styles.toggleBtnActive]}
             onPress={() => setMode("login")}
           >
-            <Text style={[styles.toggleText, mode === "login" && styles.toggleTextActive]}>Login</Text>
+            <Text style={[styles.toggleText, mode === "login" && styles.toggleTextActive]}>Belépés</Text>
           </Pressable>
           <Pressable
             style={[styles.toggleBtn, mode === "register" && styles.toggleBtnActive]}
             onPress={() => setMode("register")}
           >
             <Text style={[styles.toggleText, mode === "register" && styles.toggleTextActive]}>
-              Register
+              Regisztráció
             </Text>
           </Pressable>
         </View>
@@ -122,14 +122,14 @@ export function AuthScreen() {
           onChangeText={setEmail}
           autoCapitalize="none"
           keyboardType="email-address"
-          placeholder="you@example.com"
+          placeholder="te@pelda.hu"
           style={styles.input}
         />
         <TextInput
           value={password}
           onChangeText={setPassword}
           secureTextEntry
-          placeholder="Password"
+          placeholder="Jelszó"
           style={styles.input}
         />
         {mode === "register" && (
@@ -137,7 +137,7 @@ export function AuthScreen() {
             value={referralToken}
             onChangeText={setReferralToken}
             autoCapitalize="none"
-            placeholder="Referral token (optional)"
+            placeholder="Ajánlói token (opcionális)"
             style={styles.input}
           />
         )}
@@ -147,7 +147,7 @@ export function AuthScreen() {
 
         <Pressable style={styles.actionBtn} onPress={handleAuth} disabled={loading}>
           <Text style={styles.actionBtnText}>
-            {loading ? "Please wait..." : mode === "login" ? "Login" : "Create account"}
+            {loading ? "Kérlek várj..." : mode === "login" ? "Belépés" : "Fiók létrehozása"}
           </Text>
         </Pressable>
       </View>

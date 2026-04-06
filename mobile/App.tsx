@@ -12,11 +12,16 @@ export default function App() {
 
   useEffect(() => {
     let mounted = true;
-    supabase.auth.getSession().then(({ data }: { data: { session: Session | null } }) => {
-      if (!mounted) return;
-      setSession(data.session ?? null);
-      setIsReady(true);
-    });
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (!mounted) return;
+        setSession(data.session ?? null);
+      } finally {
+        if (!mounted) return;
+        setIsReady(true);
+      }
+    })();
 
     const { data: sub } = supabase.auth.onAuthStateChange(
       (_event: AuthChangeEvent, nextSession: Session | null) => {

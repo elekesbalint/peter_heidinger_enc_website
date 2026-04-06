@@ -18,6 +18,7 @@ export default async function OrderPage() {
   }
 
   const settings = await getSettingsMap();
+  const fxEurToHuf = Math.max(1, getIntSetting(settings, "fx_eur_to_huf", 400));
   const price = Math.max(
     1,
     getIntSetting(settings, "device_price_huf", getDevicePriceHuf()),
@@ -36,6 +37,7 @@ export default async function OrderPage() {
     .limit(1)
     .maybeSingle();
   const referralWalletBonusHuf = activeReferral ? Math.min(price, referralWalletBonusCapHuf) : 0;
+  const referralWalletBonusEur = Number((referralWalletBonusHuf / fxEurToHuf).toFixed(2));
   const categoryGuideTitle =
     settings.order_category_guide_title?.trim() || "Kategória magyarázó";
   const categoryGuideSubtitle =
@@ -85,7 +87,7 @@ export default async function OrderPage() {
           <div className="adria-animate-in adria-delay-4 mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
             <p>
               Ajánlói juttatás: első készülékvásárlásod után{" "}
-              <strong>{referralWalletBonusHuf.toLocaleString("hu-HU")} Ft</strong> induló egyenleg kerül a készülékhez
+              <strong>{referralWalletBonusEur.toLocaleString("hu-HU")} EUR</strong> induló egyenleg kerül a készülékhez
               (útdíj / feltöltés a fiókban).
             </p>
             <p className="mt-1">

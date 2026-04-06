@@ -115,7 +115,7 @@ export const SETTINGS_DEFAULTS: Record<string, string> = {
   dashboard_topups_empty: "Még nincs feltöltési rekord.",
   referral_section_title: "Ajánlás",
   referral_section_subtitle_prefix: "Meghívó küldése e-mailben. A meghívott első készülékvásárlásakor",
-  referral_section_subtitle_suffix: "Ft induló egyenleg kerül a készülékhez (wallet).",
+  referral_section_subtitle_suffix: "EUR induló egyenleg kerül a készülékhez (wallet).",
   referral_email_placeholder: "meghivott@pelda.hu",
   referral_send_button: "Meghívó küldése",
   referral_success_message: "Meghívó elküldve.",

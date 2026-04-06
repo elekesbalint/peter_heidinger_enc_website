@@ -400,11 +400,11 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
   },
   referral_section_subtitle_prefix: {
     label: "Referral alcím eleje",
-    hint: "Az induló egyenleg (Ft) összege elé kerülő rész — ne „árkedvezményt” írj, hanem wallet / induló egyenleget.",
+    hint: "Az induló egyenleg (EUR) összege elé kerülő rész — ne „árkedvezményt” írj, hanem wallet / induló egyenleget.",
   },
   referral_section_subtitle_suffix: {
     label: "Referral alcím vége",
-    hint: "Az induló egyenleg összege utáni rész (pl. „Ft induló egyenleg a készülék walletjében, teljes ár a Stripe-ban”).",
+    hint: "Az induló egyenleg összege utáni rész (pl. „EUR induló egyenleg a készülék walletjében, teljes ár a Stripe-ban”).",
   },
   referral_email_placeholder: {
     label: "Referral email placeholder",

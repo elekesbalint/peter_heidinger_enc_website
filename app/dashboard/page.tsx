@@ -120,6 +120,7 @@ export default async function DashboardPage({
     .limit(50);
 
   const referralWalletBonusCapHuf = getIntSetting(settings, "referral_device_discount_huf", 25000);
+  const referralWalletBonusCapEur = hufToEur(referralWalletBonusCapHuf, fxEurToHuf);
   let referralInvites: Array<{
     id: string;
     invited_email: string;
@@ -337,7 +338,7 @@ export default async function DashboardPage({
       </section>
 
       <ReferralPanel
-        walletBonusCapHuf={referralWalletBonusCapHuf}
+        walletBonusCapEur={referralWalletBonusCapEur}
         invites={referralInvites}
         text={{
           title: text("referral_section_title", "Ajánlás"),
@@ -345,7 +346,10 @@ export default async function DashboardPage({
             "referral_section_subtitle_prefix",
             "Meghívó küldése e-mailben. A meghívott első készülékvásárlása",
           ),
-          subtitleSuffix: text("referral_section_subtitle_suffix", "Ft induló egyenleg kerül a készülékhez (wallet)."),
+          subtitleSuffix: text(
+            "referral_section_subtitle_suffix",
+            "EUR induló egyenleg kerül a készülékhez (wallet).",
+          ).replaceAll("Ft", "EUR"),
           emailPlaceholder: text("referral_email_placeholder", "meghivott@pelda.hu"),
           sendButton: text("referral_send_button", "Meghívó küldése"),
           successMessage: text("referral_success_message", "Meghívó elküldve."),
