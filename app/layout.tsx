@@ -187,7 +187,7 @@ export default async function RootLayout({
                     href="https://balintelekes.hu"
                     target="_blank"
                     rel="noreferrer"
-                    className="font-medium text-slate-700 transition-colors duration-200 hover:text-foreground"
+                    className="font-semibold text-primary transition-all duration-200 hover:text-indigo-600 hover:underline hover:underline-offset-2"
                   >
                     Bálint Elekes
                   </a>
