@@ -210,7 +210,7 @@ export default async function DashboardPage({
           const catLabel = DEVICE_CATEGORY_LABELS[cat] ?? device.category;
           const topupStateLabel =
             balance === null
-              ? "Nincs wallet adat"
+              ? "Nincs felhasználható útdíj"
               : lowBalance
                 ? "Feltöltés szükséges"
                 : "Rendben, tölthető";
@@ -254,7 +254,7 @@ export default async function DashboardPage({
               </div>
               {balance === null ? (
                 <p className="mt-4 text-sm text-muted">
-                  Wallet-egyenleg még nincs rögzítve ehhez az eszközhöz.
+                  Még nem töltötted fel ezt a készüléket.
                 </p>
               ) : (
                 <>

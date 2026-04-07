@@ -25,7 +25,10 @@ export default function LoginPage() {
         password,
       });
       if (signInError) {
-        if (signInError.message.toLowerCase().includes("invalid login credentials")) {
+        const message = signInError.message.toLowerCase();
+        if (message.includes("email not confirmed")) {
+          setError("Még nem erősítetted meg az e-mailed.");
+        } else if (message.includes("invalid login credentials")) {
           setError(
             "Hibás e-mail vagy jelszó. Ellenőrizd, hogy ugyanazzal az e-mail címmel próbálsz belépni, és az e-mail megerősítés is megtörtént.",
           );
