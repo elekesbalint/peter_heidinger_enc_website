@@ -107,9 +107,44 @@ export async function createEracuniInvoice(params: {
 
   function buildEracuniEndpoints(base: string): string[] {
     const trimmed = base.replace(/\/$/, "");
-    if (trimmed.endsWith("/WebServices/API")) return [trimmed];
-    if (trimmed.endsWith("/API")) return [trimmed, `${trimmed.replace(/\/API$/, "")}/WebServices/API`];
-    return [`${trimmed}/API`, `${trimmed}/WebServices/API`];
+    const candidates: string[] = [];
+    const push = (url: string) => {
+      const clean = url.replace(/\/$/, "");
+      if (!candidates.includes(clean)) candidates.push(clean);
+    };
+
+    if (trimmed.endsWith("/WebServices/API")) {
+      push(trimmed);
+      push(trimmed.replace(/\/WebServices\/API$/, "/API"));
+    } else if (trimmed.endsWith("/API")) {
+      push(trimmed);
+      push(trimmed.replace(/\/API$/, "/WebServices/API"));
+    } else {
+      push(`${trimmed}/API`);
+      push(`${trimmed}/WebServices/API`);
+    }
+
+    try {
+      const url = new URL(trimmed);
+      const baseOrigin = `${url.protocol}//${url.host}`;
+      const parts = url.pathname.split("/").filter(Boolean);
+      const org = parts[0] ?? "";
+      if (org) {
+        // Some tenants expose API under /H7 instead of /H7i (or vice versa).
+        const simplifiedOrg = org.replace(/[a-z]$/i, "");
+        if (simplifiedOrg && simplifiedOrg !== org) {
+          push(`${baseOrigin}/${simplifiedOrg}/API`);
+          push(`${baseOrigin}/${simplifiedOrg}/WebServices/API`);
+        }
+      }
+      // Last-resort host-level variants.
+      push(`${baseOrigin}/API`);
+      push(`${baseOrigin}/WebServices/API`);
+    } catch {
+      // Ignore URL parsing errors and keep current candidates.
+    }
+
+    return candidates;
   }
 
   function extractHumanErrorFromHtml(html: string): string | null {
