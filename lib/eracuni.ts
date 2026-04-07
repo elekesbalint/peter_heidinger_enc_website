@@ -112,6 +112,17 @@ export async function createEracuniInvoice(params: {
     return [`${trimmed}/API`, `${trimmed}/WebServices/API`];
   }
 
+  function extractHumanErrorFromHtml(html: string): string | null {
+    if (!html || typeof html !== "string") return null;
+    const withoutScripts = html
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ");
+    const text = withoutScripts.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    if (!text) return null;
+    // Keep a concise, readable message; removes CSS noise from dashboard error output.
+    return text.slice(0, 400);
+  }
+
   try {
     // e-racuni WebServices/API mode (username + secretKey + token + method)
     if (username && secretKey && token && method) {
@@ -145,7 +156,10 @@ export async function createEracuniInvoice(params: {
         });
         const raw = await res.text();
         if (!res.ok) {
-          lastHttpError = `HTTP ${res.status}: ${compact(raw)}`;
+          const readable = raw.includes("<html") || raw.includes("<!DOCTYPE")
+            ? extractHumanErrorFromHtml(raw)
+            : compact(raw);
+          lastHttpError = `[${endpoint}] HTTP ${res.status}: ${readable ?? compact(raw)}`;
           continue;
         }
         try {
