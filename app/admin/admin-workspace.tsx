@@ -1327,11 +1327,9 @@ export function AdminWorkspace() {
     setEncErr(null);
     setLabelLoadingForId(orderId);
     try {
-      // One-click UX: if tracking is missing, trigger "Küldés" first.
-      if (!trackingNumber) {
-        const shipped = await submitShip(orderId, null);
-        if (!shipped) return;
-      }
+      // Always re-trigger "Küldés" on PDF click so user receives MPL shipment email as well.
+      const shipped = await submitShip(orderId, trackingNumber ?? null);
+      if (!shipped) return;
       const res = await fetch(`/api/admin/enc-device-orders/label?id=${encodeURIComponent(orderId)}`);
       if (!res.ok) {
         const maybe = (await res.json().catch(() => null)) as { error?: string } | null;

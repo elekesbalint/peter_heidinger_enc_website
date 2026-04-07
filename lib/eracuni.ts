@@ -15,33 +15,40 @@ export async function createEracuniInvoice(params: {
   invoicePublicUrl?: string | null;
   invoicePdfUrl?: string | null;
 }> {
-  // Prefer explicit TEST config when present, so live keys are not used by accident.
+  const nodeEnv = (process.env.NODE_ENV ?? "").trim().toLowerCase();
+  const vercelEnv = (process.env.VERCEL_ENV ?? "").trim().toLowerCase();
+  const isProduction = nodeEnv === "production" || vercelEnv === "production";
+
+  // In production only live credentials should be used.
+  // In non-production environments prefer TEST, then fallback to live.
   const testUrl = process.env.E_RACUNI_TEST_API_URL?.trim();
   const liveUrl = process.env.E_RACUNI_API_URL?.trim();
-  const baseUrl = testUrl || liveUrl;
+  const baseUrl = isProduction ? liveUrl : testUrl || liveUrl;
   if (!baseUrl) {
     return { ok: true, skipped: true };
   }
 
   const testUsername = process.env.E_RACUNI_TEST_USERNAME?.trim();
   const liveUsername = process.env.E_RACUNI_USERNAME?.trim();
-  const username = testUsername || liveUsername;
+  const username = isProduction ? liveUsername : testUsername || liveUsername;
 
   const testSecret = process.env.E_RACUNI_TEST_API_PASSWORD?.trim();
   const liveSecret = process.env.E_RACUNI_API_PASSWORD?.trim();
-  const secretKey = testSecret || liveSecret;
+  const secretKey = isProduction ? liveSecret : testSecret || liveSecret;
 
   const testToken = process.env.E_RACUNI_TEST_API_TOKEN?.trim();
   const liveToken = process.env.E_RACUNI_API_TOKEN?.trim();
-  const token = testToken || liveToken;
+  const token = isProduction ? liveToken : testToken || liveToken;
 
   const testMethodDeviceSale = process.env.E_RACUNI_TEST_METHOD_DEVICE_SALE?.trim();
   const liveMethodDeviceSale = process.env.E_RACUNI_METHOD_DEVICE_SALE?.trim();
-  const methodDeviceSale = testMethodDeviceSale || liveMethodDeviceSale;
+  const methodDeviceSale = isProduction
+    ? liveMethodDeviceSale
+    : testMethodDeviceSale || liveMethodDeviceSale;
 
   const testMethodTopup = process.env.E_RACUNI_TEST_METHOD_TOPUP?.trim();
   const liveMethodTopup = process.env.E_RACUNI_METHOD_TOPUP?.trim();
-  const methodTopup = testMethodTopup || liveMethodTopup;
+  const methodTopup = isProduction ? liveMethodTopup : testMethodTopup || liveMethodTopup;
 
   const method = params.kind === "device_sale" ? methodDeviceSale : methodTopup;
 
@@ -151,7 +158,7 @@ export async function createEracuniInvoice(params: {
     const liveKey =
       process.env.E_RACUNI_API_KEY?.trim() ||
       process.env.E_RACUNI_API_TOKEN?.trim();
-    const key = testKey || liveKey;
+    const key = isProduction ? liveKey : testKey || liveKey;
     if (!key) {
       return { ok: true, skipped: true };
     }
