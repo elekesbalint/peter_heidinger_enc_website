@@ -51,10 +51,11 @@ async function persistInvoiceLinksToStripeTopup(
   supabase: ReturnType<typeof createSupabaseAdminClient>,
   stripeSessionId: string,
   kind: "device_sale" | "topup",
+  invoiceStatus: "ok" | "skipped" | "failed",
   invoicePublicUrl?: string | null,
   invoicePdfUrl?: string | null,
+  invoiceError?: string | null,
 ) {
-  if (!invoicePublicUrl && !invoicePdfUrl) return;
   const { data: row, error: rowErr } = await supabase
     .from("stripe_topups")
     .select("payload")
@@ -72,8 +73,10 @@ async function persistInvoiceLinksToStripeTopup(
     ...existingPayload,
     eracuni_invoice: {
       kind,
+      status: invoiceStatus,
       public_url: invoicePublicUrl ?? null,
       pdf_url: invoicePdfUrl ?? null,
+      error: invoiceError ?? null,
       updated_at: new Date().toISOString(),
     },
   };
@@ -328,14 +331,33 @@ export async function POST(request: Request) {
           });
           if (!inv.ok) {
             console.error("[eracuni] Device sale invoice failed:", inv.error);
+            await persistInvoiceLinksToStripeTopup(
+              supabase,
+              session.id,
+              "device_sale",
+              "failed",
+              null,
+              null,
+              inv.error ?? null,
+            );
           } else if (inv.skipped) {
             console.warn("[eracuni] Device sale invoice skipped (missing config).");
+            await persistInvoiceLinksToStripeTopup(
+              supabase,
+              session.id,
+              "device_sale",
+              "skipped",
+              null,
+              null,
+              "e-racuni konfiguráció hiányzik.",
+            );
           } else {
             console.info("[eracuni] Device sale invoice request sent successfully.");
             await persistInvoiceLinksToStripeTopup(
               supabase,
               session.id,
               "device_sale",
+              "ok",
               inv.invoicePublicUrl,
               inv.invoicePdfUrl,
             );
@@ -428,14 +450,33 @@ export async function POST(request: Request) {
           });
           if (!inv.ok) {
             console.error("[eracuni] Topup invoice failed:", inv.error);
+            await persistInvoiceLinksToStripeTopup(
+              supabase,
+              session.id,
+              "topup",
+              "failed",
+              null,
+              null,
+              inv.error ?? null,
+            );
           } else if (inv.skipped) {
             console.warn("[eracuni] Topup invoice skipped (missing config).");
+            await persistInvoiceLinksToStripeTopup(
+              supabase,
+              session.id,
+              "topup",
+              "skipped",
+              null,
+              null,
+              "e-racuni konfiguráció hiányzik.",
+            );
           } else {
             console.info("[eracuni] Topup invoice request sent successfully.");
             await persistInvoiceLinksToStripeTopup(
               supabase,
               session.id,
               "topup",
+              "ok",
               inv.invoicePublicUrl,
               inv.invoicePdfUrl,
             );

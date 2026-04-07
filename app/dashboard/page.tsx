@@ -26,8 +26,15 @@ function hufToEur(huf: number, fxEurToHuf: number): number {
   return Math.round((huf / fxEurToHuf) * 100) / 100;
 }
 
-function invoiceUrlsFromPayload(payload: unknown): { publicUrl: string | null; pdfUrl: string | null } {
-  if (!payload || typeof payload !== "object") return { publicUrl: null, pdfUrl: null };
+function invoiceUrlsFromPayload(payload: unknown): {
+  publicUrl: string | null;
+  pdfUrl: string | null;
+  status: string | null;
+  error: string | null;
+} {
+  if (!payload || typeof payload !== "object") {
+    return { publicUrl: null, pdfUrl: null, status: null, error: null };
+  }
   const root = payload as Record<string, unknown>;
   const inv =
     root.eracuni_invoice && typeof root.eracuni_invoice === "object"
@@ -35,7 +42,9 @@ function invoiceUrlsFromPayload(payload: unknown): { publicUrl: string | null; p
       : null;
   const publicUrl = typeof inv?.public_url === "string" ? inv.public_url : null;
   const pdfUrl = typeof inv?.pdf_url === "string" ? inv.pdf_url : null;
-  return { publicUrl, pdfUrl };
+  const status = typeof inv?.status === "string" ? inv.status : null;
+  const error = typeof inv?.error === "string" ? inv.error : null;
+  return { publicUrl, pdfUrl, status, error };
 }
 
 export default async function DashboardPage({
@@ -460,7 +469,13 @@ export default async function DashboardPage({
                         Számla letöltése (PDF)
                       </a>
                     ) : (
-                      <span className="text-xs text-muted">Feldolgozás alatt</span>
+                      <span className="text-xs text-muted">
+                        {invoiceUrls.status === "skipped"
+                          ? "Számla kihagyva (hiányzó e-racuni config)"
+                          : invoiceUrls.status === "failed"
+                            ? `Számla hiba: ${invoiceUrls.error ?? "ismeretlen hiba"}`
+                            : "Feldolgozás alatt"}
+                      </span>
                     )}
                   </td>
                 </tr>

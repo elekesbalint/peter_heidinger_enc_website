@@ -1149,6 +1149,7 @@ export function AdminWorkspace() {
       mpl_payload?: Record<string, unknown> | null;
       mpl_sender_agreement?: string | null;
       shipping_address?: string | null;
+      send_customer_email?: boolean;
     },
   ) {
     const res = await fetch("/api/admin/enc-device-orders/update", {
@@ -1295,6 +1296,7 @@ export function AdminWorkspace() {
         tracking_number: (trackingNumber ?? "").trim(),
         mpl_payload: null,
         mpl_sender_agreement: mplAgreementCode.trim() || null,
+        send_customer_email: true,
       });
       if (!options?.skipReload) {
         await loadEnc();

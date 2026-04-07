@@ -86,6 +86,7 @@ export async function POST(request: Request) {
     mpl_payload?: unknown | null;
     mpl_sender_agreement?: string | null;
     shipping_address?: string | null;
+    send_customer_email?: boolean;
   };
 
   const id = (body.id ?? "").trim();
@@ -363,7 +364,8 @@ export async function POST(request: Request) {
         ? data.category.trim().toUpperCase()
         : "—";
 
-    if (email) {
+    const shouldSendCustomerEmail = body.send_customer_email === true;
+    if (email && shouldSendCustomerEmail) {
       const trackingUrl = tracking ? buildPostaTrackingPageUrl(tracking) : "";
       const intro = tracking
         ? "A megrendelt ENC csomagod feladásra került. A szállítást a Magyar Posta (MPL) végzi. A követési számra kattintva a Posta nyomkövető oldalán ellenőrizheted a küldemény állapotát."
