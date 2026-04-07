@@ -122,27 +122,76 @@ export default async function RootLayout({
 
           <main className="relative z-10 flex flex-1 flex-col">{children}</main>
 
-          <footer className="relative z-10 border-t border-white/40 bg-white/45 backdrop-blur-lg">
-            <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-6 text-sm text-muted">
-              <p>&copy; {new Date().getFullYear()} AdriaGo. Minden jog fenntartva.</p>
-              <div className="flex gap-5">
-                <a
-                  href="https://encberbeadas.hu"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="transition-colors duration-200 hover:text-foreground"
-                >
-                  Partner: ENCbérbeadás.hu
-                </a>
-                <Link href="/aszf" className="transition-colors duration-200 hover:text-foreground">
-                  ÁSZF
-                </Link>
-                <Link href="/adatvedelem" className="transition-colors duration-200 hover:text-foreground">
-                  Adatvédelem
-                </Link>
-                <Link href="/kapcsolat" className="transition-colors duration-200 hover:text-foreground">
-                  Kapcsolat
-                </Link>
+          <footer className="relative z-10 border-t border-white/40 bg-gradient-to-b from-white/70 to-white/55 backdrop-blur-lg">
+            <div className="mx-auto max-w-7xl px-6 py-10 text-sm text-muted">
+              <div className="grid gap-8 md:grid-cols-3">
+                <section className="space-y-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-indigo-600 text-xs font-bold text-white shadow">
+                      AG
+                    </span>
+                    <span className="text-base font-bold tracking-tight text-foreground">AdriaGo</span>
+                  </div>
+                  <p className="max-w-sm leading-relaxed">
+                    ENC értékesítés és útdíjkezelés egy modern platformon: rendelés, feltöltés, állapotkövetés.
+                  </p>
+                  <a
+                    href="https://encberbeadas.hu"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex font-medium text-slate-700 transition-colors duration-200 hover:text-foreground"
+                  >
+                    Partner: ENCbérbeadás.hu
+                  </a>
+                </section>
+
+                <section className="space-y-3">
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-700">Jogi információk</h3>
+                  <nav className="flex flex-col gap-2">
+                    <Link href="/aszf" className="transition-colors duration-200 hover:text-foreground">
+                      ÁSZF
+                    </Link>
+                    <Link href="/adatvedelem" className="transition-colors duration-200 hover:text-foreground">
+                      Adatvédelem
+                    </Link>
+                    <Link href="/kapcsolat" className="transition-colors duration-200 hover:text-foreground">
+                      Kapcsolat
+                    </Link>
+                  </nav>
+                </section>
+
+                <section className="space-y-3">
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-700">Navigáció</h3>
+                  <nav className="flex flex-col gap-2">
+                    <Link href="/" className="transition-colors duration-200 hover:text-foreground">
+                      Főoldal
+                    </Link>
+                    <Link href="/order" className="transition-colors duration-200 hover:text-foreground">
+                      Rendelés
+                    </Link>
+                    <Link href="/topup" className="transition-colors duration-200 hover:text-foreground">
+                      Feltöltés
+                    </Link>
+                    <Link href="/dashboard" className="transition-colors duration-200 hover:text-foreground">
+                      Fiókom
+                    </Link>
+                  </nav>
+                </section>
+              </div>
+
+              <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200/80 pt-5 text-xs">
+                <p>&copy; {new Date().getFullYear()} AdriaGo. Minden jog fenntartva.</p>
+                <p>
+                  Designed &amp; coded by{" "}
+                  <a
+                    href="https://balintelekes.hu"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-medium text-slate-700 transition-colors duration-200 hover:text-foreground"
+                  >
+                    Bálint Elekes
+                  </a>
+                </p>
               </div>
             </div>
           </footer>
