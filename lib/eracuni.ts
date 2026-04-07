@@ -55,6 +55,7 @@ export async function createEracuniInvoice(params: {
   const itemName =
     params.kind === "device_sale" ? "ENC készülék / ENC uređaj" : "ENC készülék feltöltése";
   const note = `Azonosító / Identifikacijski broj: ${params.deviceIdentifier}`;
+  const today = new Date().toISOString().slice(0, 10);
 
   function compact(text: string, max = 500): string {
     return text.replace(/\s+/g, " ").trim().slice(0, max);
@@ -167,6 +168,28 @@ export async function createEracuniInvoice(params: {
     return text.slice(0, 400);
   }
 
+  function buildSalesInvoiceParameter(): Record<string, unknown> {
+    // Minimal valid SalesInvoice skeleton for e-racuni SalesInvoiceCreate.
+    // If the tenant requires additional fields, API will now return the next missing field explicitly.
+    return {
+      date: today,
+      currency: "HUF",
+      note,
+      partner: {
+        name: params.userEmail || "AdriaGo ügyfél",
+        email: params.userEmail || "",
+      },
+      items: [
+        {
+          name: itemName,
+          quantity: 1,
+          unitPrice: params.amountHuf,
+          note,
+        },
+      ],
+    };
+  }
+
   try {
     // e-racuni WebServices/API mode (username + secretKey + token + method)
     if (username && secretKey && token && method) {
@@ -186,6 +209,7 @@ export async function createEracuniInvoice(params: {
             token,
             method,
             parameters: {
+              SalesInvoice: buildSalesInvoiceParameter(),
               customerEmail: params.userEmail,
               deviceIdentifier: params.deviceIdentifier,
               itemName,
