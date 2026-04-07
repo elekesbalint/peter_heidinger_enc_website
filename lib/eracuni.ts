@@ -105,50 +105,62 @@ export async function createEracuniInvoice(params: {
     return null;
   }
 
+  function buildEracuniEndpoints(base: string): string[] {
+    const trimmed = base.replace(/\/$/, "");
+    if (trimmed.endsWith("/WebServices/API")) return [trimmed];
+    if (trimmed.endsWith("/API")) return [trimmed, `${trimmed.replace(/\/API$/, "")}/WebServices/API`];
+    return [`${trimmed}/API`, `${trimmed}/WebServices/API`];
+  }
+
   try {
     // e-racuni WebServices/API mode (username + secretKey + token + method)
     if (username && secretKey && token && method) {
-      const endpoint = baseUrl.endsWith("/WebServices/API")
-        ? baseUrl
-        : `${baseUrl.replace(/\/$/, "")}/WebServices/API`;
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          username,
-          secretKey,
-          token,
-          method,
-          parameters: {
-            customerEmail: params.userEmail,
-            deviceIdentifier: params.deviceIdentifier,
-            itemName,
-            note,
-            amountHuf: params.amountHuf,
-            quantity: 1,
-            // Ask e-racuni to send issued invoice by e-mail and expose public URL when supported.
-            sendIssuedInvoiceByEmail: true,
-            generatePublicURL: true,
+      const endpoints = buildEracuniEndpoints(baseUrl);
+      let lastHttpError: string | null = null;
+      for (const endpoint of endpoints) {
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-        }),
-      });
-      const raw = await res.text();
-      if (!res.ok) {
-        return { ok: false, error: `HTTP ${res.status}: ${compact(raw)}` };
+          body: JSON.stringify({
+            username,
+            // e-racuni docs use "secretkey" (lowercase); keep camelCase too for compatibility.
+            secretkey: secretKey,
+            secretKey,
+            token,
+            method,
+            parameters: {
+              customerEmail: params.userEmail,
+              deviceIdentifier: params.deviceIdentifier,
+              itemName,
+              note,
+              amountHuf: params.amountHuf,
+              quantity: 1,
+              // Ask e-racuni to send issued invoice by e-mail and expose public URL when supported.
+              sendIssuedInvoiceByEmail: true,
+              generatePublicURL: true,
+            },
+          }),
+        });
+        const raw = await res.text();
+        if (!res.ok) {
+          lastHttpError = `HTTP ${res.status}: ${compact(raw)}`;
+          continue;
+        }
+        try {
+          const parsed = JSON.parse(raw);
+          const failed = responseIndicatesFailure(parsed);
+          if (failed) return { ok: false, error: failed };
+          const publicUrl = findFirstUrlByHint(parsed, ["publicurl", "public_url", "documenturl"]);
+          const pdfUrl = findFirstUrlByHint(parsed, ["pdf", "pdfurl", "pdf_url"]);
+          return { ok: true, invoicePublicUrl: publicUrl, invoicePdfUrl: pdfUrl };
+        } catch {
+          // Some e-racuni methods may return non-JSON/plain text on success.
+          return { ok: true };
+        }
       }
-      try {
-        const parsed = JSON.parse(raw);
-        const failed = responseIndicatesFailure(parsed);
-        if (failed) return { ok: false, error: failed };
-        const publicUrl = findFirstUrlByHint(parsed, ["publicurl", "public_url", "documenturl"]);
-        const pdfUrl = findFirstUrlByHint(parsed, ["pdf", "pdfurl", "pdf_url"]);
-        return { ok: true, invoicePublicUrl: publicUrl, invoicePdfUrl: pdfUrl };
-      } catch {
-        // Some e-racuni methods may return non-JSON/plain text on success.
-        return { ok: true };
-      }
+      return { ok: false, error: lastHttpError ?? "e-racuni endpoint hiba" };
     }
 
     // Legacy bearer mode
