@@ -1,6 +1,6 @@
 import { getIntSetting, getSettingsMap } from "@/lib/app-settings";
 import { buildEmailHtml } from "@/lib/email-html";
-import { createEracuniInvoiceStub } from "@/lib/eracuni";
+import { createEracuniInvoice } from "@/lib/eracuni";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import { sendAppEmail } from "@/lib/notify-email";
 import { getStripe } from "@/lib/stripe";
@@ -44,6 +44,45 @@ async function resolveAuthUserIdByEmail(
     return hit?.id ?? fallbackAuthUserId;
   } catch {
     return fallbackAuthUserId;
+  }
+}
+
+async function persistInvoiceLinksToStripeTopup(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  stripeSessionId: string,
+  kind: "device_sale" | "topup",
+  invoicePublicUrl?: string | null,
+  invoicePdfUrl?: string | null,
+) {
+  if (!invoicePublicUrl && !invoicePdfUrl) return;
+  const { data: row, error: rowErr } = await supabase
+    .from("stripe_topups")
+    .select("payload")
+    .eq("stripe_session_id", stripeSessionId)
+    .maybeSingle();
+  if (rowErr) {
+    console.error("[eracuni] Invoice link payload read failed:", rowErr.message);
+    return;
+  }
+  const existingPayload =
+    row && typeof row.payload === "object" && row.payload !== null
+      ? (row.payload as Record<string, unknown>)
+      : {};
+  const nextPayload: Record<string, unknown> = {
+    ...existingPayload,
+    eracuni_invoice: {
+      kind,
+      public_url: invoicePublicUrl ?? null,
+      pdf_url: invoicePdfUrl ?? null,
+      updated_at: new Date().toISOString(),
+    },
+  };
+  const { error: updateErr } = await supabase
+    .from("stripe_topups")
+    .update({ payload: nextPayload })
+    .eq("stripe_session_id", stripeSessionId);
+  if (updateErr) {
+    console.error("[eracuni] Invoice link payload update failed:", updateErr.message);
   }
 }
 
@@ -281,7 +320,7 @@ export async function POST(request: Request) {
         }
 
         if (deviceIdentifier) {
-          const inv = await createEracuniInvoiceStub({
+          const inv = await createEracuniInvoice({
             kind: "device_sale",
             deviceIdentifier,
             amountHuf,
@@ -293,6 +332,13 @@ export async function POST(request: Request) {
             console.warn("[eracuni] Device sale invoice skipped (missing config).");
           } else {
             console.info("[eracuni] Device sale invoice request sent successfully.");
+            await persistInvoiceLinksToStripeTopup(
+              supabase,
+              session.id,
+              "device_sale",
+              inv.invoicePublicUrl,
+              inv.invoicePdfUrl,
+            );
           }
         }
 
@@ -374,7 +420,7 @@ export async function POST(request: Request) {
             });
           }
 
-          const inv = await createEracuniInvoiceStub({
+          const inv = await createEracuniInvoice({
             kind: "topup",
             deviceIdentifier,
             amountHuf,
@@ -386,6 +432,13 @@ export async function POST(request: Request) {
             console.warn("[eracuni] Topup invoice skipped (missing config).");
           } else {
             console.info("[eracuni] Topup invoice request sent successfully.");
+            await persistInvoiceLinksToStripeTopup(
+              supabase,
+              session.id,
+              "topup",
+              inv.invoicePublicUrl,
+              inv.invoicePdfUrl,
+            );
           }
 
           const settings = await getSettingsMap();

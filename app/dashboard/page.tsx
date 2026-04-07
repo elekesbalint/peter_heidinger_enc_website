@@ -26,6 +26,18 @@ function hufToEur(huf: number, fxEurToHuf: number): number {
   return Math.round((huf / fxEurToHuf) * 100) / 100;
 }
 
+function invoiceUrlsFromPayload(payload: unknown): { publicUrl: string | null; pdfUrl: string | null } {
+  if (!payload || typeof payload !== "object") return { publicUrl: null, pdfUrl: null };
+  const root = payload as Record<string, unknown>;
+  const inv =
+    root.eracuni_invoice && typeof root.eracuni_invoice === "object"
+      ? (root.eracuni_invoice as Record<string, unknown>)
+      : null;
+  const publicUrl = typeof inv?.public_url === "string" ? inv.public_url : null;
+  const pdfUrl = typeof inv?.pdf_url === "string" ? inv.pdf_url : null;
+  return { publicUrl, pdfUrl };
+}
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -91,7 +103,7 @@ export default async function DashboardPage({
 
   const { data: topups } = await supabase
     .from("stripe_topups")
-    .select("id, amount_huf, currency, status, paid_at, created_at, device_identifier, travel_destination")
+    .select("id, amount_huf, currency, status, paid_at, created_at, device_identifier, travel_destination, payload")
     .eq("user_email", user.email ?? "")
     .order("created_at", { ascending: false })
     .limit(20);
@@ -414,6 +426,7 @@ export default async function DashboardPage({
                 <th className="px-2 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Státusz</th>
                 <th className="px-2 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Eszköz</th>
                 <th className="px-2 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Úticél</th>
+                <th className="px-2 py-2.5 text-xs font-medium uppercase tracking-wider text-muted">Számla</th>
               </tr>
             </thead>
             <tbody>
@@ -423,6 +436,8 @@ export default async function DashboardPage({
                   currency === "EUR"
                     ? hufToEur(Number(item.amount_huf), fxEurToHuf)
                     : Number(item.amount_huf);
+                const invoiceUrls = invoiceUrlsFromPayload(item.payload);
+                const downloadUrl = invoiceUrls.pdfUrl ?? invoiceUrls.publicUrl;
                 return (
                 <tr key={item.id} className="border-b border-border/60">
                   <td className="px-2 py-2.5">
@@ -434,6 +449,20 @@ export default async function DashboardPage({
                   <td className="px-2 py-2.5">{item.status}</td>
                   <td className="px-2 py-2.5">{item.device_identifier || "—"}</td>
                   <td className="px-2 py-2.5">{item.travel_destination ?? "—"}</td>
+                  <td className="px-2 py-2.5">
+                    {downloadUrl ? (
+                      <a
+                        href={downloadUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex rounded-lg border border-border bg-white px-2.5 py-1 text-xs font-semibold text-primary hover:bg-slate-50"
+                      >
+                        Számla letöltése (PDF)
+                      </a>
+                    ) : (
+                      <span className="text-xs text-muted">Feldolgozás alatt</span>
+                    )}
+                  </td>
                 </tr>
               )})}
             </tbody>
