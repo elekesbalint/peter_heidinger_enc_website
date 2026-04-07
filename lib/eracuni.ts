@@ -137,9 +137,6 @@ export async function createEracuniInvoice(params: {
           push(`${baseOrigin}/${simplifiedOrg}/WebServices/API`);
         }
       }
-      // Last-resort host-level variants.
-      push(`${baseOrigin}/API`);
-      push(`${baseOrigin}/WebServices/API`);
     } catch {
       // Ignore URL parsing errors and keep current candidates.
     }
@@ -162,7 +159,7 @@ export async function createEracuniInvoice(params: {
     // e-racuni WebServices/API mode (username + secretKey + token + method)
     if (username && secretKey && token && method) {
       const endpoints = buildEracuniEndpoints(baseUrl);
-      let lastHttpError: string | null = null;
+      const endpointErrors: string[] = [];
       for (const endpoint of endpoints) {
         const res = await fetch(endpoint, {
           method: "POST",
@@ -194,7 +191,7 @@ export async function createEracuniInvoice(params: {
           const readable = raw.includes("<html") || raw.includes("<!DOCTYPE")
             ? extractHumanErrorFromHtml(raw)
             : compact(raw);
-          lastHttpError = `[${endpoint}] HTTP ${res.status}: ${readable ?? compact(raw)}`;
+          endpointErrors.push(`[${endpoint}] HTTP ${res.status}: ${readable ?? compact(raw)}`);
           continue;
         }
         try {
@@ -209,7 +206,13 @@ export async function createEracuniInvoice(params: {
           return { ok: true };
         }
       }
-      return { ok: false, error: lastHttpError ?? "e-racuni endpoint hiba" };
+      return {
+        ok: false,
+        error:
+          endpointErrors.length > 0
+            ? endpointErrors.join(" | ")
+            : "e-racuni endpoint hiba",
+      };
     }
 
     // Legacy bearer mode
