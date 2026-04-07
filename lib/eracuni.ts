@@ -83,6 +83,18 @@ export async function createEracuniInvoice(params: {
     return null;
   }
 
+  function hasInvalidAuthMessage(payload: unknown): boolean {
+    if (!payload || typeof payload !== "object") return false;
+    const serialized = JSON.stringify(payload).toLowerCase();
+    return (
+      serialized.includes("korisničko ime") ||
+      serialized.includes("zaporka") ||
+      serialized.includes("username") ||
+      serialized.includes("password") ||
+      serialized.includes("not valid")
+    );
+  }
+
   function findFirstUrlByHint(payload: unknown, hints: string[]): string | null {
     const loweredHints = hints.map((h) => h.toLowerCase());
     const queue: unknown[] = [payload];
@@ -191,13 +203,33 @@ export async function createEracuniInvoice(params: {
           const readable = raw.includes("<html") || raw.includes("<!DOCTYPE")
             ? extractHumanErrorFromHtml(raw)
             : compact(raw);
+          // If e-racuni already indicates invalid username/password, stop fallback noise.
+          try {
+            const parsedErr = JSON.parse(raw);
+            if (hasInvalidAuthMessage(parsedErr)) {
+              return {
+                ok: false,
+                error: `[${endpoint}] Hitelesítési hiba: érvénytelen e-racuni felhasználónév vagy API jelszó.`,
+              };
+            }
+          } catch {
+            // non-JSON HTTP error, continue collecting endpoint diagnostics
+          }
           endpointErrors.push(`[${endpoint}] HTTP ${res.status}: ${readable ?? compact(raw)}`);
           continue;
         }
         try {
           const parsed = JSON.parse(raw);
           const failed = responseIndicatesFailure(parsed);
-          if (failed) return { ok: false, error: failed };
+          if (failed) {
+            if (hasInvalidAuthMessage(parsed)) {
+              return {
+                ok: false,
+                error: `[${endpoint}] Hitelesítési hiba: érvénytelen e-racuni felhasználónév vagy API jelszó.`,
+              };
+            }
+            return { ok: false, error: failed };
+          }
           const publicUrl = findFirstUrlByHint(parsed, ["publicurl", "public_url", "documenturl"]);
           const pdfUrl = findFirstUrlByHint(parsed, ["pdf", "pdfurl", "pdf_url"]);
           return { ok: true, invoicePublicUrl: publicUrl, invoicePdfUrl: pdfUrl };
