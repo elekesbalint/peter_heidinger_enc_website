@@ -195,13 +195,25 @@ export async function createEracuniInvoice(params: {
     const buyerCountry = process.env.E_RACUNI_BUYER_COUNTRY_CODE?.trim() || "HU";
     const buyerPhone = process.env.E_RACUNI_BUYER_PHONE?.trim() || "";
     const buyerTaxNumber = process.env.E_RACUNI_BUYER_TAX_NUMBER?.trim() || "";
+    const itemUnit = process.env.E_RACUNI_ITEM_UNIT?.trim() || "kom";
+    const itemVatPercentage = Number.parseFloat(
+      process.env.E_RACUNI_ITEM_VAT_PERCENTAGE?.trim() || "27",
+    );
+    const safeVatPercentage = Number.isFinite(itemVatPercentage) ? itemVatPercentage : 27;
+    const grossPrice = normalizedAmountHuf;
+    const netPrice = Math.round(grossPrice / (1 + safeVatPercentage / 100));
     const invoiceItem = {
       name: itemName,
       description: itemName,
+      unit: itemUnit,
       quantity: 1,
       unitPrice: normalizedAmountHuf,
       price: normalizedAmountHuf,
       retailPrice: normalizedAmountHuf,
+      netPrice,
+      grossPrice,
+      vatPercentage: safeVatPercentage,
+      discountPercentage: 0,
       note,
     };
     return {
@@ -237,9 +249,13 @@ export async function createEracuniInvoice(params: {
       items: [invoiceItem],
       // Compatibility aliases for tenants that expect different item list keys.
       item: [invoiceItem],
+      invoiceItems: [invoiceItem],
       documentLines: [invoiceItem],
       documentItems: [invoiceItem],
       lines: [invoiceItem],
+      line: [invoiceItem],
+      documentLine: invoiceItem,
+      documentItem: invoiceItem,
     };
   }
 
