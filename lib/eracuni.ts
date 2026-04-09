@@ -12,6 +12,8 @@
  * Opcionális BuyerData: E_RACUNI_BUYER_CODE, E_RACUNI_BUYER_DATA_STATUS (default defaultBuyer),
  * E_RACUNI_INVOICING_LANGUAGE (default Hungarian), E_RACUNI_NUMBER_OF_DAYS_FOR_PAYMENT, E_RACUNI_DOCUMENTS_EMAIL.
  *
+ * Deviza: E_RACUNI_CURRENCY_DEVICE_SALE / E_RACUNI_CURRENCY_TOPUP (pl. HUF / EUR), ha nincs megadva → E_RACUNI_CURRENCY → default EUR.
+ *
  * E_RACUNI_ALLOW_CUSTOM_PRICE_ON_PRODUCT_LINE: ha true, az E_RACUNI_ITEM_PRODUCT_CODE sorhoz küldünk explicit árat
  * (Stripe szerinti összeg). Ehhez az e-racuni terméknél be kell kapcsolni az „ár változtatása a számlán”
  * (allowChangeOfPriceOnTheInvoice) opciót. Alapértelmezés: false — a katalógus ára érvényesül, egyedi ár nem megy ki.
@@ -77,7 +79,12 @@ export async function createEracuniInvoice(params: {
     params.kind === "device_sale" ? "ENC készülék / ENC uređaj" : "ENC készülék feltöltése";
   const note = `Azonosító / Identifikacijski broj: ${params.deviceIdentifier}`;
   const today = new Date().toISOString().slice(0, 10);
-  const invoiceCurrency = process.env.E_RACUNI_CURRENCY?.trim() || "EUR";
+  const invoiceCurrency =
+    (params.kind === "device_sale"
+      ? process.env.E_RACUNI_CURRENCY_DEVICE_SALE?.trim()
+      : process.env.E_RACUNI_CURRENCY_TOPUP?.trim()) ||
+    process.env.E_RACUNI_CURRENCY?.trim() ||
+    "EUR";
 
   function parseEnvTruthy(v: string | undefined): boolean {
     const t = (v ?? "").trim().toLowerCase();
