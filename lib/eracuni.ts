@@ -2,6 +2,15 @@
  * e-racuni.com számlázó integráció.
  * Elsődlegesen a WebServices/API módot használja (username + secretKey + token + method),
  * fallbackként támogat egyszerű bearer /invoices hívást is.
+ *
+ * SalesInvoiceCreate: a hivatalos WS API séma szerint is küldünk mezőket (buyerName, buyerStreet,
+ * buyerEMail, Items[], dateOfSupplyFrom, type Retail, methodOfPayment) — lásd e-racuni wiki WS API SalesInvoice.
+ *
+ * E_RACUNI_PAYMENT_METHOD: dokumentáció szerinti stringEnum (PaymentRecord.paymentMethodForInvoice), pl.
+ * BankTransfer, Cash, Stripe, CreditCard, Barion, PayPal, … — vagy magyar alias (pl. „átutalás a bankszámlára” → BankTransfer).
+ *
+ * Opcionális BuyerData: E_RACUNI_BUYER_CODE, E_RACUNI_BUYER_DATA_STATUS (default defaultBuyer),
+ * E_RACUNI_INVOICING_LANGUAGE (default Hungarian), E_RACUNI_NUMBER_OF_DAYS_FOR_PAYMENT, E_RACUNI_DOCUMENTS_EMAIL.
  */
 export async function createEracuniInvoice(params: {
   kind: "device_sale" | "topup";
@@ -65,6 +74,36 @@ export async function createEracuniInvoice(params: {
     : NaN;
   if (!Number.isFinite(normalizedAmountHuf) || normalizedAmountHuf <= 0) {
     return { ok: false, error: "Érvénytelen számlaösszeg: amountHuf legyen pozitív szám." };
+  }
+
+  /** API docs: PaymentRecord.paymentMethodForInvoice stringEnum (Cash, BankTransfer, Stripe, …). */
+  function resolveEracuniPaymentMethod(raw: string): string {
+    const t = raw.trim();
+    if (!t) return t;
+    const lower = t.replace(/\s+/g, " ").trim().toLowerCase();
+    const aliases: Record<string, string> = {
+      "átutalás a bankszámlára": "BankTransfer",
+      "atutalas a bankszamlara": "BankTransfer",
+      "bank transfer": "BankTransfer",
+      banktransfer: "BankTransfer",
+      "készpénz": "Cash",
+      keszpenz: "Cash",
+      cash: "Cash",
+      stripe: "Stripe",
+      barion: "Barion",
+      "hitelkártya": "CreditCard",
+      "credit card": "CreditCard",
+      creditcard: "CreditCard",
+      paypal: "PayPal",
+      sumup: "SumUp",
+      vivawallet: "VivaWallet",
+      mollie: "Mollie",
+      klarna: "Klarna",
+      "-": "Unknown",
+      unknown: "Unknown",
+      other: "Other",
+    };
+    return aliases[lower] ?? t;
   }
 
   function compact(text: string, max = 500): string {
@@ -214,6 +253,169 @@ export async function createEracuniInvoice(params: {
     };
   }
 
+  /** Partner.buyerData / BuyerData per API reference (invoicing language, email docs, status, …). */
+  function buildBuyerDataPayload(): Record<string, unknown> {
+    const p = buildPartnerPayload();
+    const email = ((p.email as string) || params.userEmail || "").trim();
+    const buyerCode =
+      process.env.E_RACUNI_BUYER_CODE?.trim() ||
+      process.env.E_RACUNI_PARTNER_CODE?.trim() ||
+      "";
+    const daysRaw = process.env.E_RACUNI_NUMBER_OF_DAYS_FOR_PAYMENT?.trim();
+    const days = daysRaw ? Number.parseInt(daysRaw, 10) : NaN;
+
+    const buyerData: Record<string, unknown> = {
+      status: process.env.E_RACUNI_BUYER_DATA_STATUS?.trim() || "defaultBuyer",
+      invoicingCurrency: invoiceCurrency,
+      invoicingLanguage: process.env.E_RACUNI_INVOICING_LANGUAGE?.trim() || "Hungarian",
+      sendDocumentsViaEmail: true,
+      emailsForSendingDocuments: email || process.env.E_RACUNI_DOCUMENTS_EMAIL?.trim() || "",
+      numberOfDaysForPaymentBaseDate:
+        process.env.E_RACUNI_PAYMENT_BASE_DATE?.trim() || "fromDocumentDate",
+    };
+    if (buyerCode) {
+      buyerData.buyerCode = buyerCode;
+    }
+    if (Number.isFinite(days) && days > 0) {
+      buyerData.numberOfDaysForPayment = days;
+    }
+    const po = process.env.E_RACUNI_PURCHASE_ORDER_NUMBER?.trim();
+    if (po) {
+      buyerData.purchaseOrderNumber = po;
+    }
+    const contract = process.env.E_RACUNI_CONTRACT_NUMBER?.trim();
+    if (contract) {
+      buyerData.contractNumber = contract;
+    }
+    return buyerData;
+  }
+
+  /**
+   * Official WS API shape (e-racuni wiki "WS API SalesInvoice"): flat buyer* fields, Items[], methodOfPayment, type Retail.
+   * Merged on top of existing payload so GUI-style partner{} and doc-style buyerName both exist.
+   */
+  function applyWsApiSalesInvoiceDocumentationFields(
+    inv: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const p = buildPartnerPayload();
+    const itemUnit = process.env.E_RACUNI_ITEM_UNIT?.trim() || "kom";
+    const itemVatPercentage = Number.parseFloat(
+      process.env.E_RACUNI_ITEM_VAT_PERCENTAGE?.trim() || "27",
+    );
+    const safeVatPercentage = Number.isFinite(itemVatPercentage) ? itemVatPercentage : 27;
+    const itemProductCode = process.env.E_RACUNI_ITEM_PRODUCT_CODE?.trim() || "";
+
+    const wikiItems: Record<string, unknown>[] = itemProductCode
+      ? [{ productCode: itemProductCode, quantity: 1 }]
+      : [
+          {
+            description: itemName,
+            quantity: 1,
+            unit: itemUnit,
+            price: normalizedAmountHuf,
+            vatPercentage: safeVatPercentage,
+          },
+        ];
+
+    const extra: Record<string, unknown> = {
+      date: inv.date ?? today,
+      dateOfSupplyFrom: inv.dateOfSupplyFrom ?? today,
+      currency: inv.currency ?? invoiceCurrency,
+      buyerName: p.name,
+      buyerStreet: p.street,
+      buyerPostalCode: p.postalCode,
+      buyerCity: p.city,
+      buyerEMail: p.email,
+      buyerPhone: (p.phone as string) || (p.mobile as string) || "",
+      buyerCountry: p.country,
+      type: process.env.E_RACUNI_INVOICE_TYPE?.trim() || "Retail",
+      note: inv.note ?? note,
+    };
+    const tax = (p.taxNumber as string) || "";
+    if (tax) {
+      extra.buyerTaxNumber = tax;
+    }
+    const pmRaw = process.env.E_RACUNI_PAYMENT_METHOD?.trim();
+    if (pmRaw) {
+      const pm = resolveEracuniPaymentMethod(pmRaw);
+      extra.methodOfPayment = pm;
+      extra.paymentMethodForInvoice = pm;
+    }
+    const bu = process.env.E_RACUNI_BUSINESS_UNIT?.trim();
+    if (bu) {
+      extra.businessUnit = bu;
+    }
+
+    const out = { ...inv, ...extra };
+    if (!Array.isArray(out.Items) || out.Items.length === 0) {
+      out.Items = wikiItems;
+    }
+    return out;
+  }
+
+  /** Merge partner/buyer aliases and optional payment so strict tenants accept the document. */
+  function finalizeSalesInvoice(invoice: Record<string, unknown>): Record<string, unknown> {
+    const base = buildPartnerPayload();
+    const partnerCode = process.env.E_RACUNI_PARTNER_CODE?.trim() || "";
+    const partnerIdRaw = process.env.E_RACUNI_BUYER_PARTNER_ID?.trim() || "";
+    const buyerOib = process.env.E_RACUNI_BUYER_OIB?.trim() || "";
+    const paymentMethodRaw = process.env.E_RACUNI_PAYMENT_METHOD?.trim() || "";
+    const paymentMethod = paymentMethodRaw ? resolveEracuniPaymentMethod(paymentMethodRaw) : "";
+
+    const partner: Record<string, unknown> = { ...base };
+    if (partnerCode) {
+      partner.code = partnerCode;
+      partner.partnerCode = partnerCode;
+    }
+    if (partnerIdRaw) {
+      const id = Number.parseInt(partnerIdRaw, 10);
+      if (Number.isFinite(id)) {
+        partner.id = id;
+        partner.partnerId = id;
+      }
+    }
+    if (buyerOib) {
+      partner.oib = buyerOib;
+      partner.OIB = buyerOib;
+    }
+
+    const buyerData = buildBuyerDataPayload();
+    partner.buyerData = buyerData;
+    partner.BuyerData = buyerData;
+
+    let out: Record<string, unknown> = { ...invoice, partner };
+    out.buyer = { ...partner };
+    out.customer = { ...partner };
+    if (partnerCode) {
+      out.partnerCode = partnerCode;
+    }
+    if (paymentMethod) {
+      out.paymentMethod = paymentMethod;
+      out.paymentType = paymentMethod;
+      out.methodOfPayment = paymentMethod;
+      out.paymentMethodForInvoice = paymentMethod;
+      out.payType = paymentMethod;
+    }
+
+    out = applyWsApiSalesInvoiceDocumentationFields(out);
+    out.partner = { ...partner, buyerData, BuyerData: buyerData };
+    out.buyerData = buyerData;
+    out.BuyerData = buyerData;
+    out.buyer = { ...partner, buyerData, BuyerData: buyerData };
+    out.customer = { ...partner, buyerData, BuyerData: buyerData };
+    if (partnerCode) {
+      out.partnerCode = partnerCode;
+    }
+    if (paymentMethod) {
+      out.methodOfPayment = paymentMethod;
+      out.paymentMethod = paymentMethod;
+      out.paymentType = paymentMethod;
+      out.paymentMethodForInvoice = paymentMethod;
+      out.payType = paymentMethod;
+    }
+    return out;
+  }
+
   function buildSalesInvoiceParameter(): Record<string, unknown> {
     // Minimal valid SalesInvoice skeleton for e-racuni SalesInvoiceCreate.
     // If the tenant requires additional fields, API will now return the next missing field explicitly.
@@ -334,9 +536,10 @@ export async function createEracuniInvoice(params: {
       for (const endpoint of endpoints) {
         const attemptErrors: string[] = [];
         // If productCode is configured, prefer strict productCode-only line first.
-        const salesInvoice =
+        const salesInvoice = finalizeSalesInvoice(
           buildSalesInvoiceParameterProductCodeOnly("itemArray") ||
-          buildSalesInvoiceParameterMinimal("itemArray");
+            buildSalesInvoiceParameterMinimal("itemArray"),
+        );
         const res = await fetch(endpoint, {
           method: "POST",
           headers: {
@@ -394,6 +597,7 @@ export async function createEracuniInvoice(params: {
                 { label: "rich-alias", invoice: buildSalesInvoiceParameter() },
               ];
               for (const retryCase of retryInvoices) {
+                const finalizedRetry = finalizeSalesInvoice(retryCase.invoice);
                 const retryRes = await fetch(endpoint, {
                   method: "POST",
                   headers: {
@@ -406,9 +610,9 @@ export async function createEracuniInvoice(params: {
                     token,
                     method,
                     parameters: {
-                      SalesInvoice: retryCase.invoice,
-                      Salesinvoice: retryCase.invoice,
-                      salesInvoice: retryCase.invoice,
+                      SalesInvoice: finalizedRetry,
+                      Salesinvoice: finalizedRetry,
+                      salesInvoice: finalizedRetry,
                       customerEmail: params.userEmail,
                       deviceIdentifier: params.deviceIdentifier,
                       itemName,
@@ -460,6 +664,50 @@ export async function createEracuniInvoice(params: {
           } catch {
             // non-JSON HTTP error, continue collecting endpoint diagnostics
           }
+          if ((readable || "").toLowerCase().includes("buyer data")) {
+            const buyerRetryInvoice = finalizeSalesInvoice(buildSalesInvoiceParameter());
+            const br = await fetch(endpoint, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                username,
+                secretkey: secretKey,
+                secretKey,
+                token,
+                method,
+                parameters: {
+                  SalesInvoice: buyerRetryInvoice,
+                  Salesinvoice: buyerRetryInvoice,
+                  customerEmail: params.userEmail,
+                  deviceIdentifier: params.deviceIdentifier,
+                  itemName,
+                  note,
+                  amountHuf: normalizedAmountHuf,
+                  quantity: 1,
+                  sendIssuedInvoiceByEmail: true,
+                  generatePublicURL: true,
+                },
+              }),
+            });
+            const brRaw = await br.text();
+            if (br.ok) {
+              try {
+                const brParsed = JSON.parse(brRaw);
+                const brFailed = responseIndicatesFailure(brParsed);
+                if (!brFailed) {
+                  const publicUrl = findFirstUrlByHint(brParsed, [
+                    "publicurl",
+                    "public_url",
+                    "documenturl",
+                  ]);
+                  const pdfUrl = findFirstUrlByHint(brParsed, ["pdf", "pdfurl", "pdf_url"]);
+                  return { ok: true, invoicePublicUrl: publicUrl, invoicePdfUrl: pdfUrl };
+                }
+              } catch {
+                return { ok: true };
+              }
+            }
+          }
           endpointErrors.push(
             `[${endpoint}] HTTP ${res.status}: ${readable ?? compact(raw)}${
               attemptErrors.length > 0 ? ` | retries: ${attemptErrors.join(" || ")}` : ""
@@ -476,6 +724,50 @@ export async function createEracuniInvoice(params: {
                 ok: false,
                 error: `[${endpoint}] Hitelesítési hiba: érvénytelen e-racuni felhasználónév vagy API jelszó. (username=${username ?? "n/a"}, mode=${useLiveCredentials ? "live" : "test"})`,
               };
+            }
+            if (failed.toLowerCase().includes("buyer data")) {
+              const buyerRetryInvoice = finalizeSalesInvoice(buildSalesInvoiceParameter());
+              const br = await fetch(endpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  username,
+                  secretkey: secretKey,
+                  secretKey,
+                  token,
+                  method,
+                  parameters: {
+                    SalesInvoice: buyerRetryInvoice,
+                    Salesinvoice: buyerRetryInvoice,
+                    customerEmail: params.userEmail,
+                    deviceIdentifier: params.deviceIdentifier,
+                    itemName,
+                    note,
+                    amountHuf: normalizedAmountHuf,
+                    quantity: 1,
+                    sendIssuedInvoiceByEmail: true,
+                    generatePublicURL: true,
+                  },
+                }),
+              });
+              const brRaw = await br.text();
+              if (br.ok) {
+                try {
+                  const brParsed = JSON.parse(brRaw);
+                  const brFailed = responseIndicatesFailure(brParsed);
+                  if (!brFailed) {
+                    const publicUrl = findFirstUrlByHint(brParsed, [
+                      "publicurl",
+                      "public_url",
+                      "documenturl",
+                    ]);
+                    const pdfUrl = findFirstUrlByHint(brParsed, ["pdf", "pdfurl", "pdf_url"]);
+                    return { ok: true, invoicePublicUrl: publicUrl, invoicePdfUrl: pdfUrl };
+                  }
+                } catch {
+                  return { ok: true };
+                }
+              }
             }
             return { ok: false, error: failed };
           }
