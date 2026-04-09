@@ -59,6 +59,12 @@ export async function createEracuniInvoice(params: {
     params.kind === "device_sale" ? "ENC készülék / ENC uređaj" : "ENC készülék feltöltése";
   const note = `Azonosító / Identifikacijski broj: ${params.deviceIdentifier}`;
   const today = new Date().toISOString().slice(0, 10);
+  const normalizedAmountHuf = Number.isFinite(params.amountHuf)
+    ? Math.round(params.amountHuf)
+    : NaN;
+  if (!Number.isFinite(normalizedAmountHuf) || normalizedAmountHuf <= 0) {
+    return { ok: false, error: "Érvénytelen számlaösszeg: amountHuf legyen pozitív szám." };
+  }
 
   function compact(text: string, max = 500): string {
     return text.replace(/\s+/g, " ").trim().slice(0, max);
@@ -193,14 +199,20 @@ export async function createEracuniInvoice(params: {
       name: itemName,
       description: itemName,
       quantity: 1,
-      unitPrice: params.amountHuf,
-      price: params.amountHuf,
+      unitPrice: normalizedAmountHuf,
+      price: normalizedAmountHuf,
+      retailPrice: normalizedAmountHuf,
       note,
     };
     return {
       date: today,
       currency: "HUF",
       note,
+      // Some tenants accept direct single-line shape instead of explicit item arrays.
+      description: itemName,
+      quantity: 1,
+      price: normalizedAmountHuf,
+      unitPrice: normalizedAmountHuf,
       partner: {
         // e-racuni tenant/payment method can require full buyer details.
         // Keep minimal fallback values so API validation can pass.
@@ -226,6 +238,8 @@ export async function createEracuniInvoice(params: {
       // Compatibility aliases for tenants that expect different item list keys.
       item: [invoiceItem],
       documentLines: [invoiceItem],
+      documentItems: [invoiceItem],
+      lines: [invoiceItem],
     };
   }
 
@@ -251,11 +265,12 @@ export async function createEracuniInvoice(params: {
             parameters: {
               SalesInvoice: salesInvoice,
               Salesinvoice: salesInvoice,
+              salesInvoice,
               customerEmail: params.userEmail,
               deviceIdentifier: params.deviceIdentifier,
               itemName,
               note,
-              amountHuf: params.amountHuf,
+              amountHuf: normalizedAmountHuf,
               quantity: 1,
               // Ask e-racuni to send issued invoice by e-mail and expose public URL when supported.
               sendIssuedInvoiceByEmail: true,
