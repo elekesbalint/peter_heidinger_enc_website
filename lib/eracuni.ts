@@ -18,37 +18,40 @@ export async function createEracuniInvoice(params: {
   const nodeEnv = (process.env.NODE_ENV ?? "").trim().toLowerCase();
   const vercelEnv = (process.env.VERCEL_ENV ?? "").trim().toLowerCase();
   const isProduction = nodeEnv === "production" || vercelEnv === "production";
+  const forceLiveCredentials =
+    (process.env.E_RACUNI_FORCE_LIVE_CREDENTIALS ?? "").trim().toLowerCase() === "true";
+  const useLiveCredentials = isProduction || forceLiveCredentials;
 
   // In production only live credentials should be used.
   // In non-production environments prefer TEST, then fallback to live.
   const testUrl = process.env.E_RACUNI_TEST_API_URL?.trim();
   const liveUrl = process.env.E_RACUNI_API_URL?.trim();
-  const baseUrl = isProduction ? liveUrl : testUrl || liveUrl;
+  const baseUrl = useLiveCredentials ? liveUrl : testUrl || liveUrl;
   if (!baseUrl) {
     return { ok: true, skipped: true };
   }
 
   const testUsername = process.env.E_RACUNI_TEST_USERNAME?.trim();
   const liveUsername = process.env.E_RACUNI_USERNAME?.trim();
-  const username = isProduction ? liveUsername : testUsername || liveUsername;
+  const username = useLiveCredentials ? liveUsername : testUsername || liveUsername;
 
   const testSecret = process.env.E_RACUNI_TEST_API_PASSWORD?.trim();
   const liveSecret = process.env.E_RACUNI_API_PASSWORD?.trim();
-  const secretKey = isProduction ? liveSecret : testSecret || liveSecret;
+  const secretKey = useLiveCredentials ? liveSecret : testSecret || liveSecret;
 
   const testToken = process.env.E_RACUNI_TEST_API_TOKEN?.trim();
   const liveToken = process.env.E_RACUNI_API_TOKEN?.trim();
-  const token = isProduction ? liveToken : testToken || liveToken;
+  const token = useLiveCredentials ? liveToken : testToken || liveToken;
 
   const testMethodDeviceSale = process.env.E_RACUNI_TEST_METHOD_DEVICE_SALE?.trim();
   const liveMethodDeviceSale = process.env.E_RACUNI_METHOD_DEVICE_SALE?.trim();
-  const methodDeviceSale = isProduction
+  const methodDeviceSale = useLiveCredentials
     ? liveMethodDeviceSale
     : testMethodDeviceSale || liveMethodDeviceSale;
 
   const testMethodTopup = process.env.E_RACUNI_TEST_METHOD_TOPUP?.trim();
   const liveMethodTopup = process.env.E_RACUNI_METHOD_TOPUP?.trim();
-  const methodTopup = isProduction ? liveMethodTopup : testMethodTopup || liveMethodTopup;
+  const methodTopup = useLiveCredentials ? liveMethodTopup : testMethodTopup || liveMethodTopup;
 
   const method = params.kind === "device_sale" ? methodDeviceSale : methodTopup;
 
@@ -64,12 +67,19 @@ export async function createEracuniInvoice(params: {
   function responseIndicatesFailure(payload: unknown): string | null {
     if (!payload || typeof payload !== "object") return null;
     const obj = payload as Record<string, unknown>;
-    const okLike = obj.ok ?? obj.success ?? obj.status;
+    const nestedResponse =
+      obj.response && typeof obj.response === "object"
+        ? (obj.response as Record<string, unknown>)
+        : null;
+    const okLike = obj.ok ?? obj.success ?? obj.status ?? nestedResponse?.status;
     if (okLike === false || okLike === "error" || okLike === "failed") {
       const msg =
         (typeof obj.message === "string" && obj.message) ||
         (typeof obj.error === "string" && obj.error) ||
         (typeof obj.result === "string" && obj.result) ||
+        (typeof obj.description === "string" && obj.description) ||
+        (typeof nestedResponse?.description === "string" && nestedResponse.description) ||
+        (typeof nestedResponse?.message === "string" && nestedResponse.message) ||
         "e-racuni válasz hibát jelzett.";
       return msg;
     }
@@ -171,13 +181,38 @@ export async function createEracuniInvoice(params: {
   function buildSalesInvoiceParameter(): Record<string, unknown> {
     // Minimal valid SalesInvoice skeleton for e-racuni SalesInvoiceCreate.
     // If the tenant requires additional fields, API will now return the next missing field explicitly.
+    const buyerEmail = params.userEmail || "";
+    const buyerName = params.userEmail || "AdriaGo ügyfél";
+    const buyerStreet = process.env.E_RACUNI_BUYER_STREET?.trim() || "Ismeretlen cím 1";
+    const buyerPostalCode = process.env.E_RACUNI_BUYER_POSTAL_CODE?.trim() || "1000";
+    const buyerCity = process.env.E_RACUNI_BUYER_CITY?.trim() || "Budapest";
+    const buyerCountry = process.env.E_RACUNI_BUYER_COUNTRY_CODE?.trim() || "HU";
+    const buyerPhone = process.env.E_RACUNI_BUYER_PHONE?.trim() || "";
+    const buyerTaxNumber = process.env.E_RACUNI_BUYER_TAX_NUMBER?.trim() || "";
     return {
       date: today,
       currency: "HUF",
       note,
       partner: {
-        name: params.userEmail || "AdriaGo ügyfél",
-        email: params.userEmail || "",
+        // e-racuni tenant/payment method can require full buyer details.
+        // Keep minimal fallback values so API validation can pass.
+        // Include common alias field names for better API compatibility.
+        name: buyerName,
+        email: buyerEmail,
+        street: buyerStreet,
+        address: buyerStreet,
+        addrStreet: buyerStreet,
+        postalCode: buyerPostalCode,
+        postCode: buyerPostalCode,
+        zip: buyerPostalCode,
+        city: buyerCity,
+        place: buyerCity,
+        country: buyerCountry,
+        countryCode: buyerCountry,
+        phone: buyerPhone,
+        mobile: buyerPhone,
+        taxNumber: buyerTaxNumber,
+        vatId: buyerTaxNumber,
       },
       items: [
         {
@@ -224,16 +259,19 @@ export async function createEracuniInvoice(params: {
         });
         const raw = await res.text();
         if (!res.ok) {
-          const readable = raw.includes("<html") || raw.includes("<!DOCTYPE")
-            ? extractHumanErrorFromHtml(raw)
-            : compact(raw);
-          // If e-racuni already indicates invalid username/password, stop fallback noise.
+          let readable: string | null =
+            raw.includes("<html") || raw.includes("<!DOCTYPE")
+              ? extractHumanErrorFromHtml(raw)
+              : compact(raw);
+          // Prefer API-provided structured message (e.g. response.description) over raw JSON string.
           try {
             const parsedErr = JSON.parse(raw);
+            readable = responseIndicatesFailure(parsedErr) || readable;
+            // If e-racuni already indicates invalid username/password, stop fallback noise.
             if (hasInvalidAuthMessage(parsedErr)) {
               return {
                 ok: false,
-                error: `[${endpoint}] Hitelesítési hiba: érvénytelen e-racuni felhasználónév vagy API jelszó.`,
+                error: `[${endpoint}] Hitelesítési hiba: érvénytelen e-racuni felhasználónév vagy API jelszó. (username=${username ?? "n/a"}, mode=${useLiveCredentials ? "live" : "test"})`,
               };
             }
           } catch {
@@ -249,7 +287,7 @@ export async function createEracuniInvoice(params: {
             if (hasInvalidAuthMessage(parsed)) {
               return {
                 ok: false,
-                error: `[${endpoint}] Hitelesítési hiba: érvénytelen e-racuni felhasználónév vagy API jelszó.`,
+                error: `[${endpoint}] Hitelesítési hiba: érvénytelen e-racuni felhasználónév vagy API jelszó. (username=${username ?? "n/a"}, mode=${useLiveCredentials ? "live" : "test"})`,
               };
             }
             return { ok: false, error: failed };
@@ -278,7 +316,7 @@ export async function createEracuniInvoice(params: {
     const liveKey =
       process.env.E_RACUNI_API_KEY?.trim() ||
       process.env.E_RACUNI_API_TOKEN?.trim();
-    const key = isProduction ? liveKey : testKey || liveKey;
+    const key = useLiveCredentials ? liveKey : testKey || liveKey;
     if (!key) {
       return { ok: true, skipped: true };
     }
