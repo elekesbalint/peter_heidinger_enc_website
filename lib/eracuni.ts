@@ -205,6 +205,7 @@ export async function createEracuniInvoice(params: {
     const invoiceItem = {
       name: itemName,
       description: itemName,
+      currency: "HUF",
       unit: itemUnit,
       quantity: 1,
       unitPrice: normalizedAmountHuf,
@@ -273,6 +274,7 @@ export async function createEracuniInvoice(params: {
     const safeVatPercentage = Number.isFinite(itemVatPercentage) ? itemVatPercentage : 27;
     const invoiceLine = {
       description: itemName,
+      currency: "HUF",
       quantity: 1,
       price: normalizedAmountHuf,
       unit: itemUnit,
