@@ -267,7 +267,9 @@ export async function createEracuniInvoice(params: {
     };
   }
 
-  function buildSalesInvoiceParameterMinimal(): Record<string, unknown> {
+  function buildSalesInvoiceParameterMinimal(
+    lineShape: "itemArray" | "itemsArray" | "itemObject" = "itemArray",
+  ): Record<string, unknown> {
     const buyerEmail = params.userEmail || "";
     const buyerName = params.userEmail || "AdriaGo ügyfél";
     const buyerStreet = process.env.E_RACUNI_BUYER_STREET?.trim() || "Ismeretlen cím 1";
@@ -285,13 +287,18 @@ export async function createEracuniInvoice(params: {
       currency: invoiceCurrency,
       quantity: 1,
       price: normalizedAmountHuf,
-      unit: itemUnit,
-      vatPercentage: safeVatPercentage,
+      discountPercentage: 0,
     };
     if (itemProductCode) {
       invoiceLine.productCode = itemProductCode;
       invoiceLine.productName = itemName;
     }
+    const lineContainer: Record<string, unknown> =
+      lineShape === "itemObject"
+        ? { item: invoiceLine }
+        : lineShape === "itemsArray"
+          ? { items: [invoiceLine] }
+          : { item: [invoiceLine] };
     return {
       date: today,
       currency: invoiceCurrency,
@@ -303,8 +310,8 @@ export async function createEracuniInvoice(params: {
         country: buyerCountry,
         email: buyerEmail,
       },
-      // Some tenant parsers only accept this compact line format.
-      item: [invoiceLine],
+      // Keep line shape selectable; tenants differ between item/items/object expectations.
+      ...lineContainer,
     };
   }
 
@@ -315,7 +322,7 @@ export async function createEracuniInvoice(params: {
       const endpointErrors: string[] = [];
       for (const endpoint of endpoints) {
         // Try strict, docs-like minimal payload first; some tenants reject alias-heavy payloads.
-        const salesInvoice = buildSalesInvoiceParameterMinimal();
+        const salesInvoice = buildSalesInvoiceParameterMinimal("itemArray");
         const res = await fetch(endpoint, {
           method: "POST",
           headers: {
@@ -349,35 +356,40 @@ export async function createEracuniInvoice(params: {
             readable = responseIndicatesFailure(parsedErr) || readable;
             // Fallback retry: some tenants only parse richer alias-heavy item structures.
             if ((readable || "").toLowerCase().includes("cannot issue document without items")) {
-              const richSalesInvoice = buildSalesInvoiceParameter();
-              const retryRes = await fetch(endpoint, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  username,
-                  secretkey: secretKey,
-                  secretKey,
-                  token,
-                  method,
-                  parameters: {
-                    SalesInvoice: richSalesInvoice,
-                    Salesinvoice: richSalesInvoice,
-                    salesInvoice: richSalesInvoice,
-                    customerEmail: params.userEmail,
-                    deviceIdentifier: params.deviceIdentifier,
-                    itemName,
-                    note,
-                    amountHuf: normalizedAmountHuf,
-                    quantity: 1,
-                    sendIssuedInvoiceByEmail: true,
-                    generatePublicURL: true,
+              const retryInvoices: Record<string, unknown>[] = [
+                buildSalesInvoiceParameterMinimal("itemsArray"),
+                buildSalesInvoiceParameterMinimal("itemObject"),
+                buildSalesInvoiceParameter(),
+              ];
+              for (const retryInvoice of retryInvoices) {
+                const retryRes = await fetch(endpoint, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
                   },
-                }),
-              });
-              const retryRaw = await retryRes.text();
-              if (retryRes.ok) {
+                  body: JSON.stringify({
+                    username,
+                    secretkey: secretKey,
+                    secretKey,
+                    token,
+                    method,
+                    parameters: {
+                      SalesInvoice: retryInvoice,
+                      Salesinvoice: retryInvoice,
+                      salesInvoice: retryInvoice,
+                      customerEmail: params.userEmail,
+                      deviceIdentifier: params.deviceIdentifier,
+                      itemName,
+                      note,
+                      amountHuf: normalizedAmountHuf,
+                      quantity: 1,
+                      sendIssuedInvoiceByEmail: true,
+                      generatePublicURL: true,
+                    },
+                  }),
+                });
+                const retryRaw = await retryRes.text();
+                if (!retryRes.ok) continue;
                 try {
                   const retryParsed = JSON.parse(retryRaw);
                   const retryFailed = responseIndicatesFailure(retryParsed);
