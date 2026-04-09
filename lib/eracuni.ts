@@ -12,7 +12,8 @@
  * Opcionális BuyerData: E_RACUNI_BUYER_CODE, E_RACUNI_BUYER_DATA_STATUS (default defaultBuyer),
  * E_RACUNI_INVOICING_LANGUAGE (default Hungarian), E_RACUNI_NUMBER_OF_DAYS_FOR_PAYMENT, E_RACUNI_DOCUMENTS_EMAIL.
  *
- * Deviza: E_RACUNI_CURRENCY_DEVICE_SALE / E_RACUNI_CURRENCY_TOPUP (pl. HUF / EUR), ha nincs megadva → E_RACUNI_CURRENCY → default EUR.
+ * Deviza: E_RACUNI_CURRENCY_DEVICE_SALE / E_RACUNI_CURRENCY_TOPUP (pl. HUF / EUR), majd E_RACUNI_CURRENCY, majd default.
+ * device_sale + Stripe HUF + üres DEVICE_SALE env → HUF (hogy ne essen vissza EUR-ra és ne konvertáljon feleslegesen).
  *
  * E_RACUNI_ALLOW_CUSTOM_PRICE_ON_PRODUCT_LINE: ha true, az E_RACUNI_ITEM_PRODUCT_CODE sorhoz küldünk explicit árat
  * (Stripe szerinti összeg). Ehhez az e-racuni terméknél be kell kapcsolni az „ár változtatása a számlán”
@@ -79,12 +80,19 @@ export async function createEracuniInvoice(params: {
     params.kind === "device_sale" ? "ENC készülék / ENC uređaj" : "ENC készülék feltöltése";
   const note = `Azonosító / Identifikacijski broj: ${params.deviceIdentifier}`;
   const today = new Date().toISOString().slice(0, 10);
-  const invoiceCurrency =
-    (params.kind === "device_sale"
-      ? process.env.E_RACUNI_CURRENCY_DEVICE_SALE?.trim()
-      : process.env.E_RACUNI_CURRENCY_TOPUP?.trim()) ||
-    process.env.E_RACUNI_CURRENCY?.trim() ||
-    "EUR";
+  const stripeCurUpper = (params.stripeCurrency ?? "HUF").toUpperCase();
+  const invoiceCurrency = (() => {
+    const fallback = process.env.E_RACUNI_CURRENCY?.trim();
+    if (params.kind === "device_sale") {
+      const explicit = process.env.E_RACUNI_CURRENCY_DEVICE_SALE?.trim();
+      if (explicit) return explicit;
+      if (stripeCurUpper === "HUF") return "HUF";
+      return fallback || "EUR";
+    }
+    const topup = process.env.E_RACUNI_CURRENCY_TOPUP?.trim();
+    if (topup) return topup;
+    return fallback || "EUR";
+  })();
 
   function parseEnvTruthy(v: string | undefined): boolean {
     const t = (v ?? "").trim().toLowerCase();
