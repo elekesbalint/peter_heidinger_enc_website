@@ -189,6 +189,14 @@ export async function createEracuniInvoice(params: {
     const buyerCountry = process.env.E_RACUNI_BUYER_COUNTRY_CODE?.trim() || "HU";
     const buyerPhone = process.env.E_RACUNI_BUYER_PHONE?.trim() || "";
     const buyerTaxNumber = process.env.E_RACUNI_BUYER_TAX_NUMBER?.trim() || "";
+    const invoiceItem = {
+      name: itemName,
+      description: itemName,
+      quantity: 1,
+      unitPrice: params.amountHuf,
+      price: params.amountHuf,
+      note,
+    };
     return {
       date: today,
       currency: "HUF",
@@ -214,14 +222,10 @@ export async function createEracuniInvoice(params: {
         taxNumber: buyerTaxNumber,
         vatId: buyerTaxNumber,
       },
-      items: [
-        {
-          name: itemName,
-          quantity: 1,
-          unitPrice: params.amountHuf,
-          note,
-        },
-      ],
+      items: [invoiceItem],
+      // Compatibility aliases for tenants that expect different item list keys.
+      item: [invoiceItem],
+      documentLines: [invoiceItem],
     };
   }
 
@@ -231,6 +235,7 @@ export async function createEracuniInvoice(params: {
       const endpoints = buildEracuniEndpoints(baseUrl);
       const endpointErrors: string[] = [];
       for (const endpoint of endpoints) {
+        const salesInvoice = buildSalesInvoiceParameter();
         const res = await fetch(endpoint, {
           method: "POST",
           headers: {
@@ -244,7 +249,8 @@ export async function createEracuniInvoice(params: {
             token,
             method,
             parameters: {
-              SalesInvoice: buildSalesInvoiceParameter(),
+              SalesInvoice: salesInvoice,
+              Salesinvoice: salesInvoice,
               customerEmail: params.userEmail,
               deviceIdentifier: params.deviceIdentifier,
               itemName,
