@@ -224,6 +224,20 @@ export async function createEracuniInvoice(params: {
     return text.slice(0, 400);
   }
 
+  function buildPartnerPostalAddress(): Record<string, unknown> {
+    const buyerStreet = process.env.E_RACUNI_BUYER_STREET?.trim() || "Ismeretlen cím 1";
+    const buyerPostalCode = process.env.E_RACUNI_BUYER_POSTAL_CODE?.trim() || "1000";
+    const buyerCity = process.env.E_RACUNI_BUYER_CITY?.trim() || "Budapest";
+    const buyerCountry = process.env.E_RACUNI_BUYER_COUNTRY_CODE?.trim() || "HU";
+    return {
+      street: buyerStreet,
+      postalCode: buyerPostalCode,
+      city: buyerCity,
+      country: buyerCountry,
+      countryCode: buyerCountry,
+    };
+  }
+
   function buildPartnerPayload(): Record<string, unknown> {
     const buyerEmail = params.userEmail || "";
     const buyerName = params.userEmail || "AdriaGo ügyfél";
@@ -233,6 +247,7 @@ export async function createEracuniInvoice(params: {
     const buyerCountry = process.env.E_RACUNI_BUYER_COUNTRY_CODE?.trim() || "HU";
     const buyerPhone = process.env.E_RACUNI_BUYER_PHONE?.trim() || "";
     const buyerTaxNumber = process.env.E_RACUNI_BUYER_TAX_NUMBER?.trim() || "";
+    const postal = buildPartnerPostalAddress();
     return {
       name: buyerName,
       email: buyerEmail,
@@ -250,6 +265,9 @@ export async function createEracuniInvoice(params: {
       mobile: buyerPhone,
       taxNumber: buyerTaxNumber,
       vatId: buyerTaxNumber,
+      Address: postal,
+      addressObject: postal,
+      postalAddress: postal,
     };
   }
 
@@ -257,27 +275,32 @@ export async function createEracuniInvoice(params: {
   function buildBuyerDataPayload(): Record<string, unknown> {
     const p = buildPartnerPayload();
     const email = ((p.email as string) || params.userEmail || "").trim();
+    const docsEmail = email || process.env.E_RACUNI_DOCUMENTS_EMAIL?.trim() || "";
     const buyerCode =
       process.env.E_RACUNI_BUYER_CODE?.trim() ||
       process.env.E_RACUNI_PARTNER_CODE?.trim() ||
       "";
     const daysRaw = process.env.E_RACUNI_NUMBER_OF_DAYS_FOR_PAYMENT?.trim();
-    const days = daysRaw ? Number.parseInt(daysRaw, 10) : NaN;
+    const daysParsed = daysRaw ? Number.parseInt(daysRaw, 10) : NaN;
+    const numberOfDaysForPayment = Number.isFinite(daysParsed) && daysParsed >= 0 ? daysParsed : 14;
 
     const buyerData: Record<string, unknown> = {
       status: process.env.E_RACUNI_BUYER_DATA_STATUS?.trim() || "defaultBuyer",
       invoicingCurrency: invoiceCurrency,
       invoicingLanguage: process.env.E_RACUNI_INVOICING_LANGUAGE?.trim() || "Hungarian",
-      sendDocumentsViaEmail: true,
-      emailsForSendingDocuments: email || process.env.E_RACUNI_DOCUMENTS_EMAIL?.trim() || "",
+      numberOfDaysForPayment,
+      discountPercentage: 0,
       numberOfDaysForPaymentBaseDate:
         process.env.E_RACUNI_PAYMENT_BASE_DATE?.trim() || "fromDocumentDate",
     };
+    if (docsEmail) {
+      buyerData.sendDocumentsViaEmail = true;
+      buyerData.emailsForSendingDocuments = docsEmail;
+    } else {
+      buyerData.sendDocumentsViaEmail = false;
+    }
     if (buyerCode) {
       buyerData.buyerCode = buyerCode;
-    }
-    if (Number.isFinite(days) && days > 0) {
-      buyerData.numberOfDaysForPayment = days;
     }
     const po = process.env.E_RACUNI_PURCHASE_ORDER_NUMBER?.trim();
     if (po) {
@@ -317,6 +340,15 @@ export async function createEracuniInvoice(params: {
           },
         ];
 
+    const isoCountry = String(p.country);
+    const countryFullName: Record<string, string> = {
+      HU: "Hungary",
+      HR: "Croatia",
+      SI: "Slovenia",
+      RS: "Serbia",
+      AT: "Austria",
+      DE: "Germany",
+    };
     const extra: Record<string, unknown> = {
       date: inv.date ?? today,
       dateOfSupplyFrom: inv.dateOfSupplyFrom ?? today,
@@ -328,6 +360,11 @@ export async function createEracuniInvoice(params: {
       buyerEMail: p.email,
       buyerPhone: (p.phone as string) || (p.mobile as string) || "",
       buyerCountry: p.country,
+      buyerCountryCode: isoCountry,
+      buyerCountryName:
+        process.env.E_RACUNI_BUYER_COUNTRY_NAME?.trim() ||
+        countryFullName[isoCountry] ||
+        isoCountry,
       type: process.env.E_RACUNI_INVOICE_TYPE?.trim() || "Retail",
       note: inv.note ?? note,
     };
