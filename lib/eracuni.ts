@@ -59,6 +59,7 @@ export async function createEracuniInvoice(params: {
     params.kind === "device_sale" ? "ENC készülék / ENC uređaj" : "ENC készülék feltöltése";
   const note = `Azonosító / Identifikacijski broj: ${params.deviceIdentifier}`;
   const today = new Date().toISOString().slice(0, 10);
+  const invoiceCurrency = process.env.E_RACUNI_CURRENCY?.trim() || "EUR";
   const normalizedAmountHuf = Number.isFinite(params.amountHuf)
     ? Math.round(params.amountHuf)
     : NaN;
@@ -195,6 +196,7 @@ export async function createEracuniInvoice(params: {
     const buyerCountry = process.env.E_RACUNI_BUYER_COUNTRY_CODE?.trim() || "HU";
     const buyerPhone = process.env.E_RACUNI_BUYER_PHONE?.trim() || "";
     const buyerTaxNumber = process.env.E_RACUNI_BUYER_TAX_NUMBER?.trim() || "";
+    const itemProductCode = process.env.E_RACUNI_ITEM_PRODUCT_CODE?.trim() || "";
     const itemUnit = process.env.E_RACUNI_ITEM_UNIT?.trim() || "kom";
     const itemVatPercentage = Number.parseFloat(
       process.env.E_RACUNI_ITEM_VAT_PERCENTAGE?.trim() || "27",
@@ -202,10 +204,10 @@ export async function createEracuniInvoice(params: {
     const safeVatPercentage = Number.isFinite(itemVatPercentage) ? itemVatPercentage : 27;
     const grossPrice = normalizedAmountHuf;
     const netPrice = Math.round(grossPrice / (1 + safeVatPercentage / 100));
-    const invoiceItem = {
+    const invoiceItem: Record<string, unknown> = {
       name: itemName,
       description: itemName,
-      currency: "HUF",
+      currency: invoiceCurrency,
       unit: itemUnit,
       quantity: 1,
       unitPrice: normalizedAmountHuf,
@@ -217,9 +219,14 @@ export async function createEracuniInvoice(params: {
       discountPercentage: 0,
       note,
     };
+    if (itemProductCode) {
+      invoiceItem.productCode = itemProductCode;
+      // Some tenants prefer catalog-product lines over free-text lines.
+      invoiceItem.productName = itemName;
+    }
     return {
       date: today,
-      currency: "HUF",
+      currency: invoiceCurrency,
       note,
       // Some tenants accept direct single-line shape instead of explicit item arrays.
       description: itemName,
@@ -268,21 +275,26 @@ export async function createEracuniInvoice(params: {
     const buyerCity = process.env.E_RACUNI_BUYER_CITY?.trim() || "Budapest";
     const buyerCountry = process.env.E_RACUNI_BUYER_COUNTRY_CODE?.trim() || "HU";
     const itemUnit = process.env.E_RACUNI_ITEM_UNIT?.trim() || "kom";
+    const itemProductCode = process.env.E_RACUNI_ITEM_PRODUCT_CODE?.trim() || "";
     const itemVatPercentage = Number.parseFloat(
       process.env.E_RACUNI_ITEM_VAT_PERCENTAGE?.trim() || "27",
     );
     const safeVatPercentage = Number.isFinite(itemVatPercentage) ? itemVatPercentage : 27;
-    const invoiceLine = {
+    const invoiceLine: Record<string, unknown> = {
       description: itemName,
-      currency: "HUF",
+      currency: invoiceCurrency,
       quantity: 1,
       price: normalizedAmountHuf,
       unit: itemUnit,
       vatPercentage: safeVatPercentage,
     };
+    if (itemProductCode) {
+      invoiceLine.productCode = itemProductCode;
+      invoiceLine.productName = itemName;
+    }
     return {
       date: today,
-      currency: "HUF",
+      currency: invoiceCurrency,
       partner: {
         name: buyerName,
         street: buyerStreet,
