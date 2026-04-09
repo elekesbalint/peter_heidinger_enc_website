@@ -11,6 +11,10 @@
  *
  * Opcionális BuyerData: E_RACUNI_BUYER_CODE, E_RACUNI_BUYER_DATA_STATUS (default defaultBuyer),
  * E_RACUNI_INVOICING_LANGUAGE (default Hungarian), E_RACUNI_NUMBER_OF_DAYS_FOR_PAYMENT, E_RACUNI_DOCUMENTS_EMAIL.
+ *
+ * E_RACUNI_ALLOW_CUSTOM_PRICE_ON_PRODUCT_LINE: ha true, az E_RACUNI_ITEM_PRODUCT_CODE sorhoz küldünk explicit árat
+ * (Stripe szerinti összeg). Ehhez az e-racuni terméknél be kell kapcsolni az „ár változtatása a számlán”
+ * (allowChangeOfPriceOnTheInvoice) opciót. Alapértelmezés: false — a katalógus ára érvényesül, egyedi ár nem megy ki.
  */
 export async function createEracuniInvoice(params: {
   kind: "device_sale" | "topup";
@@ -74,6 +78,17 @@ export async function createEracuniInvoice(params: {
   const note = `Azonosító / Identifikacijski broj: ${params.deviceIdentifier}`;
   const today = new Date().toISOString().slice(0, 10);
   const invoiceCurrency = process.env.E_RACUNI_CURRENCY?.trim() || "EUR";
+
+  function parseEnvTruthy(v: string | undefined): boolean {
+    const t = (v ?? "").trim().toLowerCase();
+    return t === "1" || t === "true" || t === "yes" || t === "on";
+  }
+
+  /** Ha false: productCode soroknál nem küldünk price/unitPrice stb. — e-racuni a katalógus árát használja. */
+  const allowCustomPriceOnProductLine = parseEnvTruthy(
+    process.env.E_RACUNI_ALLOW_CUSTOM_PRICE_ON_PRODUCT_LINE,
+  );
+
   const normalizedAmountHuf = Number.isFinite(params.amountHuf)
     ? Math.round(params.amountHuf)
     : NaN;
@@ -362,12 +377,14 @@ export async function createEracuniInvoice(params: {
 
     const wikiItems: Record<string, unknown>[] = itemProductCode
       ? [
-          {
-            productCode: itemProductCode,
-            quantity: 1,
-            price: linePrice,
-            currency: invoiceCurrency,
-          },
+          allowCustomPriceOnProductLine
+            ? {
+                productCode: itemProductCode,
+                quantity: 1,
+                price: linePrice,
+                currency: invoiceCurrency,
+              }
+            : { productCode: itemProductCode, quantity: 1 },
         ]
       : [
           {
@@ -501,6 +518,8 @@ export async function createEracuniInvoice(params: {
       process.env.E_RACUNI_ITEM_VAT_PERCENTAGE?.trim() || "27",
     );
     const safeVatPercentage = Number.isFinite(itemVatPercentage) ? itemVatPercentage : 27;
+    const useCatalogPriceForProduct =
+      Boolean(itemProductCode) && !allowCustomPriceOnProductLine;
     const grossPrice = linePrice;
     const vatFactor = 1 + safeVatPercentage / 100;
     const netPrice =
@@ -513,20 +532,25 @@ export async function createEracuniInvoice(params: {
       currency: invoiceCurrency,
       unit: itemUnit,
       quantity: 1,
-      unitPrice: linePrice,
-      price: linePrice,
-      retailPrice: linePrice,
-      netPrice,
-      grossPrice,
       vatPercentage: safeVatPercentage,
       discountPercentage: 0,
       note,
     };
+    if (!useCatalogPriceForProduct) {
+      invoiceItem.unitPrice = linePrice;
+      invoiceItem.price = linePrice;
+      invoiceItem.retailPrice = linePrice;
+      invoiceItem.netPrice = netPrice;
+      invoiceItem.grossPrice = grossPrice;
+    }
     if (itemProductCode) {
       invoiceItem.productCode = itemProductCode;
       // Some tenants prefer catalog-product lines over free-text lines.
       invoiceItem.productName = itemName;
     }
+    const rootPrices: Record<string, unknown> = useCatalogPriceForProduct
+      ? {}
+      : { price: linePrice, unitPrice: linePrice };
     return {
       date: today,
       currency: invoiceCurrency,
@@ -534,8 +558,7 @@ export async function createEracuniInvoice(params: {
       // Some tenants accept direct single-line shape instead of explicit item arrays.
       description: itemName,
       quantity: 1,
-      price: linePrice,
-      unitPrice: linePrice,
+      ...rootPrices,
       partner: buildPartnerPayload(),
       items: [invoiceItem],
       // Compatibility aliases for tenants that expect different item list keys.
@@ -559,13 +582,17 @@ export async function createEracuniInvoice(params: {
       process.env.E_RACUNI_ITEM_VAT_PERCENTAGE?.trim() || "27",
     );
     const safeVatPercentage = Number.isFinite(itemVatPercentage) ? itemVatPercentage : 27;
+    const useCatalogPriceForProduct =
+      Boolean(itemProductCode) && !allowCustomPriceOnProductLine;
     const invoiceLine: Record<string, unknown> = {
       description: itemName,
       currency: invoiceCurrency,
       quantity: 1,
-      price: linePrice,
       discountPercentage: 0,
     };
+    if (!useCatalogPriceForProduct) {
+      invoiceLine.price = linePrice;
+    }
     if (itemProductCode) {
       invoiceLine.productCode = itemProductCode;
       invoiceLine.productName = itemName;
@@ -593,9 +620,11 @@ export async function createEracuniInvoice(params: {
     const invoiceLine: Record<string, unknown> = {
       productCode: itemProductCode,
       quantity: 1,
-      price: linePrice,
-      currency: invoiceCurrency,
     };
+    if (allowCustomPriceOnProductLine) {
+      invoiceLine.price = linePrice;
+      invoiceLine.currency = invoiceCurrency;
+    }
     const lineContainer: Record<string, unknown> =
       lineShape === "itemObject"
         ? { item: invoiceLine }
