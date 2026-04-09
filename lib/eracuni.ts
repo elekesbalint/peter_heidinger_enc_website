@@ -315,6 +315,7 @@ export async function createEracuniInvoice(params: {
             token,
             method,
             parameters: {
+              SalesInvoice: salesInvoice,
               Salesinvoice: salesInvoice,
               // Ask e-racuni to send issued invoice by e-mail and expose public URL when supported.
               sendIssuedInvoiceByEmail: true,
