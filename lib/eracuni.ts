@@ -259,6 +259,41 @@ export async function createEracuniInvoice(params: {
     };
   }
 
+  function buildSalesInvoiceParameterMinimal(): Record<string, unknown> {
+    const buyerEmail = params.userEmail || "";
+    const buyerName = params.userEmail || "AdriaGo ügyfél";
+    const buyerStreet = process.env.E_RACUNI_BUYER_STREET?.trim() || "Ismeretlen cím 1";
+    const buyerPostalCode = process.env.E_RACUNI_BUYER_POSTAL_CODE?.trim() || "1000";
+    const buyerCity = process.env.E_RACUNI_BUYER_CITY?.trim() || "Budapest";
+    const buyerCountry = process.env.E_RACUNI_BUYER_COUNTRY_CODE?.trim() || "HU";
+    const itemUnit = process.env.E_RACUNI_ITEM_UNIT?.trim() || "kom";
+    const itemVatPercentage = Number.parseFloat(
+      process.env.E_RACUNI_ITEM_VAT_PERCENTAGE?.trim() || "27",
+    );
+    const safeVatPercentage = Number.isFinite(itemVatPercentage) ? itemVatPercentage : 27;
+    const invoiceLine = {
+      description: itemName,
+      quantity: 1,
+      price: normalizedAmountHuf,
+      unit: itemUnit,
+      vatPercentage: safeVatPercentage,
+    };
+    return {
+      date: today,
+      currency: "HUF",
+      partner: {
+        name: buyerName,
+        street: buyerStreet,
+        postalCode: buyerPostalCode,
+        city: buyerCity,
+        country: buyerCountry,
+        email: buyerEmail,
+      },
+      // Some tenant parsers only accept this compact line format.
+      item: [invoiceLine],
+    };
+  }
+
   try {
     // e-racuni WebServices/API mode (username + secretKey + token + method)
     if (username && secretKey && token && method) {
@@ -304,6 +339,46 @@ export async function createEracuniInvoice(params: {
           try {
             const parsedErr = JSON.parse(raw);
             readable = responseIndicatesFailure(parsedErr) || readable;
+            // Targeted retry: some tenants reject the rich payload and only parse compact item format.
+            if ((readable || "").toLowerCase().includes("cannot issue document without items")) {
+              const minimalSalesInvoice = buildSalesInvoiceParameterMinimal();
+              const retryRes = await fetch(endpoint, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  username,
+                  secretkey: secretKey,
+                  secretKey,
+                  token,
+                  method,
+                  parameters: {
+                    Salesinvoice: minimalSalesInvoice,
+                    sendIssuedInvoiceByEmail: true,
+                    generatePublicURL: true,
+                  },
+                }),
+              });
+              const retryRaw = await retryRes.text();
+              if (retryRes.ok) {
+                try {
+                  const retryParsed = JSON.parse(retryRaw);
+                  const retryFailed = responseIndicatesFailure(retryParsed);
+                  if (!retryFailed) {
+                    const publicUrl = findFirstUrlByHint(retryParsed, [
+                      "publicurl",
+                      "public_url",
+                      "documenturl",
+                    ]);
+                    const pdfUrl = findFirstUrlByHint(retryParsed, ["pdf", "pdfurl", "pdf_url"]);
+                    return { ok: true, invoicePublicUrl: publicUrl, invoicePdfUrl: pdfUrl };
+                  }
+                } catch {
+                  return { ok: true };
+                }
+              }
+            }
             // If e-racuni already indicates invalid username/password, stop fallback noise.
             if (hasInvalidAuthMessage(parsedErr)) {
               return {
