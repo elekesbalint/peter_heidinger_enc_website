@@ -315,6 +315,42 @@ export async function createEracuniInvoice(params: {
     };
   }
 
+  function buildSalesInvoiceParameterProductCodeOnly(
+    lineShape: "itemArray" | "itemsArray" | "itemObject" = "itemArray",
+  ): Record<string, unknown> | null {
+    const itemProductCode = process.env.E_RACUNI_ITEM_PRODUCT_CODE?.trim() || "";
+    if (!itemProductCode) return null;
+    const buyerEmail = params.userEmail || "";
+    const buyerName = params.userEmail || "AdriaGo ügyfél";
+    const buyerStreet = process.env.E_RACUNI_BUYER_STREET?.trim() || "Ismeretlen cím 1";
+    const buyerPostalCode = process.env.E_RACUNI_BUYER_POSTAL_CODE?.trim() || "1000";
+    const buyerCity = process.env.E_RACUNI_BUYER_CITY?.trim() || "Budapest";
+    const buyerCountry = process.env.E_RACUNI_BUYER_COUNTRY_CODE?.trim() || "HU";
+    const invoiceLine: Record<string, unknown> = {
+      productCode: itemProductCode,
+      quantity: 1,
+    };
+    const lineContainer: Record<string, unknown> =
+      lineShape === "itemObject"
+        ? { item: invoiceLine }
+        : lineShape === "itemsArray"
+          ? { items: [invoiceLine] }
+          : { item: [invoiceLine] };
+    return {
+      date: today,
+      currency: invoiceCurrency,
+      partner: {
+        name: buyerName,
+        street: buyerStreet,
+        postalCode: buyerPostalCode,
+        city: buyerCity,
+        country: buyerCountry,
+        email: buyerEmail,
+      },
+      ...lineContainer,
+    };
+  }
+
   try {
     // e-racuni WebServices/API mode (username + secretKey + token + method)
     if (username && secretKey && token && method) {
@@ -322,8 +358,10 @@ export async function createEracuniInvoice(params: {
       const endpointErrors: string[] = [];
       for (const endpoint of endpoints) {
         const attemptErrors: string[] = [];
-        // Try strict, docs-like minimal payload first; some tenants reject alias-heavy payloads.
-        const salesInvoice = buildSalesInvoiceParameterMinimal("itemArray");
+        // If productCode is configured, prefer strict productCode-only line first.
+        const salesInvoice =
+          buildSalesInvoiceParameterProductCodeOnly("itemArray") ||
+          buildSalesInvoiceParameterMinimal("itemArray");
         const res = await fetch(endpoint, {
           method: "POST",
           headers: {
@@ -358,6 +396,18 @@ export async function createEracuniInvoice(params: {
             // Fallback retry: some tenants only parse richer alias-heavy item structures.
             if ((readable || "").toLowerCase().includes("cannot issue document without items")) {
               const retryInvoices: Array<{ label: string; invoice: Record<string, unknown> }> = [
+                {
+                  label: "productCodeOnly-itemsArray",
+                  invoice:
+                    buildSalesInvoiceParameterProductCodeOnly("itemsArray") ||
+                    buildSalesInvoiceParameterMinimal("itemsArray"),
+                },
+                {
+                  label: "productCodeOnly-itemObject",
+                  invoice:
+                    buildSalesInvoiceParameterProductCodeOnly("itemObject") ||
+                    buildSalesInvoiceParameterMinimal("itemObject"),
+                },
                 {
                   label: "minimal-itemsArray",
                   invoice: buildSalesInvoiceParameterMinimal("itemsArray"),
