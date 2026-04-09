@@ -15,7 +15,12 @@
 export async function createEracuniInvoice(params: {
   kind: "device_sale" | "topup";
   deviceIdentifier: string;
+  /** Bookkeeping / fallback HUF amount (Stripe webhook should pass correct HUF storage value). */
   amountHuf: number;
+  /** Stripe charge in major units (HUF=Ft, EUR=€) — used to set line price when invoice currency differs or catalog would override. */
+  stripePaidMajorUnits?: number;
+  /** ISO currency from Stripe session (e.g. HUF, EUR). */
+  stripeCurrency?: string;
   userEmail: string | null;
 }): Promise<{
   ok: boolean;
@@ -74,6 +79,33 @@ export async function createEracuniInvoice(params: {
     : NaN;
   if (!Number.isFinite(normalizedAmountHuf) || normalizedAmountHuf <= 0) {
     return { ok: false, error: "Érvénytelen számlaösszeg: amountHuf legyen pozitív szám." };
+  }
+
+  function resolveLinePriceInInvoiceCurrency(): number {
+    const inv = invoiceCurrency.toUpperCase();
+    const paidCur = (params.stripeCurrency ?? "HUF").toUpperCase();
+    const fx = Number.parseFloat(process.env.E_RACUNI_HUF_PER_EUR?.trim() || "400");
+    const safeFx = Number.isFinite(fx) && fx > 0 ? fx : 400;
+    const paidMajor =
+      Number.isFinite(params.stripePaidMajorUnits) && (params.stripePaidMajorUnits as number) > 0
+        ? (params.stripePaidMajorUnits as number)
+        : normalizedAmountHuf;
+
+    if (inv === paidCur) {
+      return inv === "HUF" ? Math.round(paidMajor) : Math.round(paidMajor * 100) / 100;
+    }
+    if (inv === "EUR" && paidCur === "HUF") {
+      return Math.round((paidMajor / safeFx) * 100) / 100;
+    }
+    if (inv === "HUF" && paidCur === "EUR") {
+      return Math.round(paidMajor * safeFx);
+    }
+    return normalizedAmountHuf;
+  }
+
+  const linePrice = resolveLinePriceInInvoiceCurrency();
+  if (!Number.isFinite(linePrice) || linePrice <= 0) {
+    return { ok: false, error: "Érvénytelen számlaösszeg: a számla sor ára nem pozitív." };
   }
 
   /** API docs: PaymentRecord.paymentMethodForInvoice stringEnum (Cash, BankTransfer, Stripe, …). */
@@ -329,13 +361,20 @@ export async function createEracuniInvoice(params: {
     const itemProductCode = process.env.E_RACUNI_ITEM_PRODUCT_CODE?.trim() || "";
 
     const wikiItems: Record<string, unknown>[] = itemProductCode
-      ? [{ productCode: itemProductCode, quantity: 1 }]
+      ? [
+          {
+            productCode: itemProductCode,
+            quantity: 1,
+            price: linePrice,
+            currency: invoiceCurrency,
+          },
+        ]
       : [
           {
             description: itemName,
             quantity: 1,
             unit: itemUnit,
-            price: normalizedAmountHuf,
+            price: linePrice,
             vatPercentage: safeVatPercentage,
           },
         ];
@@ -462,17 +501,21 @@ export async function createEracuniInvoice(params: {
       process.env.E_RACUNI_ITEM_VAT_PERCENTAGE?.trim() || "27",
     );
     const safeVatPercentage = Number.isFinite(itemVatPercentage) ? itemVatPercentage : 27;
-    const grossPrice = normalizedAmountHuf;
-    const netPrice = Math.round(grossPrice / (1 + safeVatPercentage / 100));
+    const grossPrice = linePrice;
+    const vatFactor = 1 + safeVatPercentage / 100;
+    const netPrice =
+      invoiceCurrency.toUpperCase() === "HUF"
+        ? Math.round(grossPrice / vatFactor)
+        : Math.round((grossPrice / vatFactor) * 100) / 100;
     const invoiceItem: Record<string, unknown> = {
       name: itemName,
       description: itemName,
       currency: invoiceCurrency,
       unit: itemUnit,
       quantity: 1,
-      unitPrice: normalizedAmountHuf,
-      price: normalizedAmountHuf,
-      retailPrice: normalizedAmountHuf,
+      unitPrice: linePrice,
+      price: linePrice,
+      retailPrice: linePrice,
       netPrice,
       grossPrice,
       vatPercentage: safeVatPercentage,
@@ -491,8 +534,8 @@ export async function createEracuniInvoice(params: {
       // Some tenants accept direct single-line shape instead of explicit item arrays.
       description: itemName,
       quantity: 1,
-      price: normalizedAmountHuf,
-      unitPrice: normalizedAmountHuf,
+      price: linePrice,
+      unitPrice: linePrice,
       partner: buildPartnerPayload(),
       items: [invoiceItem],
       // Compatibility aliases for tenants that expect different item list keys.
@@ -520,7 +563,7 @@ export async function createEracuniInvoice(params: {
       description: itemName,
       currency: invoiceCurrency,
       quantity: 1,
-      price: normalizedAmountHuf,
+      price: linePrice,
       discountPercentage: 0,
     };
     if (itemProductCode) {
@@ -550,6 +593,8 @@ export async function createEracuniInvoice(params: {
     const invoiceLine: Record<string, unknown> = {
       productCode: itemProductCode,
       quantity: 1,
+      price: linePrice,
+      currency: invoiceCurrency,
     };
     const lineContainer: Record<string, unknown> =
       lineShape === "itemObject"

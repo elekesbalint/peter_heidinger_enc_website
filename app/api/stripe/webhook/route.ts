@@ -5,29 +5,85 @@ import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import { sendAppEmail } from "@/lib/notify-email";
 import { getStripe } from "@/lib/stripe";
 
-function parseAmountHuf(sessionAmountTotal: number | null, metadataAmountHuf: string | undefined): number {
+/** Stripe zero-decimal currencies: amount_total is already in major units. */
+const ZERO_DECIMAL_STRIPE_CURRENCIES = new Set([
+  "BIF",
+  "CLP",
+  "DJF",
+  "GNF",
+  "JPY",
+  "KMF",
+  "KRW",
+  "MGA",
+  "PYG",
+  "RWF",
+  "UGX",
+  "VND",
+  "VUV",
+  "XAF",
+  "XOF",
+  "XPF",
+  "HUF",
+]);
+
+function isZeroDecimalStripeCurrency(currency: string): boolean {
+  return ZERO_DECIMAL_STRIPE_CURRENCIES.has(currency.toUpperCase());
+}
+
+/** Major units charged (HUF = forint, EUR = euro, …) from Stripe amount_total. */
+function parseStripePaidMajorUnits(
+  sessionAmountTotal: number | null,
+  currency: string,
+): number {
+  const total = sessionAmountTotal ?? 0;
+  if (isZeroDecimalStripeCurrency(currency)) {
+    return Math.round(total);
+  }
+  return Math.round(total) / 100;
+}
+
+/** HUF value for DB / wallet (metadata.amount_huf wins when set). */
+function parseAmountHufForStorage(
+  sessionAmountTotal: number | null,
+  metadataAmountHuf: string | undefined,
+  currency: string,
+  fxEurToHuf: number,
+): number {
   const metaAmount = metadataAmountHuf ? Number.parseInt(metadataAmountHuf, 10) : NaN;
   if (Number.isFinite(metaAmount) && metaAmount > 0) {
     return metaAmount;
   }
-
-  const total = sessionAmountTotal ?? 0;
-  return Math.round(total / 100);
+  const c = currency.toUpperCase();
+  const paidMajor = parseStripePaidMajorUnits(sessionAmountTotal, c);
+  const fx = Number.isFinite(fxEurToHuf) && fxEurToHuf > 0 ? fxEurToHuf : 400;
+  if (c === "HUF") {
+    return Math.round(paidMajor);
+  }
+  if (c === "EUR") {
+    return Math.round(paidMajor * fx);
+  }
+  return Math.round(paidMajor * fx);
 }
 
-function parseAmountEur(
+/** EUR shown in topup e-mails when session is EUR; otherwise derived from HUF / FX. */
+function parseDisplayEurFromSession(
   sessionAmountTotal: number | null,
   metadataAmountEur: string | undefined,
+  stripeCurrency: string,
+  amountHufComputed: number,
+  fxEurToHuf: number,
 ): number {
-  const metaAmount = metadataAmountEur
-    ? Number.parseFloat(metadataAmountEur)
-    : NaN;
+  const metaAmount = metadataAmountEur ? Number.parseFloat(metadataAmountEur) : NaN;
   if (Number.isFinite(metaAmount) && metaAmount > 0) {
     return Math.round(metaAmount * 100) / 100;
   }
-
-  const total = sessionAmountTotal ?? 0;
-  return Math.round(total) / 100;
+  const c = stripeCurrency.toUpperCase();
+  if (c === "EUR") {
+    const major = parseStripePaidMajorUnits(sessionAmountTotal, stripeCurrency);
+    return Math.round(major * 100) / 100;
+  }
+  const fx = Number.isFinite(fxEurToHuf) && fxEurToHuf > 0 ? fxEurToHuf : 400;
+  return Math.round((amountHufComputed / fx) * 100) / 100;
 }
 
 async function resolveAuthUserIdByEmail(
@@ -111,8 +167,23 @@ export async function POST(request: Request) {
       const supabase = createSupabaseAdminClient();
 
       const metadata = session.metadata ?? {};
-      const amountHuf = parseAmountHuf(session.amount_total, metadata.amount_huf);
-      const amountEur = parseAmountEur(session.amount_total, metadata.amount_eur);
+      const stripeCurrency = (session.currency ?? "huf").toUpperCase();
+      const settings = await getSettingsMap();
+      const fxEurToHuf = Math.max(1, getIntSetting(settings, "fx_eur_to_huf", 400));
+      const amountHuf = parseAmountHufForStorage(
+        session.amount_total,
+        metadata.amount_huf,
+        stripeCurrency,
+        fxEurToHuf,
+      );
+      const stripePaidMajorUnits = parseStripePaidMajorUnits(session.amount_total, stripeCurrency);
+      const amountEur = parseDisplayEurFromSession(
+        session.amount_total,
+        metadata.amount_eur,
+        stripeCurrency,
+        amountHuf,
+        fxEurToHuf,
+      );
       const orderType = metadata.order_type ?? "";
       const deviceIdentifier = metadata.device_identifier || null;
       const userEmail = metadata.user_email ?? null;
@@ -327,6 +398,8 @@ export async function POST(request: Request) {
             kind: "device_sale",
             deviceIdentifier,
             amountHuf,
+            stripePaidMajorUnits,
+            stripeCurrency,
             userEmail: userEmail,
           });
           if (!inv.ok) {
@@ -446,6 +519,8 @@ export async function POST(request: Request) {
             kind: "topup",
             deviceIdentifier,
             amountHuf,
+            stripePaidMajorUnits,
+            stripeCurrency,
             userEmail: userEmail,
           });
           if (!inv.ok) {
@@ -482,8 +557,6 @@ export async function POST(request: Request) {
             );
           }
 
-          const settings = await getSettingsMap();
-          const fxEurToHuf = Math.max(1, getIntSetting(settings, "fx_eur_to_huf", 400));
           const creditedEur = Number((amountHuf / fxEurToHuf).toFixed(2));
 
           if (userEmail) {
