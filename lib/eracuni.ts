@@ -321,6 +321,7 @@ export async function createEracuniInvoice(params: {
       const endpoints = buildEracuniEndpoints(baseUrl);
       const endpointErrors: string[] = [];
       for (const endpoint of endpoints) {
+        const attemptErrors: string[] = [];
         // Try strict, docs-like minimal payload first; some tenants reject alias-heavy payloads.
         const salesInvoice = buildSalesInvoiceParameterMinimal("itemArray");
         const res = await fetch(endpoint, {
@@ -356,12 +357,18 @@ export async function createEracuniInvoice(params: {
             readable = responseIndicatesFailure(parsedErr) || readable;
             // Fallback retry: some tenants only parse richer alias-heavy item structures.
             if ((readable || "").toLowerCase().includes("cannot issue document without items")) {
-              const retryInvoices: Record<string, unknown>[] = [
-                buildSalesInvoiceParameterMinimal("itemsArray"),
-                buildSalesInvoiceParameterMinimal("itemObject"),
-                buildSalesInvoiceParameter(),
+              const retryInvoices: Array<{ label: string; invoice: Record<string, unknown> }> = [
+                {
+                  label: "minimal-itemsArray",
+                  invoice: buildSalesInvoiceParameterMinimal("itemsArray"),
+                },
+                {
+                  label: "minimal-itemObject",
+                  invoice: buildSalesInvoiceParameterMinimal("itemObject"),
+                },
+                { label: "rich-alias", invoice: buildSalesInvoiceParameter() },
               ];
-              for (const retryInvoice of retryInvoices) {
+              for (const retryCase of retryInvoices) {
                 const retryRes = await fetch(endpoint, {
                   method: "POST",
                   headers: {
@@ -374,9 +381,9 @@ export async function createEracuniInvoice(params: {
                     token,
                     method,
                     parameters: {
-                      SalesInvoice: retryInvoice,
-                      Salesinvoice: retryInvoice,
-                      salesInvoice: retryInvoice,
+                      SalesInvoice: retryCase.invoice,
+                      Salesinvoice: retryCase.invoice,
+                      salesInvoice: retryCase.invoice,
                       customerEmail: params.userEmail,
                       deviceIdentifier: params.deviceIdentifier,
                       itemName,
@@ -389,7 +396,17 @@ export async function createEracuniInvoice(params: {
                   }),
                 });
                 const retryRaw = await retryRes.text();
-                if (!retryRes.ok) continue;
+                if (!retryRes.ok) {
+                  let retryReadable = compact(retryRaw);
+                  try {
+                    const retryParsedErr = JSON.parse(retryRaw);
+                    retryReadable = responseIndicatesFailure(retryParsedErr) || retryReadable;
+                  } catch {
+                    // keep compact text
+                  }
+                  attemptErrors.push(`${retryCase.label}: HTTP ${retryRes.status}: ${retryReadable}`);
+                  continue;
+                }
                 try {
                   const retryParsed = JSON.parse(retryRaw);
                   const retryFailed = responseIndicatesFailure(retryParsed);
@@ -402,6 +419,7 @@ export async function createEracuniInvoice(params: {
                     const pdfUrl = findFirstUrlByHint(retryParsed, ["pdf", "pdfurl", "pdf_url"]);
                     return { ok: true, invoicePublicUrl: publicUrl, invoicePdfUrl: pdfUrl };
                   }
+                  attemptErrors.push(`${retryCase.label}: ${retryFailed}`);
                 } catch {
                   return { ok: true };
                 }
@@ -417,7 +435,11 @@ export async function createEracuniInvoice(params: {
           } catch {
             // non-JSON HTTP error, continue collecting endpoint diagnostics
           }
-          endpointErrors.push(`[${endpoint}] HTTP ${res.status}: ${readable ?? compact(raw)}`);
+          endpointErrors.push(
+            `[${endpoint}] HTTP ${res.status}: ${readable ?? compact(raw)}${
+              attemptErrors.length > 0 ? ` | retries: ${attemptErrors.join(" || ")}` : ""
+            }`,
+          );
           continue;
         }
         try {
