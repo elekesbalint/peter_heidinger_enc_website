@@ -185,9 +185,7 @@ export async function createEracuniInvoice(params: {
     return text.slice(0, 400);
   }
 
-  function buildSalesInvoiceParameter(): Record<string, unknown> {
-    // Minimal valid SalesInvoice skeleton for e-racuni SalesInvoiceCreate.
-    // If the tenant requires additional fields, API will now return the next missing field explicitly.
+  function buildPartnerPayload(): Record<string, unknown> {
     const buyerEmail = params.userEmail || "";
     const buyerName = params.userEmail || "AdriaGo ügyfél";
     const buyerStreet = process.env.E_RACUNI_BUYER_STREET?.trim() || "Ismeretlen cím 1";
@@ -196,6 +194,29 @@ export async function createEracuniInvoice(params: {
     const buyerCountry = process.env.E_RACUNI_BUYER_COUNTRY_CODE?.trim() || "HU";
     const buyerPhone = process.env.E_RACUNI_BUYER_PHONE?.trim() || "";
     const buyerTaxNumber = process.env.E_RACUNI_BUYER_TAX_NUMBER?.trim() || "";
+    return {
+      name: buyerName,
+      email: buyerEmail,
+      street: buyerStreet,
+      address: buyerStreet,
+      addrStreet: buyerStreet,
+      postalCode: buyerPostalCode,
+      postCode: buyerPostalCode,
+      zip: buyerPostalCode,
+      city: buyerCity,
+      place: buyerCity,
+      country: buyerCountry,
+      countryCode: buyerCountry,
+      phone: buyerPhone,
+      mobile: buyerPhone,
+      taxNumber: buyerTaxNumber,
+      vatId: buyerTaxNumber,
+    };
+  }
+
+  function buildSalesInvoiceParameter(): Record<string, unknown> {
+    // Minimal valid SalesInvoice skeleton for e-racuni SalesInvoiceCreate.
+    // If the tenant requires additional fields, API will now return the next missing field explicitly.
     const itemProductCode = process.env.E_RACUNI_ITEM_PRODUCT_CODE?.trim() || "";
     const itemUnit = process.env.E_RACUNI_ITEM_UNIT?.trim() || "kom";
     const itemVatPercentage = Number.parseFloat(
@@ -233,27 +254,7 @@ export async function createEracuniInvoice(params: {
       quantity: 1,
       price: normalizedAmountHuf,
       unitPrice: normalizedAmountHuf,
-      partner: {
-        // e-racuni tenant/payment method can require full buyer details.
-        // Keep minimal fallback values so API validation can pass.
-        // Include common alias field names for better API compatibility.
-        name: buyerName,
-        email: buyerEmail,
-        street: buyerStreet,
-        address: buyerStreet,
-        addrStreet: buyerStreet,
-        postalCode: buyerPostalCode,
-        postCode: buyerPostalCode,
-        zip: buyerPostalCode,
-        city: buyerCity,
-        place: buyerCity,
-        country: buyerCountry,
-        countryCode: buyerCountry,
-        phone: buyerPhone,
-        mobile: buyerPhone,
-        taxNumber: buyerTaxNumber,
-        vatId: buyerTaxNumber,
-      },
+      partner: buildPartnerPayload(),
       items: [invoiceItem],
       // Compatibility aliases for tenants that expect different item list keys.
       item: [invoiceItem],
@@ -270,12 +271,6 @@ export async function createEracuniInvoice(params: {
   function buildSalesInvoiceParameterMinimal(
     lineShape: "itemArray" | "itemsArray" | "itemObject" = "itemArray",
   ): Record<string, unknown> {
-    const buyerEmail = params.userEmail || "";
-    const buyerName = params.userEmail || "AdriaGo ügyfél";
-    const buyerStreet = process.env.E_RACUNI_BUYER_STREET?.trim() || "Ismeretlen cím 1";
-    const buyerPostalCode = process.env.E_RACUNI_BUYER_POSTAL_CODE?.trim() || "1000";
-    const buyerCity = process.env.E_RACUNI_BUYER_CITY?.trim() || "Budapest";
-    const buyerCountry = process.env.E_RACUNI_BUYER_COUNTRY_CODE?.trim() || "HU";
     const itemUnit = process.env.E_RACUNI_ITEM_UNIT?.trim() || "kom";
     const itemProductCode = process.env.E_RACUNI_ITEM_PRODUCT_CODE?.trim() || "";
     const itemVatPercentage = Number.parseFloat(
@@ -302,14 +297,7 @@ export async function createEracuniInvoice(params: {
     return {
       date: today,
       currency: invoiceCurrency,
-      partner: {
-        name: buyerName,
-        street: buyerStreet,
-        postalCode: buyerPostalCode,
-        city: buyerCity,
-        country: buyerCountry,
-        email: buyerEmail,
-      },
+      partner: buildPartnerPayload(),
       // Keep line shape selectable; tenants differ between item/items/object expectations.
       ...lineContainer,
     };
@@ -320,12 +308,6 @@ export async function createEracuniInvoice(params: {
   ): Record<string, unknown> | null {
     const itemProductCode = process.env.E_RACUNI_ITEM_PRODUCT_CODE?.trim() || "";
     if (!itemProductCode) return null;
-    const buyerEmail = params.userEmail || "";
-    const buyerName = params.userEmail || "AdriaGo ügyfél";
-    const buyerStreet = process.env.E_RACUNI_BUYER_STREET?.trim() || "Ismeretlen cím 1";
-    const buyerPostalCode = process.env.E_RACUNI_BUYER_POSTAL_CODE?.trim() || "1000";
-    const buyerCity = process.env.E_RACUNI_BUYER_CITY?.trim() || "Budapest";
-    const buyerCountry = process.env.E_RACUNI_BUYER_COUNTRY_CODE?.trim() || "HU";
     const invoiceLine: Record<string, unknown> = {
       productCode: itemProductCode,
       quantity: 1,
@@ -339,14 +321,7 @@ export async function createEracuniInvoice(params: {
     return {
       date: today,
       currency: invoiceCurrency,
-      partner: {
-        name: buyerName,
-        street: buyerStreet,
-        postalCode: buyerPostalCode,
-        city: buyerCity,
-        country: buyerCountry,
-        email: buyerEmail,
-      },
+      partner: buildPartnerPayload(),
       ...lineContainer,
     };
   }
