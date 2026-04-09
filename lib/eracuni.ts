@@ -300,7 +300,8 @@ export async function createEracuniInvoice(params: {
       const endpoints = buildEracuniEndpoints(baseUrl);
       const endpointErrors: string[] = [];
       for (const endpoint of endpoints) {
-        const salesInvoice = buildSalesInvoiceParameter();
+        // Try strict, docs-like minimal payload first; some tenants reject alias-heavy payloads.
+        const salesInvoice = buildSalesInvoiceParameterMinimal();
         const res = await fetch(endpoint, {
           method: "POST",
           headers: {
@@ -314,15 +315,7 @@ export async function createEracuniInvoice(params: {
             token,
             method,
             parameters: {
-              SalesInvoice: salesInvoice,
               Salesinvoice: salesInvoice,
-              salesInvoice,
-              customerEmail: params.userEmail,
-              deviceIdentifier: params.deviceIdentifier,
-              itemName,
-              note,
-              amountHuf: normalizedAmountHuf,
-              quantity: 1,
               // Ask e-racuni to send issued invoice by e-mail and expose public URL when supported.
               sendIssuedInvoiceByEmail: true,
               generatePublicURL: true,
@@ -339,9 +332,9 @@ export async function createEracuniInvoice(params: {
           try {
             const parsedErr = JSON.parse(raw);
             readable = responseIndicatesFailure(parsedErr) || readable;
-            // Targeted retry: some tenants reject the rich payload and only parse compact item format.
+            // Fallback retry: some tenants only parse richer alias-heavy item structures.
             if ((readable || "").toLowerCase().includes("cannot issue document without items")) {
-              const minimalSalesInvoice = buildSalesInvoiceParameterMinimal();
+              const richSalesInvoice = buildSalesInvoiceParameter();
               const retryRes = await fetch(endpoint, {
                 method: "POST",
                 headers: {
@@ -354,7 +347,15 @@ export async function createEracuniInvoice(params: {
                   token,
                   method,
                   parameters: {
-                    Salesinvoice: minimalSalesInvoice,
+                    SalesInvoice: richSalesInvoice,
+                    Salesinvoice: richSalesInvoice,
+                    salesInvoice: richSalesInvoice,
+                    customerEmail: params.userEmail,
+                    deviceIdentifier: params.deviceIdentifier,
+                    itemName,
+                    note,
+                    amountHuf: normalizedAmountHuf,
+                    quantity: 1,
                     sendIssuedInvoiceByEmail: true,
                     generatePublicURL: true,
                   },
