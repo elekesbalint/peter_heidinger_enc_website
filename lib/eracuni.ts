@@ -129,7 +129,10 @@ export async function createEracuniInvoice(params: {
         : normalizedAmountHuf;
 
     if (inv === paidCur) {
-      return inv === "HUF" ? Math.round(paidMajor) : Math.round(paidMajor * 100) / 100;
+      // HUF invoice lines must use the canonical HUF amount from webhook metadata
+      // to avoid Stripe minor/major unit interpretation differences.
+      if (inv === "HUF") return normalizedAmountHuf;
+      return Math.round(paidMajor * 100) / 100;
     }
     if (inv === "EUR" && paidCur === "HUF") {
       return Math.round((paidMajor / safeFx) * 100) / 100;
