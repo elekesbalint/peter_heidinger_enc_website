@@ -13,8 +13,13 @@ export async function signUp(email: string, password: string) {
 }
 
 export async function signOut() {
-  const { error } = await supabase.auth.signOut();
-  if (error) throw new Error(error.message);
+  // Először megpróbáljuk a szerveres kijelentkezést, de ha nem sikerül (nincs net),
+  // akkor csak a lokális session-t töröljük – a felhasználó így is kijelentkezik.
+  try {
+    await supabase.auth.signOut({ scope: 'global' });
+  } catch {
+    await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+  }
 }
 
 export async function resetPassword(email: string) {
