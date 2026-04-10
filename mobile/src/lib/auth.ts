@@ -13,13 +13,8 @@ export async function signUp(email: string, password: string) {
 }
 
 export async function signOut() {
-  // Először megpróbáljuk a szerveres kijelentkezést, de ha nem sikerül (nincs net),
-  // akkor csak a lokális session-t töröljük – a felhasználó így is kijelentkezik.
-  try {
-    await supabase.auth.signOut({ scope: 'global' });
-  } catch {
-    await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
-  }
+  // Csak lokális kijelentkezés: nem kér hálózatot, így nincs „Network request failed” a szimulátorban.
+  await supabase.auth.signOut({ scope: 'local' });
 }
 
 export async function resetPassword(email: string) {

@@ -15,9 +15,18 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   };
 }
 
+/** fetch, ami hálózati hibát egységes üzenetre cserél (kevesebb zavaró LogBox) */
+async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(`${BASE_URL}${path}`, init);
+  } catch {
+    throw new Error('Nem sikerült kapcsolódni a szerverhez. Ellenőrizze a hálózatot és az API címet (.env).');
+  }
+}
+
 export async function fetchTopupConfig() {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${BASE_URL}/api/topup/config`, { headers });
+  const res = await apiFetch('/api/topup/config', { headers });
   if (!res.ok) throw new Error('Nem sikerült betölteni a feltöltési konfigurációt.');
   return res.json();
 }
@@ -29,7 +38,7 @@ export async function startTopupCheckout(body: {
   travelDestination?: string;
 }) {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${BASE_URL}/api/mobile/stripe/checkout`, {
+  const res = await apiFetch('/api/mobile/stripe/checkout', {
     method: 'POST',
     headers,
     body: JSON.stringify(body),
@@ -46,7 +55,7 @@ export async function startDeviceOrderCheckout(body: {
   referralInviteId?: string;
 }) {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${BASE_URL}/api/mobile/stripe/checkout-device`, {
+  const res = await apiFetch('/api/mobile/stripe/checkout-device', {
     method: 'POST',
     headers,
     body: JSON.stringify(body),
@@ -58,14 +67,14 @@ export async function startDeviceOrderCheckout(body: {
 
 export async function getProfile() {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${BASE_URL}/api/me/profile`, { headers });
+  const res = await apiFetch('/api/me/profile', { headers });
   if (!res.ok) throw new Error('Profil betöltése sikertelen.');
   return res.json();
 }
 
 export async function patchProfile(profile: Record<string, unknown>) {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${BASE_URL}/api/me/profile`, {
+  const res = await apiFetch('/api/me/profile', {
     method: 'PATCH',
     headers,
     body: JSON.stringify(profile),
@@ -79,7 +88,7 @@ export async function sendContactMessage(body: {
   email: string;
   message: string;
 }) {
-  const res = await fetch(`${BASE_URL}/api/contact`, {
+  const res = await apiFetch('/api/contact', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -91,7 +100,7 @@ export async function sendContactMessage(body: {
 export async function getSettings(keys?: string[]): Promise<Record<string, string>> {
   try {
     const params = keys ? `?keys=${keys.join(',')}` : '';
-    const res = await fetch(`${BASE_URL}/api/settings/public${params}`);
+    const res = await apiFetch(`/api/settings/public${params}`);
     if (!res.ok) return {};
     return res.json();
   } catch {
@@ -101,7 +110,7 @@ export async function getSettings(keys?: string[]): Promise<Record<string, strin
 
 export async function attachReferral(code: string) {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${BASE_URL}/api/referrals/attach`, {
+  const res = await apiFetch('/api/referrals/attach', {
     method: 'POST',
     headers,
     body: JSON.stringify({ code }),
@@ -111,7 +120,7 @@ export async function attachReferral(code: string) {
 
 export async function sendReferralInvite(email: string) {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${BASE_URL}/api/referrals/invite`, {
+  const res = await apiFetch('/api/referrals/invite', {
     method: 'POST',
     headers,
     body: JSON.stringify({ email }),

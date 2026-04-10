@@ -203,9 +203,14 @@ export function AppNavigator() {
   const [session, setSession] = useState<boolean | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(!!data.session);
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        setSession(!!data.session);
+      })
+      .catch(() => {
+        setSession(false);
+      });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(!!s);
     });
