@@ -90,10 +90,9 @@ export async function createEracuniInvoice(params: {
   const invoiceCurrency = (() => {
     const fallback = process.env.E_RACUNI_CURRENCY?.trim();
     if (params.kind === "device_sale") {
-      const explicit = process.env.E_RACUNI_CURRENCY_DEVICE_SALE?.trim();
-      if (explicit) return explicit;
-      if (stripeCurUpper === "HUF") return "HUF";
-      return fallback || "EUR";
+      // ENC készülék vásárlásnál a Stripe devizája legyen a számla devizája
+      // (jelen üzleti szabály szerint ez mindig HUF), így nem csúszik vissza EUR-ra.
+      return stripeCurUpper;
     }
     const topup = process.env.E_RACUNI_CURRENCY_TOPUP?.trim();
     if (topup) return topup;
