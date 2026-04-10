@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
-import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 
 type Extra = {
@@ -34,10 +33,14 @@ const relayApiBase = normalizeApiBaseUrl(
 );
 
 /**
- * Szimulátor / emulátor: RN fetch gyakran elhasal a *.supabase.co auth felé (pl. iOS Sim 18.4).
- * Ilyenkor a GoTrue hívások a Next.js API-n keresztül mennek (ugyanaz a domain, mint a többi mobil API).
+ * iOS-on (főleg szimulátor) az RN fetch gyakran elhasal a *.supabase.co auth felé — relay az API-n át.
+ * expo-device natív modult szándékosan nem használunk (Expo Go / régi dev build nélküle is fusson).
+ * Android: csak EXPO_PUBLIC_RELAY_SUPABASE_AUTH=1 esetén; iOS: alapból be, kikapcsolás: =0.
  */
-const useAuthRelay = !Device.isDevice && !!relayApiBase;
+const relayEnv = process.env.EXPO_PUBLIC_RELAY_SUPABASE_AUTH;
+const useAuthRelay =
+  !!relayApiBase &&
+  (relayEnv === '1' || (Platform.OS === 'ios' && relayEnv !== '0'));
 
 function shouldRelayAuthUrl(urlString: string): boolean {
   if (!supabaseUrl) return false;
