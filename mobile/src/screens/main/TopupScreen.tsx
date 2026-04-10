@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Animated,
   View,
@@ -6,14 +6,16 @@ import {
   Alert,
   TouchableOpacity,
   ActivityIndicator,
+  TextInput,
+  ScrollView,
+  FlatList,
 } from 'react-native';
 import { useFadeIn } from '../../hooks/useFadeIn';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
-import { ScreenWrapper, Text, Button, Card, Input } from '../../components/ui';
+import { ScreenWrapper, Text, Button } from '../../components/ui';
 import { Colors, Gradients, Spacing, Fonts, Radius } from '../../theme';
 import { fetchTopupConfig, startTopupCheckout } from '../../lib/api';
-import { supabase } from '../../lib/supabase';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { TopupStackParamList } from '../../navigation/types';
 
@@ -22,69 +24,198 @@ interface Props {
   route: { params?: { deviceIdentifier?: string } };
 }
 
+type ConfigDevice = {
+  id: string;
+  identifier: string;
+  category: string;
+  status: string;
+  balance_eur: number;
+  smallestPackageBlocked: boolean;
+};
+
+type ConfigDestination = {
+  id: string;
+  name: string;
+  price_ia: number;
+  price_i: number;
+  price_ii: number;
+  price_iii: number;
+  price_iv: number;
+};
+
+type TopupConfig = {
+  ok: boolean;
+  packages: number[];
+  discountPercent: number;
+  customDestinationMinEur: number;
+  minBalanceWarningEur: number;
+  fxEurToHuf: number;
+  blockedCategoriesForSmallestPackage: string[];
+  devices: ConfigDevice[];
+  destinations: ConfigDestination[];
+};
+
 export function TopupScreen({ navigation, route }: Props) {
-  const [packages, setPackages] = useState<number[]>([]);
-  const [destinations, setDestinations] = useState<string[]>([]);
-  const [wallets, setWallets] = useState<{ device_identifier: string }[]>([]);
-  const [selectedDevice, setSelectedDevice] = useState<string>(route.params?.deviceIdentifier ?? '');
-  const [selectedPackage, setSelectedPackage] = useState<number | null>(null);
+  const [config, setConfig] = useState<TopupConfig | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [deviceIdentifier, setDeviceIdentifier] = useState(
+    route.params?.deviceIdentifier ?? '',
+  );
+  const [travelDestination, setTravelDestination] = useState('');
+  const [destinationMode, setDestinationMode] = useState<'list' | 'custom'>('list');
+  const [destDropdownOpen, setDestDropdownOpen] = useState(false);
   const [customAmount, setCustomAmount] = useState('');
-  const [selectedDestination, setSelectedDestination] = useState<string>('');
+  const [selectedPackageAmount, setSelectedPackageAmount] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
-  const [configLoading, setConfigLoading] = useState(true);
-  const [minTopup, setMinTopup] = useState(5);
-  const [fxRate, setFxRate] = useState(400);
+  const [error, setError] = useState<string | null>(null);
+  const prevMinimumRef = useRef<number | null>(null);
 
   const headerAnim = useFadeIn(0);
-  const deviceAnim = useFadeIn(80);
-  const packagesAnim = useFadeIn(160);
-  const customAnim = useFadeIn(240);
-  const destAnim = useFadeIn(300);
-  const ctaAnim = useFadeIn(360);
+  const cardAnim = useFadeIn(100);
+  const amountAnim = useFadeIn(200);
+  const ctaAnim = useFadeIn(280);
 
   const loadConfig = useCallback(async () => {
-    setConfigLoading(true);
     try {
-      const cfg = await fetchTopupConfig();
-      setPackages(cfg.packages ?? []);
-      setDestinations(cfg.destinations ?? []);
-      setMinTopup(cfg.minTopupEur ?? 5);
-      setFxRate(cfg.fxEurToHuf ?? 400);
-
-      const { data: session } = await supabase.auth.getSession();
-      if (session?.session?.user?.id) {
-        const { data: ws } = await supabase
-          .from('device_wallets')
-          .select('device_identifier')
-          .limit(20);
-        setWallets(ws ?? []);
-        if (!selectedDevice && ws?.[0]) {
-          setSelectedDevice(ws[0].device_identifier);
-        }
+      const cfg = (await fetchTopupConfig()) as TopupConfig;
+      if (!cfg.ok) {
+        setLoadError('Nem sikerült betölteni a konfigurációt.');
+        return;
       }
-    } catch {
-      // config betöltési hiba tolerálva
-    } finally {
-      setConfigLoading(false);
+      setConfig(cfg);
+      if (!deviceIdentifier && cfg.devices?.[0]) {
+        setDeviceIdentifier(cfg.devices[0].identifier);
+      }
+      if ((cfg.destinations?.length ?? 0) === 0) {
+        setDestinationMode('custom');
+      }
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : 'Hálózati hiba a konfiguráció betöltésekor.');
     }
   }, []);
 
-  useEffect(() => { loadConfig(); }, [loadConfig]);
+  useEffect(() => {
+    loadConfig();
+  }, [loadConfig]);
 
-  const finalAmountEur = selectedPackage
-    ? selectedPackage
-    : parseFloat(customAmount) || 0;
+  const packages = config?.packages ?? [];
+  const destinations = config?.destinations ?? [];
+  const devices = config?.devices ?? [];
+  const discountPercent = Math.max(0, config?.discountPercent ?? 0);
+  const customDestinationMinEur = Math.max(0, config?.customDestinationMinEur ?? 30);
+  const fxEurToHuf = config?.fxEurToHuf ?? 400;
+
+  const selectedDevice = useMemo(
+    () => devices.find((d) => d.identifier === deviceIdentifier) ?? null,
+    [devices, deviceIdentifier],
+  );
+
+  const selectedDestination = useMemo(
+    () => destinations.find((d) => d.name === travelDestination) ?? null,
+    [destinations, travelDestination],
+  );
+
+  const filteredDestinations = useMemo(() => {
+    const q = travelDestination.trim().toLowerCase();
+    if (!q) return destinations;
+    return destinations.filter((d) => d.name.toLowerCase().includes(q));
+  }, [destinations, travelDestination]);
+
+  const destinationRequiredEur = useMemo(() => {
+    if (!selectedDestination || !selectedDevice) return 0;
+    const cat = selectedDevice.category.toLowerCase();
+    const byCat: Record<string, number> = {
+      ia: selectedDestination.price_ia ?? 0,
+      i: selectedDestination.price_i ?? 0,
+      ii: selectedDestination.price_ii ?? 0,
+      iii: selectedDestination.price_iii ?? 0,
+      iv: selectedDestination.price_iv ?? 0,
+    };
+    return Number(byCat[cat] ?? 0);
+  }, [selectedDestination, selectedDevice]);
+
+  const currentBalanceEur = Number(selectedDevice?.balance_eur ?? 0);
+  const hasPricedListDestination = Boolean(selectedDestination && destinationRequiredEur > 0);
+  const gapToDestinationEur = Math.max(0, destinationRequiredEur - currentBalanceEur);
+  let minimumRequiredTopup = hasPricedListDestination ? gapToDestinationEur : 0;
+  if (
+    !hasPricedListDestination &&
+    customDestinationMinEur > 0 &&
+    selectedDevice &&
+    travelDestination.trim().length >= 2
+  ) {
+    minimumRequiredTopup = Math.max(gapToDestinationEur, customDestinationMinEur);
+  }
+
+  useEffect(() => {
+    setSelectedPackageAmount(null);
+    const prevStored = prevMinimumRef.current;
+    const prevMinSafe = prevStored ?? 0;
+
+    if (minimumRequiredTopup <= 0) {
+      prevMinimumRef.current = minimumRequiredTopup;
+      return;
+    }
+
+    setCustomAmount((prev) => {
+      const trimmed = String(prev).trim();
+      if (trimmed === '') {
+        if (minimumRequiredTopup > prevMinSafe && prevMinSafe === 0) {
+          return minimumRequiredTopup.toFixed(2);
+        }
+        return prev;
+      }
+      const current = Number.parseFloat(trimmed.replace(',', '.'));
+      if (!Number.isFinite(current)) return prev;
+      if (minimumRequiredTopup > prevMinSafe && current < minimumRequiredTopup) {
+        return minimumRequiredTopup.toFixed(2);
+      }
+      return prev;
+    });
+    prevMinimumRef.current = minimumRequiredTopup;
+  }, [minimumRequiredTopup]);
+
+  const parsedCustomAmount = Number.parseFloat(String(customAmount || '0').replace(',', '.'));
+  const charged = Math.max(
+    minimumRequiredTopup,
+    Number.isFinite(parsedCustomAmount) ? parsedCustomAmount : 0,
+  );
+  const payable =
+    selectedPackageAmount != null && discountPercent > 0
+      ? Number(((charged * (100 - Math.min(100, discountPercent))) / 100).toFixed(2))
+      : charged;
 
   async function handleTopup() {
-    if (!selectedDevice) { Alert.alert('Hiba', 'Válasszon eszközt.'); return; }
-    if (finalAmountEur < minTopup) { Alert.alert('Hiba', `Minimum feltöltési összeg: ${minTopup} EUR.`); return; }
+    setError(null);
+    const effectiveAmount = Number.parseFloat(customAmount.trim().replace(',', '.'));
+    if (!effectiveAmount || !Number.isFinite(effectiveAmount)) {
+      setError('Add meg a feltöltés összegét.');
+      return;
+    }
+    if (!deviceIdentifier.trim()) {
+      setError('Válassz készüléket a listából.');
+      return;
+    }
+    if (travelDestination.trim().length < 2) {
+      setError('Add meg az úticélt.');
+      return;
+    }
+    if (effectiveAmount < minimumRequiredTopup) {
+      setError(
+        hasPricedListDestination
+          ? `Ehhez az úticélhoz legalább ${minimumRequiredTopup.toLocaleString('hu-HU')} EUR feltöltés szükséges.`
+          : `Egyéni úticél esetén legalább ${minimumRequiredTopup.toLocaleString('hu-HU')} EUR feltöltés szükséges.`,
+      );
+      return;
+    }
+
     setLoading(true);
     try {
       const result = await startTopupCheckout({
-        deviceIdentifier: selectedDevice,
-        amountEur: finalAmountEur,
-        selectedPackageEur: selectedPackage ?? undefined,
-        travelDestination: selectedDestination || undefined,
+        deviceIdentifier: deviceIdentifier.trim(),
+        amountEur: effectiveAmount,
+        selectedPackageEur: selectedPackageAmount ?? undefined,
+        travelDestination: travelDestination.trim(),
       });
       if (result.url) {
         await WebBrowser.openBrowserAsync(result.url);
@@ -97,7 +228,7 @@ export function TopupScreen({ navigation, route }: Props) {
     }
   }
 
-  if (configLoading) {
+  if (!config && !loadError) {
     return (
       <LinearGradient colors={Gradients.bg} style={styles.center}>
         <ActivityIndicator color={Colors.accent} size="large" />
@@ -105,129 +236,335 @@ export function TopupScreen({ navigation, route }: Props) {
     );
   }
 
+  if (loadError) {
+    return (
+      <LinearGradient colors={Gradients.bg} style={styles.center}>
+        <Text style={styles.errorText}>{loadError}</Text>
+      </LinearGradient>
+    );
+  }
+
+  const showInfoBox =
+    selectedDevice &&
+    travelDestination.trim().length >= 2 &&
+    (hasPricedListDestination || destinationMode === 'custom' || Boolean(selectedDestination));
+
   return (
     <ScreenWrapper>
+      {/* Header */}
       <Animated.View style={[styles.headerWrap, headerAnim]}>
-        <Text variant="h2">Feltöltés</Text>
+        <Text variant="h2">Egyenlegfeltöltés</Text>
         <Text variant="caption" style={styles.subtitle}>
-          Töltse fel egyenlegét az ENC automatikus útdíj-fizetéshez.
+          Válaszd ki a készülékedet, az úticélt és a feltöltési csomagot, majd fizess
+          Stripe-on keresztül.
         </Text>
       </Animated.View>
 
-      {/* Device selector */}
-      {wallets.length > 1 && (
-        <Animated.View style={deviceAnim}>
-          <Text variant="title" style={styles.sectionTitle}>Eszköz</Text>
-          {wallets.map((w) => (
-            <TouchableOpacity
-              key={w.device_identifier}
-              onPress={() => setSelectedDevice(w.device_identifier)}
-              activeOpacity={0.8}
-            >
-              <Card
-                style={[styles.deviceCard, selectedDevice === w.device_identifier ? styles.selectedCard : undefined] as any}
-                padding={14}
-              >
-                <View style={styles.deviceRow}>
-                  <Text style={{ fontSize: 20, marginRight: 10 }}>📡</Text>
-                  <Text semibold style={{ flex: 1 }}>{w.device_identifier}</Text>
-                  {selectedDevice === w.device_identifier && (
-                    <Text style={{ color: Colors.accent, fontSize: 18 }}>✓</Text>
-                  )}
+      {/* Section 1: Csomag és úticél */}
+      <Animated.View style={cardAnim}>
+        <View style={styles.sectionCard}>
+          <Text semibold style={styles.sectionHeading}>
+            Csomag és úticél
+          </Text>
+          <Text variant="caption" style={styles.sectionDesc}>
+            Csak a fiókodhoz rendelt készülékre tölthetsz fel egyenleget. A legkisebb csomag
+            egyes járműkategóriáknál nem elérhető (beállítás:{' '}
+            {(config?.blockedCategoriesForSmallestPackage ?? []).join(', ') || 'ii, iii, iv'}).
+          </Text>
+          {config?.minBalanceWarningEur != null && (
+            <Text variant="caption" style={styles.warningHint}>
+              Figyelmeztetési küszöb alacsony egyenleghez:{' '}
+              {config.minBalanceWarningEur.toLocaleString('hu-HU')} EUR (e-mail értesítés).
+            </Text>
+          )}
+
+          {/* Device picker */}
+          <Text style={styles.fieldLabel}>Készülék *</Text>
+          {devices.length === 0 ? (
+            <View style={styles.warnBox}>
+              <Text variant="caption" style={styles.warnBoxText}>
+                Nincs a fiókodhoz kötött készülék. Vásárolj ENC-t a Rendelés menüben, vagy
+                várd meg a hozzárendelést.
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.deviceList}>
+              {devices.map((d) => {
+                const active = d.identifier === deviceIdentifier;
+                return (
+                  <TouchableOpacity
+                    key={d.id}
+                    activeOpacity={0.8}
+                    onPress={() => setDeviceIdentifier(d.identifier)}
+                    style={[styles.deviceRow, active && styles.deviceRowActive]}
+                  >
+                    <Text style={styles.deviceEmoji}>📡</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text semibold style={styles.deviceId}>
+                        {d.identifier}
+                      </Text>
+                      <Text variant="caption" style={styles.deviceMeta}>
+                        {String(d.category).toUpperCase()} — egyenleg:{' '}
+                        {Number(d.balance_eur ?? 0).toLocaleString('hu-HU')} EUR
+                      </Text>
+                    </View>
+                    {active && <Text style={styles.checkIcon}>✓</Text>}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+
+          {/* Destination */}
+          <Text style={[styles.fieldLabel, { marginTop: Spacing.md }]}>Úticél *</Text>
+          {destinations.length > 0 && destinationMode === 'list' ? (
+            <>
+              <TextInput
+                value={travelDestination}
+                onChangeText={(t) => {
+                  setTravelDestination(t);
+                  setDestDropdownOpen(true);
+                }}
+                onFocus={() => setDestDropdownOpen(true)}
+                placeholder="Kezdj el gépelni, majd válassz a listából…"
+                placeholderTextColor={Colors.textTertiary}
+                style={styles.textInput}
+              />
+              {destDropdownOpen && filteredDestinations.length > 0 && (
+                <View style={styles.dropdown}>
+                  <ScrollView
+                    style={{ maxHeight: 180 }}
+                    keyboardShouldPersistTaps="always"
+                    nestedScrollEnabled
+                  >
+                    {filteredDestinations.map((d) => (
+                      <TouchableOpacity
+                        key={d.id}
+                        onPress={() => {
+                          setTravelDestination(d.name);
+                          setDestDropdownOpen(false);
+                        }}
+                        style={styles.dropdownItem}
+                      >
+                        <Text style={styles.dropdownItemText}>{d.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
                 </View>
-              </Card>
-            </TouchableOpacity>
-          ))}
-          </Animated.View>
-      )}
-
-      {/* Packages */}
-      {packages.length > 0 && (
-        <Animated.View style={packagesAnim}>
-          <Text variant="title" style={styles.sectionTitle}>Csomag kiválasztása</Text>
-          <View style={styles.packagesGrid}>
-            {packages.map((pkg) => {
-              const isSelected = selectedPackage === pkg;
-              return (
-                <TouchableOpacity
-                  key={pkg}
-                  style={[styles.pkgBtn, isSelected && styles.pkgBtnSelected]}
-                  onPress={() => { setSelectedPackage(isSelected ? null : pkg); setCustomAmount(''); }}
-                  activeOpacity={0.8}
-                >
-                  {isSelected && (
-                    <LinearGradient
-                      colors={Gradients.accent}
-                      style={StyleSheet.absoluteFill}
-                    />
-                  )}
-                  <Text style={[styles.pkgAmount, isSelected && { color: Colors.white }]}>
-                    {pkg} EUR
-                  </Text>
-                  <Text style={[styles.pkgHuf, isSelected && { color: 'rgba(255,255,255,0.75)' }]}>
-                    ≈ {Math.round(pkg * fxRate).toLocaleString('hu-HU')} Ft
-                  </Text>
+              )}
+              <TouchableOpacity onPress={() => setDestinationMode('custom')}>
+                <Text style={styles.toggleLink}>Egyéb (saját megnevezés)</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <TextInput
+                value={travelDestination}
+                onChangeText={setTravelDestination}
+                placeholder="pl. Horvátország, Szlovénia…"
+                placeholderTextColor={Colors.textTertiary}
+                style={styles.textInput}
+              />
+              {destinations.length > 0 && (
+                <TouchableOpacity onPress={() => setDestinationMode('list')}>
+                  <Text style={styles.toggleLink}>Lista választása</Text>
                 </TouchableOpacity>
-              );
-            })}
-          </View>
-          </Animated.View>
-      )}
+              )}
+            </>
+          )}
 
-      {/* Custom amount */}
-      <Animated.View style={customAnim}>
-        <Text variant="title" style={styles.sectionTitle}>Egyéni összeg (EUR)</Text>
-        <Input
-          label="Egyéni összeg"
-          value={customAmount}
-          onChangeText={(t) => { setCustomAmount(t); setSelectedPackage(null); }}
-          keyboardType="decimal-pad"
-          placeholder={`min. ${minTopup} EUR`}
-        />
+          {/* Info box */}
+          {showInfoBox && (
+            <>
+              <View style={styles.infoBox}>
+                {hasPricedListDestination ? (
+                  <Text variant="caption" style={styles.infoBoxText}>
+                    Jelenlegi egyenleg:{' '}
+                    <Text semibold style={styles.infoBoxBold}>
+                      {currentBalanceEur.toLocaleString('hu-HU')} EUR
+                    </Text>{' '}
+                    | Úticélhoz ajánlott:{' '}
+                    <Text semibold style={styles.infoBoxBold}>
+                      {destinationRequiredEur.toLocaleString('hu-HU')} EUR
+                    </Text>
+                  </Text>
+                ) : selectedDestination ? (
+                  <Text variant="caption" style={styles.infoBoxText}>
+                    Úticél: <Text semibold style={styles.infoBoxBold}>{selectedDestination.name}</Text>
+                    {'\n'}
+                    <Text style={styles.infoBoxSmall}>
+                      Ehhez a járműkategóriához nincs tárolt listaár; minimum feltöltés az admin
+                      által beállított érték szerint.
+                    </Text>
+                  </Text>
+                ) : (
+                  <Text variant="caption" style={styles.infoBoxText}>
+                    <Text semibold style={styles.infoBoxBold}>Egyéni úticél: </Text>
+                    {travelDestination.trim()}
+                    {'\n'}
+                    <Text style={styles.infoBoxSmall}>
+                      Listaáras ajánlott összeg ehhez a megnevezéshez nem elérhető.
+                    </Text>
+                  </Text>
+                )}
+                {minimumRequiredTopup > 0 ? (
+                  <Text variant="caption" style={[styles.infoBoxText, { marginTop: 4 }]}>
+                    Minimum szükséges feltöltés:{' '}
+                    <Text semibold style={styles.infoBoxBold}>
+                      {minimumRequiredTopup.toLocaleString('hu-HU')} EUR
+                    </Text>
+                  </Text>
+                ) : (
+                  <Text variant="caption" style={[styles.infoBoxText, { marginTop: 4 }]}>
+                    A jelenlegi egyenleg elegendő, egyedi feltöltés opcionális.
+                  </Text>
+                )}
+              </View>
+              <Text variant="caption" style={styles.infoFootnote}>
+                A hozzávetőlegesen kalkulált útdíj Letenye határátkelővel értendő. Ha más
+                határátkelőt választasz, érdemes magasabb összeggel feltölteni a készülékedet.
+              </Text>
+            </>
+          )}
+        </View>
       </Animated.View>
 
-      {/* Destination */}
-      {destinations.length > 0 && (
-        <Animated.View style={destAnim}>
-          <Text variant="title" style={styles.sectionTitle}>Úticél (opcionális)</Text>
-          <View style={styles.destWrap}>
-            {destinations.slice(0, 8).map((d) => (
-              <TouchableOpacity
-                key={d}
-                style={[styles.destChip, selectedDestination === d && styles.destChipSelected]}
-                onPress={() => setSelectedDestination(selectedDestination === d ? '' : d)}
-              >
-                <Text style={[styles.destChipText, selectedDestination === d && { color: Colors.accent }]}>
-                  {d}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          </Animated.View>
-      )}
+      {/* Section 2: Feltöltés összege */}
+      <Animated.View style={amountAnim}>
+        <View style={styles.sectionCard}>
+          <Text semibold style={styles.sectionHeading}>
+            Feltöltés összege
+          </Text>
 
-      {/* Summary & CTA */}
+          <TextInput
+            value={customAmount}
+            onChangeText={(t) => {
+              setCustomAmount(t);
+              setSelectedPackageAmount(null);
+            }}
+            onBlur={() => {
+              const raw = customAmount.trim().replace(',', '.');
+              if (!raw) return;
+              const n = Number.parseFloat(raw);
+              if (!Number.isFinite(n)) return;
+              if (minimumRequiredTopup > 0 && n < minimumRequiredTopup) {
+                setCustomAmount(minimumRequiredTopup.toFixed(2));
+                return;
+              }
+              if (n > 0) setCustomAmount(n.toFixed(2));
+            }}
+            keyboardType="decimal-pad"
+            placeholder={`${minimumRequiredTopup.toLocaleString('hu-HU')} vagy több`}
+            placeholderTextColor={Colors.textTertiary}
+            style={styles.textInput}
+          />
+          {selectedPackageAmount == null ? (
+            <Text variant="caption" style={styles.amountHint}>
+              Ennél a feltöltésnél a topup kedvezmény nem érvényes; minimum:{' '}
+              {minimumRequiredTopup.toLocaleString('hu-HU')} EUR.
+            </Text>
+          ) : (
+            <Text variant="caption" style={styles.amountHint}>
+              Csomag kedvezmény: {discountPercent}%.
+            </Text>
+          )}
+          <Text variant="caption" style={styles.payableRow}>
+            Fizetendő:{' '}
+            <Text semibold style={{ color: Colors.textPrimary }}>
+              {payable.toLocaleString('hu-HU')} EUR
+            </Text>
+          </Text>
+
+          {/* Package cards */}
+          {packages.length > 0 && (
+            <>
+              <Text variant="caption" style={styles.packagesHint}>
+                Gyors választás (automatikusan kitölti az összeget):
+              </Text>
+              <View style={styles.packagesGrid}>
+                {packages.map((amount) => {
+                  const selectedVal = Number.parseFloat(
+                    String(customAmount || '0').replace(',', '.'),
+                  );
+                  const active = Math.abs(selectedVal - amount) < 0.001;
+                  const disabled = amount < minimumRequiredTopup;
+                  const discounted =
+                    discountPercent > 0
+                      ? Number(
+                          ((amount * (100 - Math.min(100, discountPercent))) / 100).toFixed(2),
+                        )
+                      : amount;
+                  return (
+                    <TouchableOpacity
+                      key={amount}
+                      disabled={disabled}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        setCustomAmount(String(amount));
+                        setSelectedPackageAmount(amount);
+                      }}
+                      style={[
+                        styles.pkgCard,
+                        active && styles.pkgCardActive,
+                        disabled && styles.pkgCardDisabled,
+                      ]}
+                    >
+                      {active && (
+                        <LinearGradient
+                          colors={['rgba(108,99,255,0.18)', 'rgba(108,99,255,0.08)']}
+                          style={StyleSheet.absoluteFill}
+                        />
+                      )}
+                      <Text style={styles.pkgLabel}>CSOMAG</Text>
+                      <Text semibold style={[styles.pkgAmount, disabled && styles.pkgAmountDisabled]}>
+                        {amount.toLocaleString('hu-HU')} EUR
+                      </Text>
+                      <Text style={[styles.pkgDiscount, disabled && { color: Colors.textTertiary }]}>
+                        Kedvezmény után: {discounted.toLocaleString('hu-HU')} EUR
+                      </Text>
+                      <Text style={[styles.pkgDiscountPct, disabled && { color: Colors.textTertiary }]}>
+                        Kedvezmény: {Math.min(100, discountPercent).toLocaleString('hu-HU')}%
+                      </Text>
+                      {disabled && (
+                        <Text style={styles.pkgDisabledNote}>
+                          Ehhez az úticélhoz legalább {minimumRequiredTopup.toLocaleString('hu-HU')}{' '}
+                          EUR szükséges
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </>
+          )}
+        </View>
+      </Animated.View>
+
+      {/* Error */}
+      {error ? (
+        <View style={styles.errorBox}>
+          <Text style={styles.errorBoxText}>{error}</Text>
+        </View>
+      ) : null}
+
+      {/* CTA */}
       <Animated.View style={ctaAnim}>
-        {finalAmountEur > 0 && (
-          <Card style={styles.summaryCard} padding={16}>
-            <View style={styles.summaryRow}>
-              <Text variant="caption">Feltöltési összeg</Text>
-              <Text semibold>{finalAmountEur.toFixed(2)} EUR</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text variant="caption">≈ Forintban</Text>
-              <Text semibold>{Math.round(finalAmountEur * fxRate).toLocaleString('hu-HU')} Ft</Text>
-            </View>
-          </Card>
-        )}
         <Button
-          label="Feltöltés & Fizetés →"
+          label={loading ? 'Átirányítás…' : 'Fizetés Stripe-pal'}
           onPress={handleTopup}
           loading={loading}
-          variant="teal"
-          disabled={finalAmountEur < minTopup || !selectedDevice}
+          disabled={devices.length === 0}
           style={styles.orderBtn}
         />
+        <View style={styles.stripeBadge}>
+          <Text style={styles.shieldIcon}>🔒</Text>
+          <Text variant="caption" style={styles.stripeText}>
+            Titkos és biztonságos fizetés{' '}
+            <Text semibold style={styles.stripeBrand}>
+              stripe
+            </Text>
+          </Text>
+        </View>
       </Animated.View>
     </ScreenWrapper>
   );
@@ -237,46 +574,179 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   headerWrap: { paddingTop: Spacing.md, marginBottom: Spacing.lg },
   subtitle: { marginTop: 6 },
-  sectionTitle: { marginBottom: Spacing.sm, marginTop: Spacing.sm },
-  deviceCard: { marginBottom: 8 },
-  selectedCard: { borderColor: Colors.accent },
-  deviceRow: { flexDirection: 'row', alignItems: 'center' },
+  sectionCard: {
+    backgroundColor: Colors.bgSurface,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  sectionHeading: {
+    fontSize: Fonts.sizes.md,
+    color: Colors.textPrimary,
+    marginBottom: Spacing.sm,
+  },
+  sectionDesc: {
+    color: Colors.textSecondary,
+    lineHeight: 18,
+    marginBottom: Spacing.sm,
+  },
+  warningHint: {
+    color: Colors.textTertiary,
+    marginBottom: Spacing.sm,
+  },
+  fieldLabel: {
+    fontSize: Fonts.sizes.sm,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    marginBottom: 6,
+  },
+  warnBox: {
+    backgroundColor: Colors.warningSoft,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.warning,
+    padding: Spacing.sm,
+  },
+  warnBoxText: { color: Colors.warning },
+  deviceList: { gap: 8 },
+  deviceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.bgCard,
+  },
+  deviceRowActive: { borderColor: Colors.accent },
+  deviceEmoji: { fontSize: 20 },
+  deviceId: { color: Colors.textPrimary, fontSize: Fonts.sizes.sm },
+  deviceMeta: { color: Colors.textSecondary, marginTop: 2 },
+  checkIcon: { color: Colors.accent, fontSize: 16, fontWeight: '700' },
+  textInput: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    color: Colors.textPrimary,
+    fontSize: Fonts.sizes.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  dropdown: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginTop: 4,
+    overflow: 'hidden',
+    zIndex: 99,
+  },
+  dropdownItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  dropdownItemText: { color: Colors.textPrimary, fontSize: Fonts.sizes.sm },
+  toggleLink: {
+    color: Colors.accent,
+    fontSize: Fonts.sizes.xs,
+    fontWeight: '600',
+    marginTop: 8,
+  },
+  infoBox: {
+    marginTop: Spacing.md,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(99,102,241,0.35)',
+    backgroundColor: 'rgba(99,102,241,0.1)',
+    padding: 12,
+  },
+  infoBoxText: { color: Colors.textPrimary, lineHeight: 20 },
+  infoBoxBold: { color: Colors.textPrimary, fontWeight: '700' },
+  infoBoxSmall: { color: Colors.textSecondary, fontSize: Fonts.sizes.xs },
+  infoFootnote: {
+    marginTop: 8,
+    color: Colors.textTertiary,
+    lineHeight: 16,
+  },
+  amountHint: { color: Colors.textTertiary, marginTop: 6 },
+  payableRow: { color: Colors.textSecondary, marginTop: 4 },
+  packagesHint: { color: Colors.textTertiary, marginTop: Spacing.md, marginBottom: 10 },
   packagesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
-    marginBottom: Spacing.md,
   },
-  pkgBtn: {
-    minWidth: '28%',
+  pkgCard: {
     flex: 1,
-    borderRadius: Radius.md,
-    padding: 14,
-    borderWidth: 1,
+    minWidth: '28%',
+    borderRadius: Radius.lg,
+    padding: 16,
+    borderWidth: 1.5,
     borderColor: Colors.border,
     backgroundColor: Colors.bgCard,
-    alignItems: 'center',
     overflow: 'hidden',
   },
-  pkgBtnSelected: { borderColor: Colors.accent },
+  pkgCardActive: { borderColor: Colors.accent },
+  pkgCardDisabled: { opacity: 0.45 },
+  pkgLabel: {
+    fontSize: Fonts.sizes.xs,
+    fontWeight: '600',
+    color: Colors.textTertiary,
+    letterSpacing: 1,
+    marginBottom: 6,
+  },
   pkgAmount: {
-    fontSize: Fonts.sizes.md,
-    fontWeight: Fonts.weights.bold,
+    fontSize: Fonts.sizes.xl,
+    fontWeight: '700',
     color: Colors.textPrimary,
+    marginBottom: 6,
   },
-  pkgHuf: { fontSize: Fonts.sizes.xs, color: Colors.textSecondary, marginTop: 2 },
-  destWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: Spacing.md },
-  destChip: {
-    borderRadius: Radius.full,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    backgroundColor: Colors.bgSurface,
+  pkgAmountDisabled: { color: Colors.textTertiary },
+  pkgDiscount: {
+    fontSize: Fonts.sizes.xs,
+    color: Colors.success,
+    marginBottom: 2,
+  },
+  pkgDiscountPct: {
+    fontSize: Fonts.sizes.xs,
+    color: Colors.success,
+  },
+  pkgDisabledNote: {
+    fontSize: Fonts.sizes.xs,
+    color: Colors.warning,
+    marginTop: 4,
+  },
+  errorBox: {
+    borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: Colors.danger,
+    backgroundColor: Colors.dangerSoft,
+    padding: 12,
+    marginBottom: Spacing.sm,
   },
-  destChipSelected: { borderColor: Colors.accent },
-  destChipText: { fontSize: Fonts.sizes.sm, color: Colors.textSecondary },
-  summaryCard: { marginBottom: Spacing.md },
-  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
+  errorBoxText: { color: Colors.danger, fontSize: Fonts.sizes.sm },
+  errorText: { color: Colors.danger, textAlign: 'center', padding: Spacing.lg },
   orderBtn: { marginBottom: Spacing.sm },
+  stripeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+    backgroundColor: '#f0fdf4',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginBottom: Spacing.md,
+  },
+  shieldIcon: { fontSize: 18 },
+  stripeText: { color: '#1e293b' },
+  stripeBrand: { color: '#635BFF' },
 });

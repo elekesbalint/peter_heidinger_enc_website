@@ -26,7 +26,7 @@ async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
 
 export async function fetchTopupConfig() {
   const headers = await getAuthHeaders();
-  const res = await apiFetch('/api/topup/config', { headers });
+  const res = await apiFetch('/api/mobile/topup/config', { headers });
   if (!res.ok) throw new Error('Nem sikerült betölteni a feltöltési konfigurációt.');
   return res.json();
 }
