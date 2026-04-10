@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ScreenWrapper, Text, Card } from '../../components/ui';
 import { Colors, Gradients, Spacing, Fonts, Radius } from '../../theme';
@@ -46,10 +45,10 @@ export function BlogScreen({ navigation }: Props) {
 
   return (
     <ScreenWrapper>
-      <Animated.View entering={FadeInDown.duration(500)} style={styles.header}>
+      <View style={styles.header}>
         <Text variant="h2">Hírek & Blog</Text>
         <Text variant="caption" style={{ marginTop: 4 }}>AdriaGo legfrissebb hírei</Text>
-      </Animated.View>
+      </View>
 
       {posts.length === 0 && (
         <View style={styles.empty}>
@@ -59,7 +58,7 @@ export function BlogScreen({ navigation }: Props) {
       )}
 
       {posts.map((post, i) => (
-        <Animated.View key={post.slug} entering={FadeInDown.duration(400).delay(i * 60)}>
+        <View key={post.slug}>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => navigation.navigate('BlogDetail', { slug: post.slug, title: post.title })}
@@ -88,7 +87,7 @@ export function BlogScreen({ navigation }: Props) {
               </View>
             </Card>
           </TouchableOpacity>
-        </Animated.View>
+        </View>
       ))}
     </ScreenWrapper>
   );

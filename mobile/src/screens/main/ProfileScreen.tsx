@@ -7,7 +7,6 @@ import {
   ActivityIndicator,
   TouchableOpacity,
 } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ScreenWrapper, Text, Button, Input, Card, Divider } from '../../components/ui';
 import { Colors, Gradients, Spacing, Fonts, Radius } from '../../theme';
@@ -98,7 +97,7 @@ export function ProfileScreen({ navigation }: Props) {
   return (
     <ScreenWrapper>
       {/* Avatar + name */}
-      <Animated.View entering={FadeInDown.duration(500)} style={styles.avatarSection}>
+      <View style={styles.avatarSection}>
         <LinearGradient colors={Gradients.accent} style={styles.avatarCircle}>
           <Text style={styles.avatarLetter}>
             {(profile.first_name?.[0] ?? profile.email?.[0] ?? 'U').toUpperCase()}
@@ -106,10 +105,10 @@ export function ProfileScreen({ navigation }: Props) {
         </LinearGradient>
         <Text variant="h3" style={{ marginTop: 12 }}>{displayName}</Text>
         <Text variant="caption">{profile.email ?? '-'}</Text>
-      </Animated.View>
+      </View>
 
       {/* Profile form */}
-      <Animated.View entering={FadeInDown.duration(500).delay(100)}>
+      <View>
         <View style={styles.sectionHeader}>
           <Text variant="title">Személyes adatok</Text>
           {!editing && (
@@ -152,10 +151,10 @@ export function ProfileScreen({ navigation }: Props) {
             ))}
           </Card>
         )}
-      </Animated.View>
+      </View>
 
       {/* Referral */}
-      <Animated.View entering={FadeInDown.duration(500).delay(200)}>
+      <View>
         <Text variant="title" style={styles.sectionTitle}>Barát meghívása</Text>
         <Card padding={16} style={{ marginBottom: Spacing.md }}>
           <Text variant="caption" style={{ marginBottom: 10, lineHeight: 18 }}>
@@ -186,10 +185,10 @@ export function ProfileScreen({ navigation }: Props) {
             </View>
           )}
         </Card>
-      </Animated.View>
+      </View>
 
       {/* Legal links */}
-      <Animated.View entering={FadeInDown.duration(500).delay(280)}>
+      <View>
         <Text variant="title" style={styles.sectionTitle}>Egyebek</Text>
         <Card padding={0} style={{ marginBottom: Spacing.md, overflow: 'hidden' }}>
           {[
@@ -210,12 +209,12 @@ export function ProfileScreen({ navigation }: Props) {
             </View>
           ))}
         </Card>
-      </Animated.View>
+      </View>
 
       {/* Logout */}
-      <Animated.View entering={FadeInDown.duration(500).delay(340)}>
+      <View>
         <Button label="Kilépés" variant="danger" onPress={handleSignOut} style={styles.logoutBtn} />
-      </Animated.View>
+      </View>
 
     </ScreenWrapper>
   );

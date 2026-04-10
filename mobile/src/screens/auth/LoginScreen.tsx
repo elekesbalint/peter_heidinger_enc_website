@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { Text, Button, Input } from '../../components/ui';
 import { Colors, Gradients, Spacing, Fonts } from '../../theme';
 import { signIn } from '../../lib/auth';
@@ -57,7 +56,7 @@ export function LoginScreen({ navigation }: Props) {
           style={styles.flex}
         >
           <View style={styles.container}>
-            <Animated.View entering={FadeInUp.duration(600).springify()} style={styles.header}>
+            <View style={styles.header}>
               <View style={styles.logoWrap}>
                 <LinearGradient
                   colors={Gradients.accent}
@@ -72,9 +71,9 @@ export function LoginScreen({ navigation }: Props) {
               <Text variant="caption" style={styles.subtitle}>
                 Jelentkezzen be AdriaGo fiókjába
               </Text>
-            </Animated.View>
+            </View>
 
-            <Animated.View entering={FadeInDown.duration(600).delay(150).springify()} style={styles.form}>
+            <View style={styles.form}>
               <Input
                 label="Email"
                 value={email}
@@ -121,7 +120,7 @@ export function LoginScreen({ navigation }: Props) {
                 onPress={() => navigation.navigate('Register')}
                 variant="secondary"
               />
-            </Animated.View>
+            </View>
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>

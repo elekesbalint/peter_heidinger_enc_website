@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Text, Button, Input } from '../../components/ui';
 import { Colors, Gradients, Spacing } from '../../theme';
 import { signUp } from '../../lib/auth';
@@ -64,7 +63,7 @@ export function RegisterScreen({ navigation }: Props) {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            <Animated.View entering={FadeInDown.duration(500).springify()}>
+            <View>
               <Text variant="h2" style={styles.title}>Regisztráció</Text>
               <Text variant="caption" style={styles.subtitle}>
                 Hozzon létre AdriaGo fiókot
@@ -109,7 +108,7 @@ export function RegisterScreen({ navigation }: Props) {
                   variant="ghost"
                 />
               </View>
-            </Animated.View>
+            </View>
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>

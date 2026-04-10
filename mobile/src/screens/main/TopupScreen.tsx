@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
 import { ScreenWrapper, Text, Button, Card, Input } from '../../components/ui';
@@ -99,16 +98,16 @@ export function TopupScreen({ navigation, route }: Props) {
 
   return (
     <ScreenWrapper>
-      <Animated.View entering={FadeInDown.duration(500)} style={styles.headerWrap}>
+      <View style={styles.headerWrap}>
         <Text variant="h2">Feltöltés</Text>
         <Text variant="caption" style={styles.subtitle}>
           Töltse fel egyenlegét az ENC automatikus útdíj-fizetéshez.
         </Text>
-      </Animated.View>
+      </View>
 
       {/* Device selector */}
       {wallets.length > 1 && (
-        <Animated.View entering={FadeInDown.duration(500).delay(80)}>
+        <View>
           <Text variant="title" style={styles.sectionTitle}>Eszköz</Text>
           {wallets.map((w) => (
             <TouchableOpacity
@@ -130,12 +129,12 @@ export function TopupScreen({ navigation, route }: Props) {
               </Card>
             </TouchableOpacity>
           ))}
-        </Animated.View>
+          </View>
       )}
 
       {/* Packages */}
       {packages.length > 0 && (
-        <Animated.View entering={FadeInDown.duration(500).delay(160)}>
+        <View>
           <Text variant="title" style={styles.sectionTitle}>Csomag kiválasztása</Text>
           <View style={styles.packagesGrid}>
             {packages.map((pkg) => {
@@ -163,11 +162,11 @@ export function TopupScreen({ navigation, route }: Props) {
               );
             })}
           </View>
-        </Animated.View>
+          </View>
       )}
 
       {/* Custom amount */}
-      <Animated.View entering={FadeInDown.duration(500).delay(240)}>
+      <View>
         <Text variant="title" style={styles.sectionTitle}>Egyéni összeg (EUR)</Text>
         <Input
           label="Egyéni összeg"
@@ -176,11 +175,11 @@ export function TopupScreen({ navigation, route }: Props) {
           keyboardType="decimal-pad"
           placeholder={`min. ${minTopup} EUR`}
         />
-      </Animated.View>
+      </View>
 
       {/* Destination */}
       {destinations.length > 0 && (
-        <Animated.View entering={FadeInDown.duration(500).delay(300)}>
+        <View>
           <Text variant="title" style={styles.sectionTitle}>Úticél (opcionális)</Text>
           <View style={styles.destWrap}>
             {destinations.slice(0, 8).map((d) => (
@@ -195,11 +194,11 @@ export function TopupScreen({ navigation, route }: Props) {
               </TouchableOpacity>
             ))}
           </View>
-        </Animated.View>
+          </View>
       )}
 
       {/* Summary & CTA */}
-      <Animated.View entering={FadeInDown.duration(500).delay(360)}>
+      <View>
         {finalAmountEur > 0 && (
           <Card style={styles.summaryCard} padding={16}>
             <View style={styles.summaryRow}>
@@ -220,7 +219,7 @@ export function TopupScreen({ navigation, route }: Props) {
           disabled={finalAmountEur < minTopup || !selectedDevice}
           style={styles.orderBtn}
         />
-      </Animated.View>
+      </View>
     </ScreenWrapper>
   );
 }

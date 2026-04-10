@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { ScreenWrapper, Text, Button } from '../../components/ui';
 import { Gradients, Spacing } from '../../theme';
 
@@ -15,14 +14,14 @@ interface SuccessProps {
 export function SuccessScreen({ title = 'Sikeres!', subtitle, onContinue, continueLabel = 'Tovább' }: SuccessProps) {
   return (
     <ScreenWrapper scrollable={false} contentStyle={styles.center}>
-      <Animated.View entering={FadeInDown.duration(500).springify()} style={styles.box}>
+      <View style={styles.box}>
         <Text style={styles.icon}>✅</Text>
         <Text variant="h2" style={styles.title}>{title}</Text>
         {subtitle && <Text variant="caption" style={styles.subtitle}>{subtitle}</Text>}
         {onContinue && (
           <Button label={continueLabel} onPress={onContinue} style={styles.btn} />
         )}
-      </Animated.View>
+      </View>
     </ScreenWrapper>
   );
 }
@@ -30,12 +29,12 @@ export function SuccessScreen({ title = 'Sikeres!', subtitle, onContinue, contin
 export function CancelScreen({ onBack }: { onBack?: () => void }) {
   return (
     <ScreenWrapper scrollable={false} contentStyle={styles.center}>
-      <Animated.View entering={FadeInDown.duration(500).springify()} style={styles.box}>
+      <View style={styles.box}>
         <Text style={styles.icon}>❌</Text>
         <Text variant="h2" style={styles.title}>Fizetés megszakítva</Text>
         <Text variant="caption" style={styles.subtitle}>A fizetési folyamat megszakadt. Kérjük, próbálja újra.</Text>
         {onBack && <Button label="Vissza" onPress={onBack} variant="secondary" style={styles.btn} />}
-      </Animated.View>
+      </View>
     </ScreenWrapper>
   );
 }

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { ScreenWrapper, Text, Button, Input, Card } from '../../components/ui';
 import { Colors, Spacing } from '../../theme';
 import { sendContactMessage } from '../../lib/api';
@@ -31,23 +30,23 @@ export function ContactScreen() {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
       <ScreenWrapper>
-        <Animated.View entering={FadeInDown.duration(500)} style={styles.header}>
+        <View style={styles.header}>
           <Text variant="h2">Kapcsolat</Text>
           <Text variant="caption" style={{ marginTop: 4 }}>
             Kérdése van? Írjon nekünk!
           </Text>
-        </Animated.View>
+        </View>
 
         {sent ? (
-          <Animated.View entering={FadeInDown.duration(400)} style={styles.successBox}>
+          <View style={styles.successBox}>
             <Text style={styles.successIcon}>✅</Text>
             <Text variant="h3" style={{ marginBottom: 8 }}>Üzenet elküldve!</Text>
             <Text variant="caption" style={{ textAlign: 'center' }}>
               Hamarosan felvesszük Önnel a kapcsolatot.
             </Text>
-          </Animated.View>
+          </View>
         ) : (
-          <Animated.View entering={FadeInDown.duration(500).delay(100)}>
+          <View>
             <Input label="Neve" value={name} onChangeText={setName} placeholder="Kiss János" />
             <Input label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="nev@example.com" />
             <Input
@@ -60,7 +59,7 @@ export function ContactScreen() {
               style={styles.textarea}
             />
             <Button label="Üzenet küldése" onPress={handleSend} loading={loading} />
-          </Animated.View>
+          </View>
         )}
       </ScreenWrapper>
     </KeyboardAvoidingView>

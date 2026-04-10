@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { View, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Text, Button, Input } from '../../components/ui';
 import { Colors, Gradients, Spacing } from '../../theme';
 import { resetPassword } from '../../lib/auth';
@@ -36,7 +35,7 @@ export function ForgotPasswordScreen({ navigation }: Props) {
       <SafeAreaView style={styles.flex}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
           <View style={styles.container}>
-            <Animated.View entering={FadeInDown.duration(500).springify()}>
+            <View>
               {sent ? (
                 <View style={styles.successBox}>
                   <Text style={styles.successIcon}>✉️</Text>
@@ -78,7 +77,7 @@ export function ForgotPasswordScreen({ navigation }: Props) {
                   />
                 </>
               )}
-            </Animated.View>
+            </View>
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
