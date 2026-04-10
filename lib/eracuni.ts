@@ -85,6 +85,7 @@ export async function createEracuniInvoice(params: {
   const itemName =
     params.kind === "device_sale" ? "ENC készülék / ENC uređaj" : "ENC készülék feltöltése";
   const note = `Azonosító / Identifikacijski broj: ${params.deviceIdentifier}`;
+  const itemDescriptionWithIdentifier = `${itemName} — Eszkoz azonosito: ${params.deviceIdentifier}`;
   const today = new Date().toISOString().slice(0, 10);
   const stripeCurUpper = (params.stripeCurrency ?? "HUF").toUpperCase();
   const invoiceCurrency = (() => {
@@ -430,7 +431,7 @@ export async function createEracuniInvoice(params: {
         ]
       : [
           {
-            description: itemName,
+            description: itemDescriptionWithIdentifier,
             quantity: 1,
             unit: itemUnit,
             price: linePrice,
@@ -569,7 +570,7 @@ export async function createEracuniInvoice(params: {
         : Math.round((grossPrice / vatFactor) * 100) / 100;
     const invoiceItem: Record<string, unknown> = {
       name: itemName,
-      description: itemName,
+      description: itemDescriptionWithIdentifier,
       currency: invoiceCurrency,
       currencyCode: invoiceCurrency,
       unit: itemUnit,
@@ -598,7 +599,7 @@ export async function createEracuniInvoice(params: {
       currency: invoiceCurrency,
       note,
       // Some tenants accept direct single-line shape instead of explicit item arrays.
-      description: itemName,
+      description: itemDescriptionWithIdentifier,
       quantity: 1,
       ...rootPrices,
       partner: buildPartnerPayload(),
@@ -626,7 +627,7 @@ export async function createEracuniInvoice(params: {
     const useCatalogPriceForProduct =
       Boolean(itemProductCode) && !allowCustomPriceOnProductLine;
     const invoiceLine: Record<string, unknown> = {
-      description: itemName,
+      description: itemDescriptionWithIdentifier,
       currency: invoiceCurrency,
       currencyCode: invoiceCurrency,
       quantity: 1,
