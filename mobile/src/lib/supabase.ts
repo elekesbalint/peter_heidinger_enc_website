@@ -1,8 +1,22 @@
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
+type Extra = {
+  supabaseUrl?: string;
+  supabaseAnonKey?: string;
+};
+
+const extra = (Constants.expoConfig?.extra ?? {}) as Extra;
+
+const supabaseUrl =
+  extra.supabaseUrl?.trim() ||
+  process.env.EXPO_PUBLIC_SUPABASE_URL?.trim() ||
+  '';
+const supabaseAnonKey =
+  extra.supabaseAnonKey?.trim() ||
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY?.trim() ||
+  '';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
@@ -12,6 +26,14 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: false,
   },
 });
+
+export function assertSupabaseConfigured(): void {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error(
+      'Supabase nincs beállítva: EXPO_PUBLIC_SUPABASE_URL és EXPO_PUBLIC_SUPABASE_ANON_KEY kell a .env-ben, majd indítsd újra a Metro-t (expo start -c).',
+    );
+  }
+}
 
 export type Profile = {
   id: string;

@@ -9,9 +9,9 @@ import {
 } from 'react-native';
 import { useFadeIn } from '../../hooks/useFadeIn';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Text, Card, Badge, ScreenWrapper } from '../../components/ui';
+import { Text, Card, Badge, ScreenWrapper, Button } from '../../components/ui';
 import { Colors, Gradients, Spacing, Fonts, Radius } from '../../theme';
-import { supabase } from '../../lib/supabase';
+import { assertSupabaseConfigured, supabase } from '../../lib/supabase';
 import type { EncDeviceOrder, StripeTopup, DeviceWallet } from '../../lib/supabase';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { HomeStackParamList } from '../../navigation/types';
@@ -46,6 +46,7 @@ export function DashboardScreen({ navigation }: Props) {
   const [topups, setTopups] = useState<StripeTopup[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const headerAnim = useFadeIn(0);
   const balanceAnim = useFadeIn(100);
@@ -55,22 +56,67 @@ export function DashboardScreen({ navigation }: Props) {
   const topupsAnim = useFadeIn(400);
 
   const load = useCallback(async () => {
-    const { data: session } = await supabase.auth.getSession();
-    const u = session?.session?.user;
-    if (!u) return;
-    setUser({ email: u.email, id: u.id });
+    setLoadError(null);
+    try {
+      assertSupabaseConfigured();
+      const { data: session } = await supabase.auth.getSession();
+      const u = session?.session?.user;
+      if (!u) {
+        setUser(null);
+        setWallets([]);
+        setOrders([]);
+        setTopups([]);
+        return;
+      }
+      setUser({ email: u.email, id: u.id });
 
-    const [walletsRes, ordersRes, topupsRes] = await Promise.all([
-      supabase.from('device_wallets').select('*').order('updated_at', { ascending: false }).limit(20),
-      supabase.from('enc_device_orders').select('*').eq('auth_user_id', u.id).order('created_at', { ascending: false }).limit(10),
-      supabase.from('stripe_topups').select('*').eq('user_id', u.id).eq('status', 'paid').order('paid_at', { ascending: false }).limit(15),
-    ]);
+      const [walletsRes, ordersRes, topupsRes] = await Promise.all([
+        supabase.from('device_wallets').select('*').order('updated_at', { ascending: false }).limit(20),
+        supabase
+          .from('enc_device_orders')
+          .select('*')
+          .eq('auth_user_id', u.id)
+          .order('created_at', { ascending: false })
+          .limit(10),
+        supabase
+          .from('stripe_topups')
+          .select('*')
+          .eq('user_id', u.id)
+          .eq('status', 'paid')
+          .order('paid_at', { ascending: false })
+          .limit(15),
+      ]);
 
-    setWallets((walletsRes.data ?? []) as DeviceWallet[]);
-    setOrders((ordersRes.data ?? []) as EncDeviceOrder[]);
-    setTopups((topupsRes.data ?? []) as StripeTopup[]);
-    setLoading(false);
-    setRefreshing(false);
+      setWallets((walletsRes.data ?? []) as DeviceWallet[]);
+      setOrders((ordersRes.data ?? []) as EncDeviceOrder[]);
+      setTopups((topupsRes.data ?? []) as StripeTopup[]);
+
+      const rows = [walletsRes, ordersRes, topupsRes];
+      const netFail = rows.find(
+        (r) => r.error && /network|fetch|TypeError/i.test(String(r.error.message)),
+      );
+      if (netFail?.error) {
+        setLoadError(
+          'Nem sikerült kapcsolódni a Supabase-hoz. Próbáld: npx expo start -c, majd újratöltés. Ellenőrizd a .env fájlt (EXPO_PUBLIC_SUPABASE_URL).',
+        );
+        setWallets([]);
+        setOrders([]);
+        setTopups([]);
+      }
+    } catch (e) {
+      const raw = e instanceof Error ? e.message : String(e);
+      setLoadError(
+        /network request failed/i.test(raw)
+          ? 'Nem sikerült kapcsolódni a szerverhez (Supabase). Indítsd újra a Metro-t: npx expo start -c. Ha így sem jó, ellenőrizd a .env SUPABASE és API URL mezőket.'
+          : raw,
+      );
+      setWallets([]);
+      setOrders([]);
+      setTopups([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -87,6 +133,17 @@ export function DashboardScreen({ navigation }: Props) {
       <LinearGradient colors={Gradients.bg} style={styles.center}>
         <ActivityIndicator color={Colors.accent} size="large" />
       </LinearGradient>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <ScreenWrapper>
+        <View style={styles.errorWrap}>
+          <Text style={styles.errorText}>{loadError}</Text>
+          <Button label="Újrapróbálás" onPress={() => { setLoading(true); load(); }} style={styles.retryBtn} />
+        </View>
+      </ScreenWrapper>
     );
   }
 
@@ -251,6 +308,18 @@ export function DashboardScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  errorWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.lg,
+  },
+  errorText: {
+    color: Colors.danger,
+    fontSize: Fonts.sizes.sm,
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  retryBtn: { marginTop: Spacing.lg },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

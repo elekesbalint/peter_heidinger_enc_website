@@ -11,9 +11,12 @@ function normalizeApiBaseUrl(url: string): string {
   return u;
 }
 
+const extraApi =
+  (Constants.expoConfig?.extra as { apiBaseUrl?: string } | undefined)?.apiBaseUrl?.trim() || '';
+
 const BASE_URL: string = normalizeApiBaseUrl(
-  (Constants.expoConfig?.extra?.apiBaseUrl as string | undefined) ??
-    process.env.EXPO_PUBLIC_API_BASE_URL ??
+  extraApi ||
+    process.env.EXPO_PUBLIC_API_BASE_URL ||
     'https://peter-heidinger-enc-website.vercel.app',
 );
 
