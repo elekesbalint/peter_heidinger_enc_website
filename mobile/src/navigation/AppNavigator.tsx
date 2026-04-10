@@ -45,6 +45,13 @@ const SCREEN_OPTIONS = {
   contentStyle: { backgroundColor: Colors.bg },
 };
 
+// Stable component references to avoid inline function warnings from React Navigation
+function AszfScreen() { return <LegalScreen type="aszf" />; }
+function AdatvedelemScreen() { return <LegalScreen type="adatvedelem" />; }
+function DevicePlaceholderScreen() {
+  return <View style={{ flex: 1, backgroundColor: Colors.bg }} />;
+}
+
 function HomeStackNavigator() {
   return (
     <HomeStack.Navigator screenOptions={SCREEN_OPTIONS}>
@@ -53,24 +60,12 @@ function HomeStackNavigator() {
       <HomeStack.Screen
         name="BlogDetail"
         options={({ route }) => ({ title: route.params.title })}
-        component={({ route, navigation }: any) => (
-          <LegalScreen type="aszf" />
-        )}
+        component={AszfScreen}
       />
       <HomeStack.Screen name="Contact" component={ContactScreen} options={{ title: 'Kapcsolat' }} />
-      <HomeStack.Screen name="Aszf" options={{ title: 'ÁSZF' }}>
-        {() => <LegalScreen type="aszf" />}
-      </HomeStack.Screen>
-      <HomeStack.Screen name="Adatvedelem" options={{ title: 'Adatvédelem' }}>
-        {() => <LegalScreen type="adatvedelem" />}
-      </HomeStack.Screen>
-      <HomeStack.Screen
-        name="DeviceDetail"
-        options={{ title: 'Eszköz' }}
-        component={({ route, navigation }: any) => (
-          <View style={{ flex: 1, backgroundColor: Colors.bg }} />
-        )}
-      />
+      <HomeStack.Screen name="Aszf" component={AszfScreen} options={{ title: 'ÁSZF' }} />
+      <HomeStack.Screen name="Adatvedelem" component={AdatvedelemScreen} options={{ title: 'Adatvédelem' }} />
+      <HomeStack.Screen name="DeviceDetail" component={DevicePlaceholderScreen} options={{ title: 'Eszköz' }} />
     </HomeStack.Navigator>
   );
 }
@@ -125,6 +120,9 @@ function ProfileStackNavigator() {
   return (
     <ProfileStack.Navigator screenOptions={SCREEN_OPTIONS}>
       <ProfileStack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
+      <ProfileStack.Screen name="Aszf" component={AszfScreen} options={{ title: 'ÁSZF' }} />
+      <ProfileStack.Screen name="Adatvedelem" component={AdatvedelemScreen} options={{ title: 'Adatvédelem' }} />
+      <ProfileStack.Screen name="Contact" component={ContactScreen} options={{ title: 'Kapcsolat' }} />
     </ProfileStack.Navigator>
   );
 }

@@ -88,11 +88,15 @@ export async function sendContactMessage(body: {
   return res.json();
 }
 
-export async function getSettings(keys?: string[]) {
-  const params = keys ? `?keys=${keys.join(',')}` : '';
-  const res = await fetch(`${BASE_URL}/api/settings/public${params}`);
-  if (!res.ok) return {};
-  return res.json();
+export async function getSettings(keys?: string[]): Promise<Record<string, string>> {
+  try {
+    const params = keys ? `?keys=${keys.join(',')}` : '';
+    const res = await fetch(`${BASE_URL}/api/settings/public${params}`);
+    if (!res.ok) return {};
+    return res.json();
+  } catch {
+    return {};
+  }
 }
 
 export async function attachReferral(code: string) {

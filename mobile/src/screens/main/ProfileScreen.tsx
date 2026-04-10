@@ -207,7 +207,7 @@ export function ProfileScreen({ navigation }: Props) {
             <View key={item.label}>
               <TouchableOpacity
                 style={styles.menuRow}
-                onPress={() => (navigation as unknown as { navigate: (s: string) => void }).navigate(item.screen)}
+                onPress={() => navigation.navigate(item.screen as keyof ProfileStackParamList)}
               >
                 <Text style={{ fontSize: 18, marginRight: 12 }}>{item.icon}</Text>
                 <Text style={{ flex: 1 }}>{item.label}</Text>

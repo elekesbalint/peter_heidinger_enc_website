@@ -37,4 +37,7 @@ export type ProfileStackParamList = {
   Profile: undefined;
   EditProfile: undefined;
   Referrals: undefined;
+  Aszf: undefined;
+  Adatvedelem: undefined;
+  Contact: undefined;
 };
