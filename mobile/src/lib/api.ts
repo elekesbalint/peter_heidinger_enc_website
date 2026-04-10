@@ -1,8 +1,14 @@
+import { Platform } from 'react-native';
 import { supabase } from './supabase';
 import Constants from 'expo-constants';
 
 function normalizeApiBaseUrl(url: string): string {
-  return String(url).trim().replace(/\/+$/, '');
+  let u = String(url).trim().replace(/\/+$/, '');
+  // iOS: fetch gyakran elhasal "localhost"-ra (IPv6 / ATS); a szimulátoron 127.0.0.1 megbízhatóbb.
+  if (Platform.OS === 'ios' && /^https?:\/\/localhost\b/i.test(u)) {
+    u = u.replace(/localhost/i, '127.0.0.1');
+  }
+  return u;
 }
 
 const BASE_URL: string = normalizeApiBaseUrl(
