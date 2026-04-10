@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   TextInput,
   ScrollView,
-  FlatList,
 } from 'react-native';
 import { useFadeIn } from '../../hooks/useFadeIn';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,6 +15,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { ScreenWrapper, Text, Button } from '../../components/ui';
 import { Colors, Gradients, Spacing, Fonts, Radius } from '../../theme';
 import { fetchTopupConfig, startTopupCheckout } from '../../lib/api';
+import { supabase } from '../../lib/supabase';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { TopupStackParamList } from '../../navigation/types';
 
@@ -68,6 +68,7 @@ export function TopupScreen({ navigation, route }: Props) {
   const [selectedPackageAmount, setSelectedPackageAmount] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [configLoading, setConfigLoading] = useState(true);
   const prevMinimumRef = useRef<number | null>(null);
 
   const headerAnim = useFadeIn(0);
@@ -76,21 +77,27 @@ export function TopupScreen({ navigation, route }: Props) {
   const ctaAnim = useFadeIn(280);
 
   const loadConfig = useCallback(async () => {
+    setConfigLoading(true);
+    setLoadError(null);
     try {
+      await supabase.auth.getSession();
       const cfg = (await fetchTopupConfig()) as TopupConfig;
       if (!cfg.ok) {
         setLoadError('Nem sikerült betölteni a konfigurációt.');
         return;
       }
       setConfig(cfg);
-      if (!deviceIdentifier && cfg.devices?.[0]) {
-        setDeviceIdentifier(cfg.devices[0].identifier);
-      }
+      setDeviceIdentifier((prev) => {
+        if (prev) return prev;
+        return cfg.devices?.[0]?.identifier ?? '';
+      });
       if ((cfg.destinations?.length ?? 0) === 0) {
         setDestinationMode('custom');
       }
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : 'Hálózati hiba a konfiguráció betöltésekor.');
+    } finally {
+      setConfigLoading(false);
     }
   }, []);
 
@@ -228,7 +235,7 @@ export function TopupScreen({ navigation, route }: Props) {
     }
   }
 
-  if (!config && !loadError) {
+  if (configLoading) {
     return (
       <LinearGradient colors={Gradients.bg} style={styles.center}>
         <ActivityIndicator color={Colors.accent} size="large" />
@@ -238,10 +245,17 @@ export function TopupScreen({ navigation, route }: Props) {
 
   if (loadError) {
     return (
-      <LinearGradient colors={Gradients.bg} style={styles.center}>
-        <Text style={styles.errorText}>{loadError}</Text>
-      </LinearGradient>
+      <ScreenWrapper>
+        <View style={styles.errorScreen}>
+          <Text style={styles.errorText}>{loadError}</Text>
+          <Button label="Újrapróbálás" onPress={loadConfig} style={styles.retryBtn} />
+        </View>
+      </ScreenWrapper>
     );
+  }
+
+  if (!config) {
+    return null;
   }
 
   const showInfoBox =
@@ -572,6 +586,13 @@ export function TopupScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  errorScreen: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.xl,
+  },
+  retryBtn: { marginTop: Spacing.lg },
   headerWrap: { paddingTop: Spacing.md, marginBottom: Spacing.lg },
   subtitle: { marginTop: 6 },
   sectionCard: {
@@ -731,7 +752,12 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   errorBoxText: { color: Colors.danger, fontSize: Fonts.sizes.sm },
-  errorText: { color: Colors.danger, textAlign: 'center', padding: Spacing.lg },
+  errorText: {
+    color: Colors.danger,
+    textAlign: 'center',
+    fontSize: Fonts.sizes.sm,
+    lineHeight: 20,
+  },
   orderBtn: { marginBottom: Spacing.sm },
   stripeBadge: {
     flexDirection: 'row',

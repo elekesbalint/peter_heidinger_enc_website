@@ -1,10 +1,15 @@
 import { supabase } from './supabase';
 import Constants from 'expo-constants';
 
-const BASE_URL: string =
+function normalizeApiBaseUrl(url: string): string {
+  return String(url).trim().replace(/\/+$/, '');
+}
+
+const BASE_URL: string = normalizeApiBaseUrl(
   (Constants.expoConfig?.extra?.apiBaseUrl as string | undefined) ??
-  process.env.EXPO_PUBLIC_API_BASE_URL ??
-  'https://peter-heidinger-enc-website.vercel.app';
+    process.env.EXPO_PUBLIC_API_BASE_URL ??
+    'https://peter-heidinger-enc-website.vercel.app',
+);
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
   const { data } = await supabase.auth.getSession();
@@ -24,11 +29,43 @@ async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
   }
 }
 
+async function readJsonErrorBody(res: Response): Promise<string> {
+  const text = await res.text();
+  const trimmed = text.trimStart();
+  if (trimmed.startsWith('<')) {
+    return `A szerver HTML-t küldött (HTTP ${res.status}). Ellenőrizze az EXPO_PUBLIC_API_BASE_URL értéket.`;
+  }
+  try {
+    const j = JSON.parse(text) as { error?: string };
+    if (typeof j.error === 'string' && j.error) return j.error;
+  } catch {
+    /* ignore */
+  }
+  return text.slice(0, 180) || `HTTP ${res.status}`;
+}
+
 export async function fetchTopupConfig() {
-  const headers = await getAuthHeaders();
-  const res = await apiFetch('/api/mobile/topup/config', { headers });
-  if (!res.ok) throw new Error('Nem sikerült betölteni a feltöltési konfigurációt.');
-  return res.json();
+  let lastDetail = '';
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt === 1) {
+      await supabase.auth.refreshSession();
+    }
+    const headers = await getAuthHeaders();
+    const res = await apiFetch('/api/mobile/topup/config', { headers });
+    if (res.ok) return res.json();
+    lastDetail = await readJsonErrorBody(res);
+    if (res.status === 401 && attempt === 0) continue;
+    throw new Error(
+      res.status === 401
+        ? `${lastDetail} Jelentkezz ki és be újra, ha továbbra sem működik.`
+        : `Feltöltési beállítások (HTTP ${res.status}): ${lastDetail}`,
+    );
+  }
+  throw new Error(
+    lastDetail
+      ? `${lastDetail} (munkamenet betöltése után próbáld újra.)`
+      : 'Bejelentkezés szükséges a feltöltéshez.',
+  );
 }
 
 export async function startTopupCheckout(body: {
