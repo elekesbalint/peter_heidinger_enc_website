@@ -145,6 +145,17 @@ export async function createEracuniInvoice(params: {
     return { ok: false, error: "Érvénytelen számlaösszeg: a számla sor ára nem pozitív." };
   }
 
+  function withCurrencyAliases<T extends Record<string, unknown>>(obj: T): T {
+    const out = obj as Record<string, unknown>;
+    out.currency = invoiceCurrency;
+    out.Currency = invoiceCurrency;
+    out.currencyCode = invoiceCurrency;
+    out.invoiceCurrency = invoiceCurrency;
+    out.documentCurrency = invoiceCurrency;
+    out.invoicingCurrency = invoiceCurrency;
+    return obj;
+  }
+
   /** API docs: PaymentRecord.paymentMethodForInvoice stringEnum (Cash, BankTransfer, Stripe, …). */
   function resolveEracuniPaymentMethod(raw: string): string {
     const t = raw.trim();
@@ -433,7 +444,7 @@ export async function createEracuniInvoice(params: {
       AT: "Austria",
       DE: "Germany",
     };
-    const extra: Record<string, unknown> = {
+    const extra: Record<string, unknown> = withCurrencyAliases({
       date: inv.date ?? today,
       dateOfSupplyFrom: inv.dateOfSupplyFrom ?? today,
       currency: inv.currency ?? invoiceCurrency,
@@ -451,7 +462,7 @@ export async function createEracuniInvoice(params: {
         isoCountry,
       type: process.env.E_RACUNI_INVOICE_TYPE?.trim() || "Retail",
       note: inv.note ?? note,
-    };
+    });
     const tax = (p.taxNumber as string) || "";
     if (tax) {
       extra.buyerTaxNumber = tax;
@@ -471,7 +482,7 @@ export async function createEracuniInvoice(params: {
     if (!Array.isArray(out.Items) || out.Items.length === 0) {
       out.Items = wikiItems;
     }
-    return out;
+    return withCurrencyAliases(out);
   }
 
   /** Merge partner/buyer aliases and optional payment so strict tenants accept the document. */
@@ -534,7 +545,7 @@ export async function createEracuniInvoice(params: {
       out.paymentMethodForInvoice = paymentMethod;
       out.payType = paymentMethod;
     }
-    return out;
+    return withCurrencyAliases(out);
   }
 
   function buildSalesInvoiceParameter(): Record<string, unknown> {
@@ -557,6 +568,7 @@ export async function createEracuniInvoice(params: {
       name: itemName,
       description: itemName,
       currency: invoiceCurrency,
+      currencyCode: invoiceCurrency,
       unit: itemUnit,
       quantity: 1,
       vatPercentage: safeVatPercentage,
@@ -578,7 +590,7 @@ export async function createEracuniInvoice(params: {
     const rootPrices: Record<string, unknown> = useCatalogPriceForProduct
       ? {}
       : { price: linePrice, unitPrice: linePrice };
-    return {
+    return withCurrencyAliases({
       date: today,
       currency: invoiceCurrency,
       note,
@@ -597,7 +609,7 @@ export async function createEracuniInvoice(params: {
       line: [invoiceItem],
       documentLine: invoiceItem,
       documentItem: invoiceItem,
-    };
+    });
   }
 
   function buildSalesInvoiceParameterMinimal(
@@ -613,6 +625,7 @@ export async function createEracuniInvoice(params: {
     const invoiceLine: Record<string, unknown> = {
       description: itemName,
       currency: invoiceCurrency,
+      currencyCode: invoiceCurrency,
       quantity: 1,
       discountPercentage: 0,
     };
@@ -629,13 +642,13 @@ export async function createEracuniInvoice(params: {
         : lineShape === "itemsArray"
           ? { items: [invoiceLine] }
           : { item: [invoiceLine] };
-    return {
+    return withCurrencyAliases({
       date: today,
       currency: invoiceCurrency,
       partner: buildPartnerPayload(),
       // Keep line shape selectable; tenants differ between item/items/object expectations.
       ...lineContainer,
-    };
+    });
   }
 
   function buildSalesInvoiceParameterProductCodeOnly(
@@ -649,6 +662,7 @@ export async function createEracuniInvoice(params: {
     if (allowCustomPriceOnProductLine) {
       invoiceLine.price = linePrice;
       invoiceLine.currency = invoiceCurrency;
+      invoiceLine.currencyCode = invoiceCurrency;
     }
     const lineContainer: Record<string, unknown> =
       lineShape === "itemObject"
@@ -656,12 +670,12 @@ export async function createEracuniInvoice(params: {
         : lineShape === "itemsArray"
           ? { items: [invoiceLine] }
           : { item: [invoiceLine] };
-    return {
+    return withCurrencyAliases({
       date: today,
       currency: invoiceCurrency,
       partner: buildPartnerPayload(),
       ...lineContainer,
-    };
+    });
   }
 
   try {
