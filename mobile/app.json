@@ -1,8 +1,7 @@
 {
   "expo": {
-    "name": "AdriaGo Mobile",
+    "name": "AdriaGo",
     "slug": "adriago-mobile",
-    "scheme": "adriago",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -26,10 +25,6 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    },
-    "plugins": [
-      "expo-secure-store",
-      "expo-web-browser"
-    ]
+    }
   }
 }
