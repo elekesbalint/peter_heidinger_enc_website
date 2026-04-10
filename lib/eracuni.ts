@@ -107,6 +107,9 @@ export async function createEracuniInvoice(params: {
   const allowCustomPriceOnProductLine = parseEnvTruthy(
     process.env.E_RACUNI_ALLOW_CUSTOM_PRICE_ON_PRODUCT_LINE,
   );
+  // Device sale invoices should not depend on catalog product rules/currency.
+  const configuredProductCode = process.env.E_RACUNI_ITEM_PRODUCT_CODE?.trim() || "";
+  const itemProductCode = params.kind === "topup" ? configuredProductCode : "";
 
   const normalizedAmountHuf = Number.isFinite(params.amountHuf)
     ? Math.round(params.amountHuf)
@@ -400,8 +403,6 @@ export async function createEracuniInvoice(params: {
       process.env.E_RACUNI_ITEM_VAT_PERCENTAGE?.trim() || "27",
     );
     const safeVatPercentage = Number.isFinite(itemVatPercentage) ? itemVatPercentage : 27;
-    const itemProductCode = process.env.E_RACUNI_ITEM_PRODUCT_CODE?.trim() || "";
-
     const wikiItems: Record<string, unknown>[] = itemProductCode
       ? [
           allowCustomPriceOnProductLine
@@ -539,7 +540,6 @@ export async function createEracuniInvoice(params: {
   function buildSalesInvoiceParameter(): Record<string, unknown> {
     // Minimal valid SalesInvoice skeleton for e-racuni SalesInvoiceCreate.
     // If the tenant requires additional fields, API will now return the next missing field explicitly.
-    const itemProductCode = process.env.E_RACUNI_ITEM_PRODUCT_CODE?.trim() || "";
     const itemUnit = process.env.E_RACUNI_ITEM_UNIT?.trim() || "kom";
     const itemVatPercentage = Number.parseFloat(
       process.env.E_RACUNI_ITEM_VAT_PERCENTAGE?.trim() || "27",
@@ -604,7 +604,6 @@ export async function createEracuniInvoice(params: {
     lineShape: "itemArray" | "itemsArray" | "itemObject" = "itemArray",
   ): Record<string, unknown> {
     const itemUnit = process.env.E_RACUNI_ITEM_UNIT?.trim() || "kom";
-    const itemProductCode = process.env.E_RACUNI_ITEM_PRODUCT_CODE?.trim() || "";
     const itemVatPercentage = Number.parseFloat(
       process.env.E_RACUNI_ITEM_VAT_PERCENTAGE?.trim() || "27",
     );
@@ -642,7 +641,6 @@ export async function createEracuniInvoice(params: {
   function buildSalesInvoiceParameterProductCodeOnly(
     lineShape: "itemArray" | "itemsArray" | "itemObject" = "itemArray",
   ): Record<string, unknown> | null {
-    const itemProductCode = process.env.E_RACUNI_ITEM_PRODUCT_CODE?.trim() || "";
     if (!itemProductCode) return null;
     const invoiceLine: Record<string, unknown> = {
       productCode: itemProductCode,
