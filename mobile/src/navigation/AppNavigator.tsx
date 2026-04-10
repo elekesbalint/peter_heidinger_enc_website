@@ -6,6 +6,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { supabase } from '../lib/supabase';
+import { signOut } from '../lib/auth';
 import { Colors, Gradients, Fonts, Radius } from '../theme';
 import { Text } from '../components/ui';
 
@@ -203,18 +204,26 @@ export function AppNavigator() {
   const [session, setSession] = useState<boolean | null>(null);
 
   useEffect(() => {
-    supabase.auth
-      .getSession()
-      .then(({ data }) => {
-        setSession(!!data.session);
-      })
-      .catch(() => {
-        setSession(false);
-      });
+    let cancelled = false;
+    (async () => {
+      try {
+        // Egyszeri kényszerített kijelentkezés: .env-ben EXPO_PUBLIC_FORCE_LOGOUT_ONCE=1, majd egy indítás után töröld a sort.
+        if (process.env.EXPO_PUBLIC_FORCE_LOGOUT_ONCE === '1') {
+          await signOut();
+        }
+        const { data } = await supabase.auth.getSession();
+        if (!cancelled) setSession(!!data.session);
+      } catch {
+        if (!cancelled) setSession(false);
+      }
+    })();
     const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(!!s);
     });
-    return () => listener.subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
   if (session === null) {
