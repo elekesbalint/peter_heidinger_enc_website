@@ -156,6 +156,8 @@ export async function POST(request: Request) {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       customer_email: user.email,
+      billing_address_collection: "required",
+      phone_number_collection: { enabled: true },
       success_url: `${baseUrl}/topup/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/topup/cancel`,
       line_items: [

@@ -188,6 +188,9 @@ export async function POST(request: Request) {
       const deviceIdentifier = metadata.device_identifier || null;
       const userEmail = metadata.user_email ?? null;
       const customerEmail = session.customer_details?.email ?? null;
+      const customerName = session.customer_details?.name ?? null;
+      const customerPhone = session.customer_details?.phone ?? null;
+      const customerAddress = session.customer_details?.address ?? null;
       const emailForAuthResolution = userEmail || customerEmail;
       const isDevicePurchase = orderType === "device_purchase";
       const isTopup = orderType === "topup";
@@ -400,6 +403,12 @@ export async function POST(request: Request) {
             amountHuf,
             stripePaidMajorUnits,
             stripeCurrency,
+            buyerName: customerName,
+            buyerStreet: customerAddress?.line1 ?? null,
+            buyerPostalCode: customerAddress?.postal_code ?? null,
+            buyerCity: customerAddress?.city ?? null,
+            buyerCountryCode: customerAddress?.country ?? null,
+            buyerPhone: customerPhone,
             userEmail: userEmail,
           });
           if (!inv.ok) {
@@ -521,6 +530,12 @@ export async function POST(request: Request) {
             amountHuf,
             stripePaidMajorUnits,
             stripeCurrency,
+            buyerName: customerName,
+            buyerStreet: customerAddress?.line1 ?? null,
+            buyerPostalCode: customerAddress?.postal_code ?? null,
+            buyerCity: customerAddress?.city ?? null,
+            buyerCountryCode: customerAddress?.country ?? null,
+            buyerPhone: customerPhone,
             userEmail: userEmail,
           });
           if (!inv.ok) {

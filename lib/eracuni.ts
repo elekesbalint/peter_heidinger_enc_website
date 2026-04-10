@@ -28,6 +28,12 @@ export async function createEracuniInvoice(params: {
   stripePaidMajorUnits?: number;
   /** ISO currency from Stripe session (e.g. HUF, EUR). */
   stripeCurrency?: string;
+  buyerName?: string | null;
+  buyerStreet?: string | null;
+  buyerPostalCode?: string | null;
+  buyerCity?: string | null;
+  buyerCountryCode?: string | null;
+  buyerPhone?: string | null;
   userEmail: string | null;
 }): Promise<{
   ok: boolean;
@@ -287,10 +293,14 @@ export async function createEracuniInvoice(params: {
   }
 
   function buildPartnerPostalAddress(): Record<string, unknown> {
-    const buyerStreet = process.env.E_RACUNI_BUYER_STREET?.trim() || "Ismeretlen cím 1";
-    const buyerPostalCode = process.env.E_RACUNI_BUYER_POSTAL_CODE?.trim() || "1000";
-    const buyerCity = process.env.E_RACUNI_BUYER_CITY?.trim() || "Budapest";
-    const buyerCountry = process.env.E_RACUNI_BUYER_COUNTRY_CODE?.trim() || "HU";
+    const buyerStreet =
+      params.buyerStreet?.trim() || process.env.E_RACUNI_BUYER_STREET?.trim() || "Ismeretlen cím 1";
+    const buyerPostalCode =
+      params.buyerPostalCode?.trim() || process.env.E_RACUNI_BUYER_POSTAL_CODE?.trim() || "1000";
+    const buyerCity =
+      params.buyerCity?.trim() || process.env.E_RACUNI_BUYER_CITY?.trim() || "Budapest";
+    const buyerCountry =
+      params.buyerCountryCode?.trim() || process.env.E_RACUNI_BUYER_COUNTRY_CODE?.trim() || "HU";
     return {
       street: buyerStreet,
       postalCode: buyerPostalCode,
@@ -302,12 +312,16 @@ export async function createEracuniInvoice(params: {
 
   function buildPartnerPayload(): Record<string, unknown> {
     const buyerEmail = params.userEmail || "";
-    const buyerName = params.userEmail || "AdriaGo ügyfél";
-    const buyerStreet = process.env.E_RACUNI_BUYER_STREET?.trim() || "Ismeretlen cím 1";
-    const buyerPostalCode = process.env.E_RACUNI_BUYER_POSTAL_CODE?.trim() || "1000";
-    const buyerCity = process.env.E_RACUNI_BUYER_CITY?.trim() || "Budapest";
-    const buyerCountry = process.env.E_RACUNI_BUYER_COUNTRY_CODE?.trim() || "HU";
-    const buyerPhone = process.env.E_RACUNI_BUYER_PHONE?.trim() || "";
+    const buyerName = params.buyerName?.trim() || params.userEmail || "AdriaGo ugyfel";
+    const buyerStreet =
+      params.buyerStreet?.trim() || process.env.E_RACUNI_BUYER_STREET?.trim() || "Ismeretlen cim 1";
+    const buyerPostalCode =
+      params.buyerPostalCode?.trim() || process.env.E_RACUNI_BUYER_POSTAL_CODE?.trim() || "1000";
+    const buyerCity =
+      params.buyerCity?.trim() || process.env.E_RACUNI_BUYER_CITY?.trim() || "Budapest";
+    const buyerCountry =
+      params.buyerCountryCode?.trim() || process.env.E_RACUNI_BUYER_COUNTRY_CODE?.trim() || "HU";
+    const buyerPhone = params.buyerPhone?.trim() || process.env.E_RACUNI_BUYER_PHONE?.trim() || "";
     const buyerTaxNumber = process.env.E_RACUNI_BUYER_TAX_NUMBER?.trim() || "";
     const postal = buildPartnerPostalAddress();
     return {
