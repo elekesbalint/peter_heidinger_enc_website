@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
+  Animated,
   View,
   StyleSheet,
   Alert,
@@ -7,6 +8,7 @@ import {
   TextInput,
   ScrollView,
 } from 'react-native';
+import { useFadeIn } from '../../hooks/useFadeIn';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
 import { ScreenWrapper, Text, Button, Card, Input, Badge } from '../../components/ui';
@@ -30,6 +32,12 @@ export function OrderScreen({ navigation }: Props) {
   const [licensePlate, setLicensePlate] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const headerAnim = useFadeIn(0);
+  const infoAnim = useFadeIn(100);
+  const catAnim = useFadeIn(180);
+  const plateAnim = useFadeIn(260);
+  const ctaAnim = useFadeIn(330);
 
   function validate() {
     if (!selectedCategory) { setError('Válasszon kategóriát!'); return false; }
@@ -68,15 +76,15 @@ export function OrderScreen({ navigation }: Props) {
 
   return (
     <ScreenWrapper>
-      <View style={styles.headerWrap}>
+      <Animated.View style={[styles.headerWrap, headerAnim]}>
         <Text variant="h2">ENC Rendelés</Text>
         <Text variant="caption" style={styles.subtitle}>
           Rendelje meg személyre szabott ENC készülékét az elektronikus útdíj-fizetéshez.
         </Text>
-      </View>
+      </Animated.View>
 
       {/* Info card */}
-      <View>
+      <Animated.View style={infoAnim}>
         <LinearGradient colors={['#1A1A45', '#0E0E30']} style={styles.infoCard}>
           <Text style={styles.infoIcon}>📡</Text>
           <View style={{ flex: 1 }}>
@@ -86,10 +94,10 @@ export function OrderScreen({ navigation }: Props) {
             </Text>
           </View>
         </LinearGradient>
-      </View>
+      </Animated.View>
 
       {/* Category */}
-      <View>
+      <Animated.View style={catAnim}>
         <Text variant="title" style={styles.sectionTitle}>1. Járműkategória</Text>
         {CATEGORIES.map((cat) => (
           <TouchableOpacity
@@ -122,10 +130,10 @@ export function OrderScreen({ navigation }: Props) {
             </Card>
           </TouchableOpacity>
         ))}
-      </View>
+      </Animated.View>
 
       {/* License plate */}
-      <View>
+      <Animated.View style={plateAnim}>
         <Text variant="title" style={styles.sectionTitle}>2. Rendszám</Text>
         <Input
           label="Rendszám"
@@ -135,13 +143,13 @@ export function OrderScreen({ navigation }: Props) {
           placeholder="pl. ABC-123"
           maxLength={12}
         />
-      </View>
+      </Animated.View>
 
       {error ? (
         <Text style={styles.errorText}>{error}</Text>
       ) : null}
 
-      <View>
+      <Animated.View style={ctaAnim}>
         <Button
           label="Rendelés & Fizetés →"
           onPress={handleOrder}
@@ -151,7 +159,7 @@ export function OrderScreen({ navigation }: Props) {
         <Text variant="caption" style={styles.legal}>
           A rendelés gomb megnyomásával átirányítjuk Stripe biztonságos fizetési oldalára. Az ÁSZF-et elfogadja.
         </Text>
-      </View>
+      </Animated.View>
     </ScreenWrapper>
   );
 }

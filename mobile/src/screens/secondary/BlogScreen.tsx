@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { Animated, View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useFadeIn } from '../../hooks/useFadeIn';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ScreenWrapper, Text, Card } from '../../components/ui';
 import { Colors, Gradients, Spacing, Fonts, Radius } from '../../theme';
@@ -20,9 +21,16 @@ interface BlogPost {
   category?: string;
 }
 
+function AnimatedPostItem({ children, delay }: { children: React.ReactNode; delay: number }) {
+  const anim = useFadeIn(delay, 400);
+  return <Animated.View style={anim}>{children}</Animated.View>;
+}
+
 export function BlogScreen({ navigation }: Props) {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const headerAnim = useFadeIn(0);
 
   useEffect(() => {
     getSettings(['home_blog_posts_json']).then((s) => {
@@ -45,10 +53,10 @@ export function BlogScreen({ navigation }: Props) {
 
   return (
     <ScreenWrapper>
-      <View style={styles.header}>
+      <Animated.View style={[styles.header, headerAnim]}>
         <Text variant="h2">Hírek & Blog</Text>
         <Text variant="caption" style={{ marginTop: 4 }}>AdriaGo legfrissebb hírei</Text>
-      </View>
+      </Animated.View>
 
       {posts.length === 0 && (
         <View style={styles.empty}>
@@ -58,7 +66,7 @@ export function BlogScreen({ navigation }: Props) {
       )}
 
       {posts.map((post, i) => (
-        <View key={post.slug}>
+        <AnimatedPostItem key={post.slug} delay={i * 60}>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => navigation.navigate('BlogDetail', { slug: post.slug, title: post.title })}
@@ -87,7 +95,7 @@ export function BlogScreen({ navigation }: Props) {
               </View>
             </Card>
           </TouchableOpacity>
-        </View>
+        </AnimatedPostItem>
       ))}
     </ScreenWrapper>
   );

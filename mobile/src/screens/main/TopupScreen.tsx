@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
+  Animated,
   View,
   StyleSheet,
   Alert,
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
+import { useFadeIn } from '../../hooks/useFadeIn';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
 import { ScreenWrapper, Text, Button, Card, Input } from '../../components/ui';
@@ -32,6 +34,13 @@ export function TopupScreen({ navigation, route }: Props) {
   const [configLoading, setConfigLoading] = useState(true);
   const [minTopup, setMinTopup] = useState(5);
   const [fxRate, setFxRate] = useState(400);
+
+  const headerAnim = useFadeIn(0);
+  const deviceAnim = useFadeIn(80);
+  const packagesAnim = useFadeIn(160);
+  const customAnim = useFadeIn(240);
+  const destAnim = useFadeIn(300);
+  const ctaAnim = useFadeIn(360);
 
   const loadConfig = useCallback(async () => {
     setConfigLoading(true);
@@ -98,16 +107,16 @@ export function TopupScreen({ navigation, route }: Props) {
 
   return (
     <ScreenWrapper>
-      <View style={styles.headerWrap}>
+      <Animated.View style={[styles.headerWrap, headerAnim]}>
         <Text variant="h2">Feltöltés</Text>
         <Text variant="caption" style={styles.subtitle}>
           Töltse fel egyenlegét az ENC automatikus útdíj-fizetéshez.
         </Text>
-      </View>
+      </Animated.View>
 
       {/* Device selector */}
       {wallets.length > 1 && (
-        <View>
+        <Animated.View style={deviceAnim}>
           <Text variant="title" style={styles.sectionTitle}>Eszköz</Text>
           {wallets.map((w) => (
             <TouchableOpacity
@@ -129,12 +138,12 @@ export function TopupScreen({ navigation, route }: Props) {
               </Card>
             </TouchableOpacity>
           ))}
-          </View>
+          </Animated.View>
       )}
 
       {/* Packages */}
       {packages.length > 0 && (
-        <View>
+        <Animated.View style={packagesAnim}>
           <Text variant="title" style={styles.sectionTitle}>Csomag kiválasztása</Text>
           <View style={styles.packagesGrid}>
             {packages.map((pkg) => {
@@ -162,11 +171,11 @@ export function TopupScreen({ navigation, route }: Props) {
               );
             })}
           </View>
-          </View>
+          </Animated.View>
       )}
 
       {/* Custom amount */}
-      <View>
+      <Animated.View style={customAnim}>
         <Text variant="title" style={styles.sectionTitle}>Egyéni összeg (EUR)</Text>
         <Input
           label="Egyéni összeg"
@@ -175,11 +184,11 @@ export function TopupScreen({ navigation, route }: Props) {
           keyboardType="decimal-pad"
           placeholder={`min. ${minTopup} EUR`}
         />
-      </View>
+      </Animated.View>
 
       {/* Destination */}
       {destinations.length > 0 && (
-        <View>
+        <Animated.View style={destAnim}>
           <Text variant="title" style={styles.sectionTitle}>Úticél (opcionális)</Text>
           <View style={styles.destWrap}>
             {destinations.slice(0, 8).map((d) => (
@@ -194,11 +203,11 @@ export function TopupScreen({ navigation, route }: Props) {
               </TouchableOpacity>
             ))}
           </View>
-          </View>
+          </Animated.View>
       )}
 
       {/* Summary & CTA */}
-      <View>
+      <Animated.View style={ctaAnim}>
         {finalAmountEur > 0 && (
           <Card style={styles.summaryCard} padding={16}>
             <View style={styles.summaryRow}>
@@ -219,7 +228,7 @@ export function TopupScreen({ navigation, route }: Props) {
           disabled={finalAmountEur < minTopup || !selectedDevice}
           style={styles.orderBtn}
         />
-      </View>
+      </Animated.View>
     </ScreenWrapper>
   );
 }

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Animated,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -7,6 +8,7 @@ import {
   Alert,
   View,
 } from 'react-native';
+import { useFadeIn } from '../../hooks/useFadeIn';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, Button, Input } from '../../components/ui';
@@ -25,6 +27,8 @@ export function RegisterScreen({ navigation }: Props) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const anim = useFadeIn(0, 500);
 
   function validate() {
     const e: Record<string, string> = {};
@@ -63,7 +67,7 @@ export function RegisterScreen({ navigation }: Props) {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            <View>
+            <Animated.View style={anim}>
               <Text variant="h2" style={styles.title}>Regisztráció</Text>
               <Text variant="caption" style={styles.subtitle}>
                 Hozzon létre AdriaGo fiókot
@@ -108,7 +112,7 @@ export function RegisterScreen({ navigation }: Props) {
                   variant="ghost"
                 />
               </View>
-            </View>
+            </Animated.View>
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>

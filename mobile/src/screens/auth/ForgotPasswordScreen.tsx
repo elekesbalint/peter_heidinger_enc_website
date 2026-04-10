@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { Animated, View, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { useFadeIn } from '../../hooks/useFadeIn';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, Button, Input } from '../../components/ui';
@@ -16,6 +17,8 @@ export function ForgotPasswordScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+
+  const anim = useFadeIn(0, 500);
 
   async function handleReset() {
     if (!email.trim()) return;
@@ -35,7 +38,7 @@ export function ForgotPasswordScreen({ navigation }: Props) {
       <SafeAreaView style={styles.flex}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
           <View style={styles.container}>
-            <View>
+            <Animated.View style={anim}>
               {sent ? (
                 <View style={styles.successBox}>
                   <Text style={styles.successIcon}>✉️</Text>
@@ -77,7 +80,7 @@ export function ForgotPasswordScreen({ navigation }: Props) {
                   />
                 </>
               )}
-            </View>
+            </Animated.View>
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>

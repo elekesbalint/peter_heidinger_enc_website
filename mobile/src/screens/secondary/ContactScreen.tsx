@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { Animated, View, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { useFadeIn } from '../../hooks/useFadeIn';
 import { ScreenWrapper, Text, Button, Input, Card } from '../../components/ui';
 import { Colors, Spacing } from '../../theme';
 import { sendContactMessage } from '../../lib/api';
@@ -10,6 +11,9 @@ export function ContactScreen() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+
+  const headerAnim = useFadeIn(0);
+  const formAnim = useFadeIn(100);
 
   async function handleSend() {
     if (!name.trim() || !email.trim() || !message.trim()) {
@@ -30,23 +34,23 @@ export function ContactScreen() {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
       <ScreenWrapper>
-        <View style={styles.header}>
+        <Animated.View style={[styles.header, headerAnim]}>
           <Text variant="h2">Kapcsolat</Text>
           <Text variant="caption" style={{ marginTop: 4 }}>
             Kérdése van? Írjon nekünk!
           </Text>
-        </View>
+        </Animated.View>
 
         {sent ? (
-          <View style={styles.successBox}>
+          <Animated.View style={[styles.successBox, formAnim]}>
             <Text style={styles.successIcon}>✅</Text>
             <Text variant="h3" style={{ marginBottom: 8 }}>Üzenet elküldve!</Text>
             <Text variant="caption" style={{ textAlign: 'center' }}>
               Hamarosan felvesszük Önnel a kapcsolatot.
             </Text>
-          </View>
+          </Animated.View>
         ) : (
-          <View>
+          <Animated.View style={formAnim}>
             <Input label="Neve" value={name} onChangeText={setName} placeholder="Kiss János" />
             <Input label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="nev@example.com" />
             <Input
@@ -59,7 +63,7 @@ export function ContactScreen() {
               style={styles.textarea}
             />
             <Button label="Üzenet küldése" onPress={handleSend} loading={loading} />
-          </View>
+          </Animated.View>
         )}
       </ScreenWrapper>
     </KeyboardAvoidingView>

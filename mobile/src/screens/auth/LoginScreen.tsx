@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Animated,
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
@@ -7,6 +8,7 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
+import { useFadeIn } from '../../hooks/useFadeIn';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, Button, Input } from '../../components/ui';
@@ -25,6 +27,9 @@ export function LoginScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+
+  const headerAnim = useFadeIn(0, 500);
+  const formAnim = useFadeIn(150, 500);
 
   function validate() {
     const e: typeof errors = {};
@@ -56,7 +61,7 @@ export function LoginScreen({ navigation }: Props) {
           style={styles.flex}
         >
           <View style={styles.container}>
-            <View style={styles.header}>
+            <Animated.View style={[styles.header, headerAnim]}>
               <View style={styles.logoWrap}>
                 <LinearGradient
                   colors={Gradients.accent}
@@ -71,9 +76,9 @@ export function LoginScreen({ navigation }: Props) {
               <Text variant="caption" style={styles.subtitle}>
                 Jelentkezzen be AdriaGo fiókjába
               </Text>
-            </View>
+            </Animated.View>
 
-            <View style={styles.form}>
+            <Animated.View style={[styles.form, formAnim]}>
               <Input
                 label="Email"
                 value={email}
@@ -120,7 +125,7 @@ export function LoginScreen({ navigation }: Props) {
                 onPress={() => navigation.navigate('Register')}
                 variant="secondary"
               />
-            </View>
+            </Animated.View>
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>

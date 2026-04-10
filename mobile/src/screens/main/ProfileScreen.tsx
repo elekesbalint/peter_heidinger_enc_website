@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
+  Animated,
   View,
   StyleSheet,
   Alert,
@@ -7,6 +8,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
 } from 'react-native';
+import { useFadeIn } from '../../hooks/useFadeIn';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ScreenWrapper, Text, Button, Input, Card, Divider } from '../../components/ui';
 import { Colors, Gradients, Spacing, Fonts, Radius } from '../../theme';
@@ -28,6 +30,12 @@ export function ProfileScreen({ navigation }: Props) {
   const [referralEmail, setReferralEmail] = useState('');
   const [inviting, setInviting] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState(false);
+
+  const avatarAnim = useFadeIn(0);
+  const formAnim = useFadeIn(100);
+  const referralAnim = useFadeIn(200);
+  const legalAnim = useFadeIn(280);
+  const logoutAnim = useFadeIn(340);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -97,7 +105,7 @@ export function ProfileScreen({ navigation }: Props) {
   return (
     <ScreenWrapper>
       {/* Avatar + name */}
-      <View style={styles.avatarSection}>
+      <Animated.View style={[styles.avatarSection, avatarAnim]}>
         <LinearGradient colors={Gradients.accent} style={styles.avatarCircle}>
           <Text style={styles.avatarLetter}>
             {(profile.first_name?.[0] ?? profile.email?.[0] ?? 'U').toUpperCase()}
@@ -105,10 +113,10 @@ export function ProfileScreen({ navigation }: Props) {
         </LinearGradient>
         <Text variant="h3" style={{ marginTop: 12 }}>{displayName}</Text>
         <Text variant="caption">{profile.email ?? '-'}</Text>
-      </View>
+      </Animated.View>
 
       {/* Profile form */}
-      <View>
+      <Animated.View style={formAnim}>
         <View style={styles.sectionHeader}>
           <Text variant="title">Személyes adatok</Text>
           {!editing && (
@@ -151,10 +159,10 @@ export function ProfileScreen({ navigation }: Props) {
             ))}
           </Card>
         )}
-      </View>
+      </Animated.View>
 
       {/* Referral */}
-      <View>
+      <Animated.View style={referralAnim}>
         <Text variant="title" style={styles.sectionTitle}>Barát meghívása</Text>
         <Card padding={16} style={{ marginBottom: Spacing.md }}>
           <Text variant="caption" style={{ marginBottom: 10, lineHeight: 18 }}>
@@ -185,10 +193,10 @@ export function ProfileScreen({ navigation }: Props) {
             </View>
           )}
         </Card>
-      </View>
+      </Animated.View>
 
       {/* Legal links */}
-      <View>
+      <Animated.View style={legalAnim}>
         <Text variant="title" style={styles.sectionTitle}>Egyebek</Text>
         <Card padding={0} style={{ marginBottom: Spacing.md, overflow: 'hidden' }}>
           {[
@@ -209,12 +217,12 @@ export function ProfileScreen({ navigation }: Props) {
             </View>
           ))}
         </Card>
-      </View>
+      </Animated.View>
 
       {/* Logout */}
-      <View>
+      <Animated.View style={logoutAnim}>
         <Button label="Kilépés" variant="danger" onPress={handleSignOut} style={styles.logoutBtn} />
-      </View>
+      </Animated.View>
 
     </ScreenWrapper>
   );

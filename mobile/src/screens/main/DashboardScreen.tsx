@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
+  Animated,
   View,
   StyleSheet,
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
 } from 'react-native';
+import { useFadeIn } from '../../hooks/useFadeIn';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text, Card, Badge, ScreenWrapper } from '../../components/ui';
 import { Colors, Gradients, Spacing, Fonts, Radius } from '../../theme';
@@ -44,6 +46,13 @@ export function DashboardScreen({ navigation }: Props) {
   const [topups, setTopups] = useState<StripeTopup[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  const headerAnim = useFadeIn(0);
+  const balanceAnim = useFadeIn(100);
+  const actionsAnim = useFadeIn(180);
+  const devicesAnim = useFadeIn(260);
+  const ordersAnim = useFadeIn(330);
+  const topupsAnim = useFadeIn(400);
 
   const load = useCallback(async () => {
     const { data: session } = await supabase.auth.getSession();
@@ -85,7 +94,7 @@ export function DashboardScreen({ navigation }: Props) {
     <ScreenWrapper onRefresh={onRefresh} refreshing={refreshing}>
 
       {/* Header */}
-      <View style={styles.headerRow}>
+      <Animated.View style={[styles.headerRow, headerAnim]}>
         <View>
           <Text variant="caption">Üdvözöljük,</Text>
           <Text variant="h3">{user?.email?.split('@')[0] ?? 'Felhasználó'}</Text>
@@ -100,10 +109,10 @@ export function DashboardScreen({ navigation }: Props) {
             </Text>
           </LinearGradient>
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
       {/* Balance hero card */}
-      <View>
+      <Animated.View style={balanceAnim}>
         <LinearGradient
           colors={['#1A1A45', '#0E0E30']}
           style={styles.balanceCard}
@@ -117,10 +126,10 @@ export function DashboardScreen({ navigation }: Props) {
           <Text style={styles.balanceAmount}>{formatHuf(totalBalance)}</Text>
           <Text variant="caption">{wallets.length} eszköz</Text>
         </LinearGradient>
-      </View>
+      </Animated.View>
 
       {/* Quick actions */}
-      <View style={styles.actionsRow}>
+      <Animated.View style={[styles.actionsRow, actionsAnim]}>
         {[
           { icon: '📦', label: 'Rendelés', screen: 'Order' },
           { icon: '💳', label: 'Feltöltés', screen: 'Topup' },
@@ -146,11 +155,11 @@ export function DashboardScreen({ navigation }: Props) {
             <Text variant="caption" style={styles.actionLabel}>{item.label}</Text>
           </TouchableOpacity>
         ))}
-      </View>
+      </Animated.View>
 
       {/* Devices */}
       {wallets.length > 0 && (
-        <View>
+        <Animated.View style={devicesAnim}>
           <Text variant="title" style={styles.sectionTitle}>Eszközeim</Text>
           {wallets.map((w, i) => (
             <TouchableOpacity
@@ -174,12 +183,12 @@ export function DashboardScreen({ navigation }: Props) {
               </Card>
             </TouchableOpacity>
           ))}
-        </View>
+        </Animated.View>
       )}
 
       {/* Recent orders */}
       {orders.length > 0 && (
-        <View>
+        <Animated.View style={ordersAnim}>
           <Text variant="title" style={styles.sectionTitle}>Rendelések</Text>
           {orders.slice(0, 3).map((o) => (
             <Card key={o.id} style={styles.rowCard} padding={14}>
@@ -200,12 +209,12 @@ export function DashboardScreen({ navigation }: Props) {
               </View>
             </Card>
           ))}
-        </View>
+        </Animated.View>
       )}
 
       {/* Recent topups */}
       {topups.length > 0 && (
-        <View>
+        <Animated.View style={topupsAnim}>
           <Text variant="title" style={styles.sectionTitle}>Feltöltések</Text>
           {topups.slice(0, 5).map((t) => (
             <Card key={t.id} style={styles.rowCard} padding={14}>
@@ -223,17 +232,17 @@ export function DashboardScreen({ navigation }: Props) {
               </View>
             </Card>
           ))}
-        </View>
+        </Animated.View>
       )}
 
       {wallets.length === 0 && orders.length === 0 && (
-        <View style={styles.emptyBox}>
+        <Animated.View style={[styles.emptyBox, devicesAnim]}>
           <Text style={styles.emptyIcon}>🚀</Text>
           <Text variant="title" style={styles.emptyTitle}>Kezdje el!</Text>
           <Text variant="caption" style={styles.emptyText}>
             Rendelje meg első ENC készülékét, és töltse fel egyenlegét az útdíj-fizetéshez.
           </Text>
-        </View>
+        </Animated.View>
       )}
 
     </ScreenWrapper>
