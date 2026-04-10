@@ -111,6 +111,59 @@ export async function startDeviceOrderCheckout(body: {
   return data as { ok: true; url: string; waitlist?: boolean };
 }
 
+export type MobileSummaryData = {
+  ok: true;
+  fxEurToHuf: number;
+  referralWalletBonusCapHuf: number;
+  devices: Array<{
+    identifier: string;
+    category: string;
+    status: string;
+    licensePlate: string | null;
+    balanceHuf: number;
+  }>;
+  wallets: Array<{
+    deviceIdentifier: string;
+    balanceHuf: number;
+    updatedAt: string | null;
+  }>;
+  orders: Array<{
+    id: string;
+    deviceIdentifier: string | null;
+    status: string;
+    paidAt: string | null;
+    amountHuf: number | null;
+    category: string;
+    createdAt: string;
+  }>;
+  topups: Array<{
+    id: string;
+    amountHuf: number;
+    currency: string;
+    status: string;
+    paidAt: string | null;
+    deviceIdentifier: string | null;
+    travelDestination: string | null;
+  }>;
+  invites: unknown[];
+};
+
+/** Fiókom adatok — szerverről (nem közvetlen Supabase PostgREST a mobilon → kevesebb iOS fetch hiba). */
+export async function fetchMobileSummary(): Promise<MobileSummaryData> {
+  const headers = await getAuthHeaders();
+  const res = await apiFetch('/api/mobile/summary', { headers });
+  let body: { ok?: boolean; error?: string } = {};
+  try {
+    body = (await res.json()) as { ok?: boolean; error?: string };
+  } catch {
+    throw new Error('Érvénytelen válasz a szervertől (összefoglaló).');
+  }
+  if (!res.ok || !body.ok) {
+    throw new Error(body.error ?? `Összefoglaló betöltése sikertelen (HTTP ${res.status}).`);
+  }
+  return body as unknown as MobileSummaryData;
+}
+
 export async function getProfile() {
   const headers = await getAuthHeaders();
   const res = await apiFetch('/api/me/profile', { headers });

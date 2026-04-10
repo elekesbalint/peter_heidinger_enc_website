@@ -11,6 +11,7 @@ import { useFadeIn } from '../../hooks/useFadeIn';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text, Card, Badge, ScreenWrapper, Button } from '../../components/ui';
 import { Colors, Gradients, Spacing, Fonts, Radius } from '../../theme';
+import { fetchMobileSummary } from '../../lib/api';
 import { assertSupabaseConfigured, supabase } from '../../lib/supabase';
 import type { EncDeviceOrder, StripeTopup, DeviceWallet } from '../../lib/supabase';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -70,44 +71,46 @@ export function DashboardScreen({ navigation }: Props) {
       }
       setUser({ email: u.email, id: u.id });
 
-      const [walletsRes, ordersRes, topupsRes] = await Promise.all([
-        supabase.from('device_wallets').select('*').order('updated_at', { ascending: false }).limit(20),
-        supabase
-          .from('enc_device_orders')
-          .select('*')
-          .eq('auth_user_id', u.id)
-          .order('created_at', { ascending: false })
-          .limit(10),
-        supabase
-          .from('stripe_topups')
-          .select('*')
-          .eq('user_id', u.id)
-          .eq('status', 'paid')
-          .order('paid_at', { ascending: false })
-          .limit(15),
-      ]);
+      const summary = await fetchMobileSummary();
 
-      setWallets((walletsRes.data ?? []) as DeviceWallet[]);
-      setOrders((ordersRes.data ?? []) as EncDeviceOrder[]);
-      setTopups((topupsRes.data ?? []) as StripeTopup[]);
-
-      const rows = [walletsRes, ordersRes, topupsRes];
-      const netFail = rows.find(
-        (r) => r.error && /network|fetch|TypeError/i.test(String(r.error.message)),
+      setWallets(
+        summary.wallets.map((w) => ({
+          device_identifier: w.deviceIdentifier,
+          balance_huf: w.balanceHuf,
+          updated_at: w.updatedAt ?? '',
+        })),
       );
-      if (netFail?.error) {
-        setLoadError(
-          'Nem sikerült kapcsolódni a Supabase-hoz. Próbáld: npx expo start -c, majd újratöltés. Ellenőrizd a .env fájlt (EXPO_PUBLIC_SUPABASE_URL).',
-        );
-        setWallets([]);
-        setOrders([]);
-        setTopups([]);
-      }
+      setOrders(
+        summary.orders.map((o) => ({
+          id: o.id,
+          device_identifier: o.deviceIdentifier,
+          status: o.status,
+          paid_at: o.paidAt,
+          amount_huf: o.amountHuf,
+          license_plate: null,
+          category: typeof o.category === 'string' ? o.category : String(o.category ?? ''),
+          created_at: o.createdAt,
+        })) as EncDeviceOrder[],
+      );
+      setTopups(
+        summary.topups
+          .filter((t) => t.status === 'paid')
+          .slice(0, 15)
+          .map((t) => ({
+            id: t.id,
+            amount_huf: t.amountHuf,
+            currency: t.currency,
+            status: t.status,
+            paid_at: t.paidAt,
+            created_at: t.paidAt ?? '',
+            device_identifier: t.deviceIdentifier,
+          })) as StripeTopup[],
+      );
     } catch (e) {
       const raw = e instanceof Error ? e.message : String(e);
       setLoadError(
         /network request failed/i.test(raw)
-          ? 'Nem sikerült kapcsolódni a szerverhez (Supabase). Indítsd újra a Metro-t: npx expo start -c. Ha így sem jó, ellenőrizd a .env SUPABASE és API URL mezőket.'
+          ? 'Nem sikerült kapcsolódni a szerverhez. Ellenőrizd a netet és az EXPO_PUBLIC_API_BASE_URL értéket (.env), majd: npx expo start -c.'
           : raw,
       );
       setWallets([]);

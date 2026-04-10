@@ -41,20 +41,29 @@ export async function GET(request: Request) {
       getIntSetting(settings, "referral_device_discount_huf", 25000),
     );
 
-    const [{ data: devices, error: devicesError }, { data: topups, error: topupsError }] =
-      await Promise.all([
-        supabase
-          .from("devices")
-          .select("identifier, category, status, license_plate")
-          .eq("auth_user_id", user.id)
-          .order("sold_at", { ascending: false }),
-        supabase
-          .from("stripe_topups")
-          .select("id, amount_huf, currency, status, paid_at, device_identifier, travel_destination")
-          .eq("user_email", userEmail)
-          .order("created_at", { ascending: false })
-          .limit(20),
-      ]);
+    const [
+      { data: devices, error: devicesError },
+      { data: topups, error: topupsError },
+      { data: orders, error: ordersError },
+    ] = await Promise.all([
+      supabase
+        .from("devices")
+        .select("identifier, category, status, license_plate")
+        .eq("auth_user_id", user.id)
+        .order("sold_at", { ascending: false }),
+      supabase
+        .from("stripe_topups")
+        .select("id, amount_huf, currency, status, paid_at, device_identifier, travel_destination")
+        .eq("user_email", userEmail)
+        .order("created_at", { ascending: false })
+        .limit(20),
+      supabase
+        .from("enc_device_orders")
+        .select("id, device_identifier, status, paid_at, amount_huf, category, created_at")
+        .eq("auth_user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(10),
+    ]);
 
     if (devicesError) {
       return Response.json({ ok: false, error: devicesError.message }, { status: 500 });
@@ -62,14 +71,18 @@ export async function GET(request: Request) {
     if (topupsError) {
       return Response.json({ ok: false, error: topupsError.message }, { status: 500 });
     }
+    if (ordersError) {
+      return Response.json({ ok: false, error: ordersError.message }, { status: 500 });
+    }
 
     const identifiers = (devices ?? []).map((d) => d.identifier);
+    type WalletRowFull = WalletRow & { updated_at?: string };
     const { data: wallets, error: walletsError } = identifiers.length
       ? await supabase
           .from("device_wallets")
-          .select("device_identifier, balance_huf")
+          .select("device_identifier, balance_huf, updated_at")
           .in("device_identifier", identifiers)
-      : { data: [] as WalletRow[], error: null };
+      : { data: [] as WalletRowFull[], error: null };
     if (walletsError) {
       return Response.json({ ok: false, error: walletsError.message }, { status: 500 });
     }
@@ -98,6 +111,20 @@ export async function GET(request: Request) {
         status: d.status,
         licensePlate: d.license_plate,
         balanceHuf: walletByIdentifier.get(d.identifier) ?? 0,
+      })),
+      wallets: (wallets ?? []).map((w) => ({
+        deviceIdentifier: w.device_identifier,
+        balanceHuf: Number(w.balance_huf ?? 0),
+        updatedAt: w.updated_at ?? null,
+      })),
+      orders: (orders ?? []).map((o) => ({
+        id: o.id,
+        deviceIdentifier: o.device_identifier,
+        status: o.status,
+        paidAt: o.paid_at,
+        amountHuf: o.amount_huf != null ? Number(o.amount_huf) : null,
+        category: o.category,
+        createdAt: o.created_at,
       })),
       topups: (topups ?? []).map((t) => ({
         id: t.id,
