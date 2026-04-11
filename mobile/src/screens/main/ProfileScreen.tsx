@@ -249,6 +249,12 @@ export function ProfileScreen({ navigation }: Props) {
             <Input label="Település" value={form.address_city ?? ''} onChangeText={(v) => setForm((f) => ({ ...f, address_city: v }))} />
             <Input label="Utca, házszám" value={form.address_street ?? ''} onChangeText={(v) => setForm((f) => ({ ...f, address_street: v }))} />
             <Input label="Emelet, ajtó, egyéb (opcionális)" value={form.address_extra ?? ''} onChangeText={(v) => setForm((f) => ({ ...f, address_extra: v }))} />
+            <Text variant="caption" style={[styles.fieldLabel, { marginTop: Spacing.md }]}>Szállítási cím</Text>
+            <Input label="Ország" value={form.shipping_country ?? ''} onChangeText={(v) => setForm((f) => ({ ...f, shipping_country: v }))} />
+            <Input label="Irányítószám" value={form.shipping_postal_code ?? ''} onChangeText={(v) => setForm((f) => ({ ...f, shipping_postal_code: v }))} keyboardType="numeric" />
+            <Input label="Település" value={form.shipping_city ?? ''} onChangeText={(v) => setForm((f) => ({ ...f, shipping_city: v }))} />
+            <Input label="Utca, házszám" value={form.shipping_street ?? ''} onChangeText={(v) => setForm((f) => ({ ...f, shipping_street: v }))} />
+            <Input label="Emelet, ajtó, egyéb (opcionális)" value={form.shipping_extra ?? ''} onChangeText={(v) => setForm((f) => ({ ...f, shipping_extra: v }))} />
             <View style={styles.editActions}>
               <Button label="Mégse" variant="secondary" onPress={() => { setForm(profile); setEditing(false); }} style={{ flex: 1, marginRight: 8 }} />
               <Button label="Mentés" onPress={() => void handleSave()} loading={saving} style={{ flex: 1 }} />
@@ -295,29 +301,24 @@ export function ProfileScreen({ navigation }: Props) {
               ))}
             </Card>
 
-            {profile.has_shipping_address === '1' && (
-              <Card padding={16} style={styles.profileCard}>
-                <Text style={styles.addrSectionLabel}>Szállítási cím</Text>
-                {[
-                  ['Ország', profile.shipping_country],
-                  ['Irányítószám', profile.shipping_postal_code],
-                  ['Település', profile.shipping_city],
-                  ['Utca, házszám', profile.shipping_street],
-                  ...(profile.shipping_extra ? [['Emelet, ajtó, egyéb', profile.shipping_extra]] as [string, string][] : []),
-                ].map(([label, value], i, arr) => (
-                  <View key={label}>
-                    <View style={styles.profileRow}>
-                      <Text variant="caption" style={{ flex: 1 }}>{label}</Text>
-                      <Text style={styles.profileValue}>{value || '—'}</Text>
-                    </View>
-                    {i < arr.length - 1 && <Divider />}
+            <Card padding={16} style={styles.profileCard}>
+              <Text style={styles.addrSectionLabel}>Szállítási cím</Text>
+              {[
+                ['Ország', profile.shipping_country],
+                ['Irányítószám', profile.shipping_postal_code],
+                ['Település', profile.shipping_city],
+                ['Utca, házszám', profile.shipping_street],
+                ...(profile.shipping_extra ? [['Emelet, ajtó, egyéb', profile.shipping_extra]] as [string, string][] : []),
+              ].map(([label, value], i, arr) => (
+                <View key={label}>
+                  <View style={styles.profileRow}>
+                    <Text variant="caption" style={{ flex: 1 }}>{label}</Text>
+                    <Text style={styles.profileValue}>{value || '—'}</Text>
                   </View>
-                ))}
-                <Text variant="caption" style={styles.shippingNote}>
-                  A szállítási cím a weboldalon módosítható.
-                </Text>
-              </Card>
-            )}
+                  {i < arr.length - 1 && <Divider />}
+                </View>
+              ))}
+            </Card>
           </>
         )}
       </Animated.View>

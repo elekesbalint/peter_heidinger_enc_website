@@ -210,8 +210,24 @@ export async function PATCH(request: Request) {
     };
     const billing_address = formatAddr(billingAddr);
 
-    const shipping_address =
-      current?.shipping_address != null ? String(current.shipping_address) : null;
+    // Ha a kérésben van shipping mező, frissítjük; ha nincs egyetlen shipping mező sem küldve, megtartjuk a régit
+    const hasShippingFields = ["shipping_country", "shipping_postal_code", "shipping_city", "shipping_street", "shipping_extra"].some(
+      (k) => body[k] !== undefined,
+    );
+    let shipping_address: string | null;
+    if (hasShippingFields) {
+      const shippingAddr = {
+        ...emptyAddr(),
+        country: String(body.shipping_country ?? "Magyarország").trim() || "Magyarország",
+        zip: String(body.shipping_postal_code ?? "").trim(),
+        city: String(body.shipping_city ?? "").trim(),
+        street: String(body.shipping_street ?? "").trim(),
+        extra: String(body.shipping_extra ?? "").trim(),
+      };
+      shipping_address = formatAddr(shippingAddr);
+    } else {
+      shipping_address = current?.shipping_address != null ? String(current.shipping_address) : null;
+    }
 
     const userTypeRaw = String(body.user_type ?? current?.user_type ?? "private").toLowerCase();
     const effectiveUserType = userTypeRaw === "company" ? "company" : "private";
