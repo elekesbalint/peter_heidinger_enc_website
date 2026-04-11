@@ -167,7 +167,7 @@ export async function createWaitlistPaymentReservation(params: {
           unit_amount: toStripeHufAmount(payableHuf),
           product_data: {
             name: `AdriaGo ENC keszulek — ${waitlist.category.toUpperCase()} kat.`,
-            description: `Eszkoz azonosito: ${device.identifier} (varolista kiosztas)`,
+            description: `Eszköz azonosító: ${device.identifier} (várólistás kiosztás)`,
           },
         },
       },

@@ -85,7 +85,7 @@ export async function createEracuniInvoice(params: {
   const itemName =
     params.kind === "device_sale" ? "ENC készülék / ENC uređaj" : "ENC készülék feltöltése";
   const note = `Azonosító / Identifikacijski broj: ${params.deviceIdentifier}`;
-  const itemDescriptionWithIdentifier = `${itemName} — Eszkoz azonosito: ${params.deviceIdentifier}`;
+  const itemDescriptionWithIdentifier = `${itemName} — Eszköz azonosító: ${params.deviceIdentifier}`;
   const today = new Date().toISOString().slice(0, 10);
   const stripeCurUpper = (params.stripeCurrency ?? "HUF").toUpperCase();
   const invoiceCurrency = (() => {

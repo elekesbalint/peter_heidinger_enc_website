@@ -146,7 +146,7 @@ export async function POST(request: Request) {
             unit_amount: toStripeHufAmount(priceHuf),
             product_data: {
               name: `AdriaGo ENC keszulek — ${category.toUpperCase()} kat.`,
-              description: `Eszkoz azonosito: ${available.identifier}`,
+              description: `Eszköz azonosító: ${available.identifier}`,
             },
           },
         },
