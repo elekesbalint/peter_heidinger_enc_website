@@ -7,6 +7,10 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  Modal,
+  Pressable,
+  Linking,
+  Text as RNText,
 } from 'react-native';
 import { useFadeIn } from '../../hooks/useFadeIn';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -61,6 +65,8 @@ function parseGuideItems(raw: string): string[] {
     .filter(Boolean);
 }
 
+const ENCBERBEADAS_URL = 'https://encberbeadas.hu';
+
 export function OrderScreen({ navigation }: Props) {
   const [selectedCategory, setSelectedCategory] = useState<CategoryValue>('i');
   const [licensePlate, setLicensePlate] = useState('');
@@ -73,6 +79,7 @@ export function OrderScreen({ navigation }: Props) {
     items: CATEGORY_DEFAULTS,
   });
   const [settingsLoading, setSettingsLoading] = useState(true);
+  const [waitlistModalVisible, setWaitlistModalVisible] = useState(false);
 
   const headerAnim = useFadeIn(0);
   const infoAnim = useFadeIn(100);
@@ -132,10 +139,7 @@ export function OrderScreen({ navigation }: Props) {
         licensePlate: plate,
       });
       if (result.waitlist) {
-        Alert.alert(
-          'Várólistára helyezve',
-          'Jelenleg nincs elérhető eszköz. Várólistára vettük, amint eszköz szabadul, értesítjük.',
-        );
+        setWaitlistModalVisible(true);
         return;
       }
       if (result.url) {
@@ -159,6 +163,35 @@ export function OrderScreen({ navigation }: Props) {
 
   return (
     <ScreenWrapper>
+      <Modal
+        visible={waitlistModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setWaitlistModalVisible(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setWaitlistModalVisible(false)}>
+          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
+            <Text variant="title" style={styles.modalTitle}>
+              Várólistára helyezve
+            </Text>
+            <RNText style={styles.modalBody}>
+              Jelenleg nincs elérhető készülékünk az általad választott kategóriából. Ha 2 héten belül utaznál,
+              bérelj ENC-t az{' '}
+              <RNText
+                style={styles.modalLink}
+                onPress={() => {
+                  void Linking.openURL(ENCBERBEADAS_URL);
+                }}
+              >
+                ENCbérbeadás.hu
+              </RNText>
+              -n. Ha utazásod későbbi időpontban történik, abban az esetben keresni fogunk, amint érkeznek szabad
+              készülékeink.
+            </RNText>
+            <Button label="Rendben" onPress={() => setWaitlistModalVisible(false)} style={styles.modalBtn} />
+          </Pressable>
+        </Pressable>
+      </Modal>
       <Animated.View style={[styles.headerWrap, headerAnim]}>
         <Text variant="h2">ENC Rendelés</Text>
         <Text variant="caption" style={styles.subtitle}>
@@ -479,4 +512,31 @@ const styles = StyleSheet.create({
   shieldIcon: { fontSize: 18 },
   stripeText: { color: '#1e293b' },
   stripeBrand: { color: '#635BFF' },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.lg,
+  },
+  modalCard: {
+    backgroundColor: Colors.bgCard,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  modalTitle: { marginBottom: Spacing.md },
+  modalBody: {
+    fontSize: Fonts.sizes.sm,
+    lineHeight: 22,
+    color: Colors.textPrimary,
+    marginBottom: Spacing.lg,
+  },
+  modalLink: {
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+    color: Colors.accent,
+    fontSize: Fonts.sizes.sm,
+  },
+  modalBtn: { marginTop: 0 },
 });
