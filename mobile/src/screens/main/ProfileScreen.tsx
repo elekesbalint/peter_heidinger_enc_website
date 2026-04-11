@@ -4,15 +4,16 @@ import {
   View,
   StyleSheet,
   Alert,
-  ScrollView,
   ActivityIndicator,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import { useFadeIn } from '../../hooks/useFadeIn';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
 import { ScreenWrapper, Text, Button, Input, Card, Divider } from '../../components/ui';
 import { Colors, Gradients, Spacing, Fonts, Radius } from '../../theme';
-import { getProfile, patchProfile, sendReferralInvite } from '../../lib/api';
+import { getProfile, patchProfile, uploadProfileAvatar, sendReferralInvite } from '../../lib/api';
 import { signOut } from '../../lib/auth';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { ProfileStackParamList } from '../../navigation/types';
@@ -26,7 +27,10 @@ export function ProfileScreen({ navigation }: Props) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [referralEmail, setReferralEmail] = useState('');
   const [inviting, setInviting] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState(false);
@@ -37,32 +41,85 @@ export function ProfileScreen({ navigation }: Props) {
   const legalAnim = useFadeIn(280);
   const logoutAnim = useFadeIn(340);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
+    setRefreshing(!!opts?.silent);
+    setLoadError(null);
     try {
       const data = await getProfile();
-      setProfile(data ?? {});
-      setForm(data ?? {});
-    } catch {
-      // hiba tolerálva
+      setProfile(data);
+      setForm(data);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Betöltés sikertelen.';
+      setLoadError(msg);
+      if (!opts?.silent) {
+        setProfile({});
+        setForm({});
+      }
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   async function handleSave() {
+    if (form.user_type === 'company') {
+      if (!form.company_name?.trim()) {
+        Alert.alert('Hiányzó adat', 'Céges fióknál a cégnév kötelező.');
+        return;
+      }
+      if (!form.tax_number?.trim()) {
+        Alert.alert('Hiányzó adat', 'Céges fióknál az adószám kötelező.');
+        return;
+      }
+    }
     setSaving(true);
     try {
       await patchProfile(form);
-      setProfile(form);
+      await load({ silent: true });
       setEditing(false);
       Alert.alert('Sikeres', 'Profil mentve!');
     } catch (err: unknown) {
       Alert.alert('Hiba', err instanceof Error ? err.message : 'Mentés sikertelen.');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function pickAvatar() {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Engedély szükséges', 'A galériához való hozzáférést a beállításokban engedélyezheted.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.75,
+      base64: true,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+    const asset = result.assets[0];
+    const b64 = asset.base64;
+    if (!b64) {
+      Alert.alert('Hiba', 'A kép nem olvasható be. Próbálj másik fájlt.');
+      return;
+    }
+    setUploadingAvatar(true);
+    try {
+      const { avatarUrl } = await uploadProfileAvatar(b64, asset.mimeType ?? 'image/jpeg');
+      setProfile((p) => ({ ...p, avatar_url: avatarUrl }));
+      setForm((p) => ({ ...p, avatar_url: avatarUrl }));
+      Alert.alert('Kész', 'Profilkép frissítve.');
+    } catch (err: unknown) {
+      Alert.alert('Hiba', err instanceof Error ? err.message : 'Feltöltés sikertelen.');
+    } finally {
+      setUploadingAvatar(false);
     }
   }
 
@@ -101,17 +158,52 @@ export function ProfileScreen({ navigation }: Props) {
   }
 
   const displayName = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || 'Felhasználó';
+  const avatarUri = profile.avatar_url?.trim() || '';
+  const isCompany = profile.user_type === 'company';
 
   return (
-    <ScreenWrapper>
+    <ScreenWrapper
+      onRefresh={() => void load({ silent: true })}
+      refreshing={refreshing}
+    >
+      {loadError ? (
+        <Card padding={14} style={{ marginBottom: Spacing.md }}>
+          <Text style={{ color: Colors.danger, marginBottom: 8 }}>{loadError}</Text>
+          <Button label="Újrapróbálás" onPress={() => void load()} size="md" />
+        </Card>
+      ) : null}
+
       {/* Avatar + name */}
       <Animated.View style={[styles.avatarSection, avatarAnim]}>
-        <LinearGradient colors={Gradients.accent} style={styles.avatarCircle}>
-          <Text style={styles.avatarLetter}>
-            {(profile.first_name?.[0] ?? profile.email?.[0] ?? 'U').toUpperCase()}
-          </Text>
-        </LinearGradient>
-        <Text variant="h3" style={{ marginTop: 12 }}>{displayName}</Text>
+        <TouchableOpacity
+          onPress={() => void pickAvatar()}
+          disabled={uploadingAvatar}
+          activeOpacity={0.85}
+          style={styles.avatarTouch}
+        >
+          {avatarUri ? (
+            <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+          ) : (
+            <LinearGradient colors={Gradients.accent} style={styles.avatarCircle}>
+              <Text style={styles.avatarLetter}>
+                {(profile.first_name?.[0] ?? profile.email?.[0] ?? 'U').toUpperCase()}
+              </Text>
+            </LinearGradient>
+          )}
+          {uploadingAvatar ? (
+            <View style={styles.avatarBadge}>
+              <ActivityIndicator color={Colors.white} size="small" />
+            </View>
+          ) : (
+            <View style={styles.avatarBadge}>
+              <Text style={styles.avatarBadgeIcon}>📷</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+        <Text variant="caption" style={styles.avatarHint}>
+          Koppints a profilkép módosításához
+        </Text>
+        <Text variant="h3" style={{ marginTop: 8 }}>{displayName}</Text>
         <Text variant="caption">{profile.email ?? '-'}</Text>
       </Animated.View>
 
@@ -128,16 +220,36 @@ export function ProfileScreen({ navigation }: Props) {
 
         {editing ? (
           <>
+            <Text variant="caption" style={styles.fieldLabel}>Fiók típusa</Text>
+            <View style={styles.typeRow}>
+              {(['private', 'company'] as const).map((t) => (
+                <TouchableOpacity
+                  key={t}
+                  style={[styles.typePill, form.user_type === t && styles.typePillActive]}
+                  onPress={() => setForm((f) => ({ ...f, user_type: t }))}
+                >
+                  <Text style={[styles.typePillText, form.user_type === t && styles.typePillTextActive]}>
+                    {t === 'private' ? 'Magánszemély' : 'Cég'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
             <Input label="Keresztnév" value={form.first_name ?? ''} onChangeText={(v) => setForm((f) => ({ ...f, first_name: v }))} />
             <Input label="Vezetéknév" value={form.last_name ?? ''} onChangeText={(v) => setForm((f) => ({ ...f, last_name: v }))} />
             <Input label="Telefonszám" value={form.phone ?? ''} onChangeText={(v) => setForm((f) => ({ ...f, phone: v }))} keyboardType="phone-pad" />
-            <Input label="Utca" value={form.address_street ?? ''} onChangeText={(v) => setForm((f) => ({ ...f, address_street: v }))} />
-            <Input label="Város" value={form.address_city ?? ''} onChangeText={(v) => setForm((f) => ({ ...f, address_city: v }))} />
+            {form.user_type === 'company' ? (
+              <>
+                <Input label="Cégnév" value={form.company_name ?? ''} onChangeText={(v) => setForm((f) => ({ ...f, company_name: v }))} />
+                <Input label="Adószám" value={form.tax_number ?? ''} onChangeText={(v) => setForm((f) => ({ ...f, tax_number: v }))} />
+              </>
+            ) : null}
+            <Input label="Ország" value={form.address_country ?? ''} onChangeText={(v) => setForm((f) => ({ ...f, address_country: v }))} />
             <Input label="Irányítószám" value={form.address_postal_code ?? ''} onChangeText={(v) => setForm((f) => ({ ...f, address_postal_code: v }))} keyboardType="numeric" />
-            <Input label="Ország kód (pl. HU)" value={form.address_country ?? ''} onChangeText={(v) => setForm((f) => ({ ...f, address_country: v }))} autoCapitalize="characters" maxLength={2} />
+            <Input label="Város" value={form.address_city ?? ''} onChangeText={(v) => setForm((f) => ({ ...f, address_city: v }))} />
+            <Input label="Utca, házszám" value={form.address_street ?? ''} onChangeText={(v) => setForm((f) => ({ ...f, address_street: v }))} />
             <View style={styles.editActions}>
               <Button label="Mégse" variant="secondary" onPress={() => { setForm(profile); setEditing(false); }} style={{ flex: 1, marginRight: 8 }} />
-              <Button label="Mentés" onPress={handleSave} loading={saving} style={{ flex: 1 }} />
+              <Button label="Mentés" onPress={() => void handleSave()} loading={saving} style={{ flex: 1 }} />
             </View>
           </>
         ) : (
@@ -146,6 +258,9 @@ export function ProfileScreen({ navigation }: Props) {
               ['Keresztnév', profile.first_name],
               ['Vezetéknév', profile.last_name],
               ['Telefonszám', profile.phone],
+              ...(isCompany
+                ? ([['Cégnév', profile.company_name], ['Adószám', profile.tax_number]] as [string, string][])
+                : []),
               ['Cím', [profile.address_street, profile.address_postal_code, profile.address_city].filter(Boolean).join(', ')],
               ['Ország', profile.address_country],
             ].map(([label, value], i, arr) => (
@@ -185,7 +300,7 @@ export function ProfileScreen({ navigation }: Props) {
               />
               <Button
                 label="Küld"
-                onPress={handleInvite}
+                onPress={() => void handleInvite()}
                 loading={inviting}
                 size="md"
                 style={{ marginLeft: 8, marginBottom: 16 }}
@@ -231,11 +346,47 @@ export function ProfileScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   avatarSection: { alignItems: 'center', paddingTop: Spacing.lg, marginBottom: Spacing.xl },
+  avatarTouch: { position: 'relative' },
   avatarCircle: {
-    width: 80, height: 80, borderRadius: 40,
+    width: 88, height: 88, borderRadius: 44,
     alignItems: 'center', justifyContent: 'center',
   },
+  avatarImage: {
+    width: 88, height: 88, borderRadius: 44,
+    backgroundColor: Colors.bgSurface,
+    borderWidth: 2,
+    borderColor: Colors.border,
+  },
   avatarLetter: { fontSize: 32, fontWeight: Fonts.weights.bold, color: Colors.white },
+  avatarBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.bgCard,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarBadgeIcon: { fontSize: 14 },
+  avatarHint: { marginTop: 8, color: Colors.textTertiary },
+  fieldLabel: { marginBottom: 6, color: Colors.textSecondary },
+  typeRow: { flexDirection: 'row', gap: 8, marginBottom: Spacing.md },
+  typePill: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: Radius.md,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    backgroundColor: Colors.bgSurface,
+  },
+  typePillActive: { borderColor: Colors.accent, backgroundColor: Colors.accentSoft },
+  typePillText: { fontSize: Fonts.sizes.sm, fontWeight: Fonts.weights.semibold, color: Colors.textSecondary },
+  typePillTextActive: { color: Colors.accent },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',

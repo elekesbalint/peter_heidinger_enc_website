@@ -16,6 +16,7 @@
     "@supabase/supabase-js": "^2.103.0",
     "expo": "^55.0.14",
     "expo-constants": "~55.0.13",
+    "expo-image-picker": "~55.0.18",
     "expo-linear-gradient": "~55.0.13",
     "expo-linking": "~55.0.12",
     "expo-status-bar": "~55.0.5",

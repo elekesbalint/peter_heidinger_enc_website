@@ -172,22 +172,63 @@ export async function fetchMobileSummary(): Promise<MobileSummaryData> {
   return body as unknown as MobileSummaryData;
 }
 
-export async function getProfile() {
+/** Mobil profil (Bearer) — mezők egy síkban, a webes `profiles` táblával szinkronban. */
+export async function getProfile(): Promise<Record<string, string>> {
   const headers = await getAuthHeaders();
-  const res = await apiFetch('/api/me/profile', { headers });
-  if (!res.ok) throw new Error('Profil betöltése sikertelen.');
-  return res.json();
+  const res = await apiFetch('/api/mobile/profile', { headers });
+  let data: { ok?: boolean; error?: string } & Record<string, unknown> = {};
+  try {
+    data = (await res.json()) as { ok?: boolean; error?: string } & Record<string, unknown>;
+  } catch {
+    throw new Error('Érvénytelen válasz a szervertől (profil).');
+  }
+  if (!res.ok || !data.ok) {
+    throw new Error(typeof data.error === 'string' ? data.error : 'Profil betöltése sikertelen.');
+  }
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(data)) {
+    if (k === 'ok') continue;
+    out[k] = v == null ? '' : String(v);
+  }
+  return out;
 }
 
 export async function patchProfile(profile: Record<string, unknown>) {
   const headers = await getAuthHeaders();
-  const res = await apiFetch('/api/me/profile', {
+  const res = await apiFetch('/api/mobile/profile', {
     method: 'PATCH',
     headers,
     body: JSON.stringify(profile),
   });
-  if (!res.ok) throw new Error('Profil mentése sikertelen.');
-  return res.json();
+  let data: { ok?: boolean; error?: string } = {};
+  try {
+    data = (await res.json()) as { ok?: boolean; error?: string };
+  } catch {
+    throw new Error('Érvénytelen válasz a szervertől (profil mentés).');
+  }
+  if (!res.ok || !data.ok) {
+    throw new Error(typeof data.error === 'string' ? data.error : 'Profil mentése sikertelen.');
+  }
+  return data;
+}
+
+export async function uploadProfileAvatar(imageBase64: string, mimeType: string) {
+  const headers = await getAuthHeaders();
+  const res = await apiFetch('/api/mobile/profile/avatar', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ imageBase64, mimeType }),
+  });
+  let data: { ok?: boolean; error?: string; avatarUrl?: string } = {};
+  try {
+    data = (await res.json()) as { ok?: boolean; error?: string; avatarUrl?: string };
+  } catch {
+    throw new Error('Érvénytelen válasz a szervertől (profilkép).');
+  }
+  if (!res.ok || !data.ok) {
+    throw new Error(typeof data.error === 'string' ? data.error : 'Profilkép feltöltése sikertelen.');
+  }
+  return data as { ok: true; avatarUrl: string };
 }
 
 export async function sendContactMessage(body: {

@@ -43,7 +43,13 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "A profilképed kiválasztásához szükség van a fotók elérésére."
+        }
+      ]
     ]
   }
 }
