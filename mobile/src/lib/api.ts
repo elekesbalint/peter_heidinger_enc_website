@@ -84,10 +84,17 @@ export async function startTopupCheckout(body: {
   travelDestination?: string;
 }) {
   const headers = await getAuthHeaders();
+  // A szerver `topupAmountEur` mezőt vár (nem `amountEur`)
+  const payload = {
+    topupAmountEur: body.amountEur,
+    selectedPackageEur: body.selectedPackageEur,
+    deviceIdentifier: body.deviceIdentifier,
+    travelDestination: body.travelDestination,
+  };
   const res = await apiFetch('/api/mobile/stripe/checkout', {
     method: 'POST',
     headers,
-    body: JSON.stringify(body),
+    body: JSON.stringify(payload),
   });
   const data = await res.json();
   if (!data.ok) throw new Error(data.error ?? 'Feltöltés indítása sikertelen.');
@@ -115,6 +122,7 @@ export type MobileSummaryData = {
   ok: true;
   fxEurToHuf: number;
   referralWalletBonusCapHuf: number;
+  minBalanceWarningEur: number;
   devices: Array<{
     identifier: string;
     category: string;

@@ -40,6 +40,8 @@ export async function GET(request: Request) {
       0,
       getIntSetting(settings, "referral_device_discount_huf", 25000),
     );
+    const minBalanceWarningHuf = Math.max(0, getIntSetting(settings, "min_balance_warning_huf", 5000));
+    const minBalanceWarningEur = Number((minBalanceWarningHuf / fxEurToHuf).toFixed(2));
 
     const [
       { data: devices, error: devicesError },
@@ -105,6 +107,7 @@ export async function GET(request: Request) {
       ok: true,
       fxEurToHuf,
       referralWalletBonusCapHuf,
+      minBalanceWarningEur,
       devices: (devices ?? []).map((d: DeviceRow) => ({
         identifier: d.identifier,
         category: d.category,

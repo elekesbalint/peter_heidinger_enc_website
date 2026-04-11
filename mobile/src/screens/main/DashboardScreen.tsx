@@ -40,11 +40,16 @@ function formatHuf(n: number) {
   return n.toLocaleString('hu-HU') + ' Ft';
 }
 
+type DeviceInfo = { identifier: string; category: string; status: string; licensePlate: string | null };
+
 export function DashboardScreen({ navigation }: Props) {
   const [user, setUser] = useState<{ email?: string; id?: string } | null>(null);
   const [wallets, setWallets] = useState<DeviceWallet[]>([]);
+  const [deviceInfos, setDeviceInfos] = useState<DeviceInfo[]>([]);
   const [orders, setOrders] = useState<EncDeviceOrder[]>([]);
   const [topups, setTopups] = useState<StripeTopup[]>([]);
+  const [fxEurToHuf, setFxEurToHuf] = useState(400);
+  const [minBalanceWarningEur, setMinBalanceWarningEur] = useState(12.5);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -72,6 +77,14 @@ export function DashboardScreen({ navigation }: Props) {
       setUser({ email: u.email, id: u.id });
 
       const summary = await fetchMobileSummary();
+      setFxEurToHuf(summary.fxEurToHuf > 0 ? summary.fxEurToHuf : 400);
+      setMinBalanceWarningEur(summary.minBalanceWarningEur ?? 12.5);
+      setDeviceInfos(summary.devices.map((d) => ({
+        identifier: d.identifier,
+        category: d.category,
+        status: d.status,
+        licensePlate: d.licensePlate,
+      })));
 
       setWallets(
         summary.wallets.map((w) => ({
@@ -114,6 +127,7 @@ export function DashboardScreen({ navigation }: Props) {
           : raw,
       );
       setWallets([]);
+      setDeviceInfos([]);
       setOrders([]);
       setTopups([]);
     } finally {
@@ -129,7 +143,13 @@ export function DashboardScreen({ navigation }: Props) {
     load();
   }
 
-  const totalBalance = wallets.reduce((sum, w) => sum + (w.balance_huf ?? 0), 0);
+  const totalBalanceHuf = wallets.reduce((sum, w) => sum + (w.balance_huf ?? 0), 0);
+  const totalBalanceEur = fxEurToHuf > 0 ? totalBalanceHuf / fxEurToHuf : 0;
+
+  function formatEur(huf: number) {
+    const eur = fxEurToHuf > 0 ? huf / fxEurToHuf : 0;
+    return eur.toLocaleString('hu-HU', { maximumFractionDigits: 2 }) + ' EUR';
+  }
 
   if (loading) {
     return (
@@ -151,7 +171,7 @@ export function DashboardScreen({ navigation }: Props) {
   }
 
   return (
-    <ScreenWrapper onRefresh={onRefresh} refreshing={refreshing}>
+    <ScreenWrapper onRefresh={onRefresh} refreshing={refreshing} contentStyle={{ paddingTop: Spacing.md }}>
 
       {/* Header */}
       <Animated.View style={[styles.headerRow, headerAnim]}>
@@ -183,7 +203,9 @@ export function DashboardScreen({ navigation }: Props) {
           <Text variant="label" style={{ color: Colors.textSecondary }}>
             ÖSSZES EGYENLEG
           </Text>
-          <Text style={styles.balanceAmount}>{formatHuf(totalBalance)}</Text>
+          <Text style={styles.balanceAmount}>
+            {totalBalanceEur.toLocaleString('hu-HU', { maximumFractionDigits: 2 })} EUR
+          </Text>
           <Text variant="caption">{wallets.length} eszköz</Text>
         </LinearGradient>
       </Animated.View>
@@ -218,31 +240,91 @@ export function DashboardScreen({ navigation }: Props) {
       </Animated.View>
 
       {/* Devices */}
-      {wallets.length > 0 && (
+      {(wallets.length > 0 || deviceInfos.length > 0) && (
         <Animated.View style={devicesAnim}>
           <Text variant="title" style={styles.sectionTitle}>Eszközeim</Text>
-          {wallets.map((w, i) => (
-            <TouchableOpacity
-              key={w.device_identifier}
-              onPress={() => navigation.navigate('DeviceDetail', { identifier: w.device_identifier })}
-              activeOpacity={0.8}
-            >
-              <Card style={styles.deviceCard} padding={16}>
-                <View style={styles.deviceRow}>
-                  <View style={styles.deviceIconWrap}>
-                    <LinearGradient colors={Gradients.teal} style={styles.deviceIcon}>
-                      <Text style={styles.deviceIconText}>📡</Text>
-                    </LinearGradient>
+          {deviceInfos.map((dev) => {
+            const wallet = wallets.find((w) => w.device_identifier === dev.identifier);
+            const balanceHuf = wallet?.balance_huf ?? null;
+            const balanceEur = balanceHuf !== null ? balanceHuf / fxEurToHuf : null;
+            const hasBalance = balanceHuf !== null;
+            const lowBalance = hasBalance && balanceEur! < minBalanceWarningEur;
+            const topupState =
+              !hasBalance ? 'none' : lowBalance ? 'low' : 'ok';
+            const statusEmoji = topupState === 'none' ? '○' : topupState === 'low' ? '!' : '✓';
+            const statusLabel =
+              topupState === 'none' ? 'Nincs felhasználható útdíj'
+              : topupState === 'low' ? 'Feltöltés szükséges'
+              : 'Rendben, tölthető';
+            return (
+              <TouchableOpacity
+                key={dev.identifier}
+                onPress={() => navigation.navigate('DeviceDetail', { identifier: dev.identifier })}
+                activeOpacity={0.8}
+              >
+                <Card style={styles.deviceCard} padding={16}>
+                  {/* Fejléc sor: kategória + azonosító + státusz */}
+                  <View style={styles.deviceHeaderRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.deviceCatLabel}>{dev.category.toUpperCase()}</Text>
+                      <Text semibold style={styles.deviceId}>{dev.identifier}</Text>
+                      {dev.licensePlate ? (
+                        <Text variant="caption" style={styles.devicePlate}>🚗 {dev.licensePlate}</Text>
+                      ) : null}
+                    </View>
+                    <View style={[styles.statusBadge,
+                      dev.status === 'sold' ? styles.statusBadgeActive : styles.statusBadgeNeutral
+                    ]}>
+                      <Text style={[styles.statusBadgeText,
+                        dev.status === 'sold' ? styles.statusBadgeTextActive : styles.statusBadgeTextNeutral
+                      ]}>
+                        {dev.status === 'sold' ? 'Aktív' : dev.status}
+                      </Text>
+                    </View>
                   </View>
-                  <View style={styles.deviceInfo}>
-                    <Text semibold>{w.device_identifier}</Text>
-                    <Text variant="caption">{formatHuf(w.balance_huf ?? 0)}</Text>
+                  {/* Töltöttségi badge */}
+                  <View style={styles.topupStateRow}>
+                    <View style={[
+                      styles.topupBadge,
+                      topupState === 'ok' && styles.topupBadgeOk,
+                      topupState === 'low' && styles.topupBadgeLow,
+                      topupState === 'none' && styles.topupBadgeNone,
+                    ]}>
+                      <Text style={[
+                        styles.topupBadgeText,
+                        topupState === 'ok' && styles.topupBadgeTextOk,
+                        topupState === 'low' && styles.topupBadgeTextLow,
+                        topupState === 'none' && styles.topupBadgeTextNone,
+                      ]}>
+                        {statusEmoji} {statusLabel}
+                      </Text>
+                    </View>
                   </View>
+                  {/* Egyenleg */}
+                  {!hasBalance ? (
+                    <Text variant="caption" style={styles.deviceNoBalance}>
+                      Még nem töltötted fel ezt a készüléket.
+                    </Text>
+                  ) : (
+                    <>
+                      <Text style={[
+                        styles.deviceBalanceLarge,
+                        lowBalance ? styles.deviceBalanceLow : styles.deviceBalanceOk,
+                      ]}>
+                        {balanceEur!.toLocaleString('hu-HU', { maximumFractionDigits: 2 })} EUR
+                      </Text>
+                      <Text variant="caption" style={styles.deviceBalanceSub}>
+                        {lowBalance
+                          ? `Alacsony egyenleg (küszöb ${minBalanceWarningEur.toLocaleString('hu-HU')} EUR), töltsd fel.`
+                          : 'Egyenleg megfelelő.'}
+                      </Text>
+                    </>
+                  )}
                   <Text style={styles.chevron}>›</Text>
-                </View>
-              </Card>
-            </TouchableOpacity>
-          ))}
+                </Card>
+              </TouchableOpacity>
+            );
+          })}
         </Animated.View>
       )}
 
@@ -287,7 +369,7 @@ export function DashboardScreen({ navigation }: Props) {
                   <Text variant="caption">{t.paid_at ? new Date(t.paid_at).toLocaleDateString('hu-HU') : '-'}</Text>
                 </View>
                 <Text style={[styles.txAmount, { color: Colors.success }]}>
-                  +{formatHuf(t.amount_huf ?? 0)}
+                  +{formatEur(t.amount_huf ?? 0)}
                 </Text>
               </View>
             </Card>
@@ -295,7 +377,7 @@ export function DashboardScreen({ navigation }: Props) {
         </Animated.View>
       )}
 
-      {wallets.length === 0 && orders.length === 0 && (
+      {deviceInfos.length === 0 && orders.length === 0 && (
         <Animated.View style={[styles.emptyBox, devicesAnim]}>
           <Text style={styles.emptyIcon}>🚀</Text>
           <Text variant="title" style={styles.emptyTitle}>Kezdje el!</Text>
@@ -327,8 +409,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: Spacing.md,
-    marginBottom: Spacing.lg,
+    paddingTop: Spacing.xs,
+    marginBottom: Spacing.md,
   },
   avatarCircle: {},
   avatar: {
@@ -338,22 +420,31 @@ const styles = StyleSheet.create({
   avatarLetter: { fontSize: 18, fontWeight: Fonts.weights.bold, color: Colors.white },
   balanceCard: {
     borderRadius: 24,
-    padding: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.lg,
     marginBottom: Spacing.lg,
-    overflow: 'hidden',
     borderWidth: 1,
     borderColor: Colors.border,
+    borderTopWidth: 3,
+    borderTopColor: Colors.accent,
   },
   balanceAccentLine: {
-    position: 'absolute', top: 0, left: 24, right: 24, height: 2,
-    backgroundColor: Colors.accent, borderRadius: 1,
+    // nem használt — border-top veszi át a szerepét
+    height: 0,
   },
   balanceAmount: {
-    fontSize: 38,
+    fontSize: 22,
     fontWeight: Fonts.weights.extrabold,
     color: Colors.white,
-    marginVertical: 6,
-    letterSpacing: -1,
+    marginVertical: 4,
+    letterSpacing: -0.3,
+  },
+  deviceBalanceEur: {
+    fontSize: Fonts.sizes.xs,
+    color: Colors.textTertiary,
+    marginTop: 2,
+    fontWeight: Fonts.weights.medium,
   },
   actionsRow: {
     flexDirection: 'row',
@@ -378,8 +469,32 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   deviceIconText: { fontSize: 18 },
-  deviceInfo: { flex: 1 },
-  chevron: { fontSize: 22, color: Colors.textTertiary },
+  deviceInfo: { flex: 1, minWidth: 0 },
+  chevron: { fontSize: 22, color: Colors.textTertiary, position: 'absolute', right: 16, top: 16 },
+  deviceHeaderRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 },
+  deviceCatLabel: { fontSize: 10, fontWeight: Fonts.weights.semibold, color: Colors.textTertiary, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 2 },
+  deviceId: { fontSize: Fonts.sizes.md, marginBottom: 2 },
+  devicePlate: { color: Colors.textTertiary, marginTop: 2 },
+  statusBadge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, alignSelf: 'flex-start' },
+  statusBadgeActive: { backgroundColor: '#d1fae5' },
+  statusBadgeNeutral: { backgroundColor: Colors.bgSurface },
+  statusBadgeText: { fontSize: 11, fontWeight: Fonts.weights.semibold },
+  statusBadgeTextActive: { color: '#065f46' },
+  statusBadgeTextNeutral: { color: Colors.textTertiary },
+  topupStateRow: { flexDirection: 'row', marginBottom: 10 },
+  topupBadge: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
+  topupBadgeOk: { backgroundColor: '#d1fae5' },
+  topupBadgeLow: { backgroundColor: '#fee2e2' },
+  topupBadgeNone: { backgroundColor: Colors.bgSurface },
+  topupBadgeText: { fontSize: 12, fontWeight: Fonts.weights.semibold },
+  topupBadgeTextOk: { color: '#065f46' },
+  topupBadgeTextLow: { color: '#991b1b' },
+  topupBadgeTextNone: { color: Colors.textSecondary },
+  deviceBalanceLarge: { fontSize: 22, fontWeight: Fonts.weights.bold, marginBottom: 2 },
+  deviceBalanceOk: { color: '#059669' },
+  deviceBalanceLow: { color: Colors.danger },
+  deviceBalanceSub: { color: Colors.textTertiary, marginBottom: 2 },
+  deviceNoBalance: { color: Colors.textTertiary, marginBottom: 4 },
   rowCard: { marginBottom: 8 },
   txRow: { flexDirection: 'row', alignItems: 'center' },
   txIconCircle: {
