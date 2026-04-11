@@ -9,10 +9,10 @@ import {
   TextInput,
   ScrollView,
   useWindowDimensions,
-  Linking,
 } from 'react-native';
 import { useFadeIn } from '../../hooks/useFadeIn';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as WebBrowser from 'expo-web-browser';
 import { ScreenWrapper, Text, Button } from '../../components/ui';
 import { Colors, Gradients, Spacing, Fonts, Radius } from '../../theme';
 import { fetchTopupConfig, startTopupCheckout } from '../../lib/api';
@@ -227,9 +227,11 @@ export function TopupScreen({ navigation, route }: Props) {
         travelDestination: travelDestination.trim(),
       });
       if (result.url) {
-        await Linking.openURL(result.url);
+        await WebBrowser.openBrowserAsync(result.url, {
+          presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+        });
         Alert.alert(
-          'Fizetési oldal megnyílt',
+          'Visszatértél az appba',
           'Ha sikeresen teljesítettéd a fizetést, egyenleged hamarosan frissül. Ellenőrizd a fiókodat.',
           [{ text: 'Rendben' }],
         );

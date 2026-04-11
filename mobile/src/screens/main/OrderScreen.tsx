@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useFadeIn } from '../../hooks/useFadeIn';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Linking } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { ScreenWrapper, Text, Button, Input } from '../../components/ui';
 import { Colors, Spacing, Fonts, Radius } from '../../theme';
 import { startDeviceOrderCheckout, getSettings } from '../../lib/api';
@@ -139,9 +139,11 @@ export function OrderScreen({ navigation }: Props) {
         return;
       }
       if (result.url) {
-        await Linking.openURL(result.url);
+        await WebBrowser.openBrowserAsync(result.url, {
+          presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+        });
         Alert.alert(
-          'Fizetési oldal megnyílt',
+          'Visszatértél az appba',
           'Ha sikeresen teljesítettéd a fizetést, hamarosan feldolgozzuk a rendelésed. Ellenőrizd a fiókodat.',
           [{ text: 'Rendben' }],
         );
