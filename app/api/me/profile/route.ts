@@ -11,7 +11,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from("profiles")
     .select(
-      "auth_user_id, user_type, name, phone, company_name, tax_number, billing_address, shipping_address, avatar_url, updated_at",
+      "auth_user_id, user_type, name, phone, company_name, tax_number, billing_address, shipping_address, updated_at",
     )
     .eq("auth_user_id", user.id)
     .maybeSingle();
@@ -37,7 +37,6 @@ export async function GET() {
       tax_number: metadataUserType === "company" ? metadataTaxNumber : null,
       billing_address: null,
       shipping_address: null,
-      avatar_url: null,
       updated_at: null,
     },
     email: user.email ?? null,
@@ -59,7 +58,6 @@ export async function PATCH(request: Request) {
     tax_number?: string | null;
     billing_address?: string | null;
     shipping_address?: string | null;
-    avatar_url?: string | null;
   };
 
   const patch: Record<string, string | null> = {
@@ -98,9 +96,6 @@ export async function PATCH(request: Request) {
   if (body.shipping_address !== undefined) {
     patch.shipping_address =
       body.shipping_address === null ? null : String(body.shipping_address).trim() || null;
-  }
-  if (body.avatar_url !== undefined) {
-    patch.avatar_url = body.avatar_url === null ? null : String(body.avatar_url).trim() || null;
   }
 
   const companyName = String(

@@ -1,5 +1,76 @@
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
-import { emptyAddress, formatAddress, parseAddress } from "@/lib/profile-address";
+
+/** Ugyanaz a cím-formátum, mint a webes profil űrlapon (csak mobil API, web fájlok érintése nélkül). */
+type AddrFields = {
+  country: string;
+  zip: string;
+  city: string;
+  street: string;
+  extra: string;
+};
+
+function emptyAddr(): AddrFields {
+  return {
+    country: "Magyarország",
+    zip: "",
+    city: "",
+    street: "",
+    extra: "",
+  };
+}
+
+function parseAddr(raw: string | null | undefined): AddrFields {
+  const result = emptyAddr();
+  if (!raw) return result;
+
+  const compact = raw.replace(/\n/g, ", ").replace(/\s+/g, " ").trim();
+  if (!compact) return result;
+
+  const parts = compact.split(",").map((p) => p.trim()).filter(Boolean);
+
+  if (parts.length >= 4) {
+    result.country = parts[0] || result.country;
+    const zipCity = parts[1] || "";
+    const zipCityMatch = zipCity.match(/^(\d{4})\s+(.+)$/);
+    if (zipCityMatch) {
+      result.zip = zipCityMatch[1] ?? "";
+      result.city = zipCityMatch[2] ?? "";
+    } else {
+      result.city = zipCity;
+    }
+    result.street = parts[2] || "";
+    result.extra = parts.slice(3).join(", ");
+    return result;
+  }
+
+  const zipCityMatch = compact.match(/(\d{4})\s+([^,]+)/);
+  if (zipCityMatch) {
+    result.zip = zipCityMatch[1] ?? "";
+    result.city = (zipCityMatch[2] ?? "").trim();
+  }
+
+  const countryMatch = compact.match(/^(Magyarország|Hungary)[,\s]+/i);
+  if (countryMatch) {
+    result.country = countryMatch[1] ?? result.country;
+  }
+
+  result.street = compact;
+  return result;
+}
+
+function formatAddr(addr: AddrFields): string | null {
+  const country = addr.country.trim();
+  const zip = addr.zip.trim();
+  const city = addr.city.trim();
+  const street = addr.street.trim();
+  const extra = addr.extra.trim();
+
+  const hasMain = country || zip || city || street || extra;
+  if (!hasMain) return null;
+
+  const zipCity = [zip, city].filter(Boolean).join(" ").trim();
+  return [country || "Magyarország", zipCity, street, extra].filter(Boolean).join(", ");
+}
 
 function parseBearerToken(authHeader: string | null): string | null {
   if (!authHeader) return null;
@@ -65,7 +136,7 @@ export async function GET(request: Request) {
       avatar_url: null,
     }) as ProfileRow;
 
-    const billing = parseAddress(profile.billing_address);
+    const billing = parseAddr(profile.billing_address);
     const { first, last } = splitName(profile.name);
     const streetLine = [billing.street, billing.extra].filter(Boolean).join(", ");
 
@@ -121,14 +192,14 @@ export async function PATCH(request: Request) {
     const name = `${first} ${last}`.trim() || null;
 
     const billingAddr = {
-      ...emptyAddress(),
+      ...emptyAddr(),
       country: String(body.address_country ?? "Magyarország").trim() || "Magyarország",
       zip: String(body.address_postal_code ?? "").trim(),
       city: String(body.address_city ?? "").trim(),
       street: String(body.address_street ?? "").trim(),
       extra: "",
     };
-    const billing_address = formatAddress(billingAddr);
+    const billing_address = formatAddr(billingAddr);
 
     const shipping_address =
       current?.shipping_address != null ? String(current.shipping_address) : null;
