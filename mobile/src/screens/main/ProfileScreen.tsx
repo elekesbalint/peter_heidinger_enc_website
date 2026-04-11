@@ -243,36 +243,82 @@ export function ProfileScreen({ navigation }: Props) {
                 <Input label="Adószám" value={form.tax_number ?? ''} onChangeText={(v) => setForm((f) => ({ ...f, tax_number: v }))} />
               </>
             ) : null}
+            <Text variant="caption" style={[styles.fieldLabel, { marginTop: Spacing.md }]}>Számlázási cím</Text>
             <Input label="Ország" value={form.address_country ?? ''} onChangeText={(v) => setForm((f) => ({ ...f, address_country: v }))} />
             <Input label="Irányítószám" value={form.address_postal_code ?? ''} onChangeText={(v) => setForm((f) => ({ ...f, address_postal_code: v }))} keyboardType="numeric" />
-            <Input label="Város" value={form.address_city ?? ''} onChangeText={(v) => setForm((f) => ({ ...f, address_city: v }))} />
+            <Input label="Település" value={form.address_city ?? ''} onChangeText={(v) => setForm((f) => ({ ...f, address_city: v }))} />
             <Input label="Utca, házszám" value={form.address_street ?? ''} onChangeText={(v) => setForm((f) => ({ ...f, address_street: v }))} />
+            <Input label="Emelet, ajtó, egyéb (opcionális)" value={form.address_extra ?? ''} onChangeText={(v) => setForm((f) => ({ ...f, address_extra: v }))} />
             <View style={styles.editActions}>
               <Button label="Mégse" variant="secondary" onPress={() => { setForm(profile); setEditing(false); }} style={{ flex: 1, marginRight: 8 }} />
               <Button label="Mentés" onPress={() => void handleSave()} loading={saving} style={{ flex: 1 }} />
             </View>
           </>
         ) : (
-          <Card padding={16} style={styles.profileCard}>
-            {[
-              ['Keresztnév', profile.first_name],
-              ['Vezetéknév', profile.last_name],
-              ['Telefonszám', profile.phone],
-              ...(isCompany
-                ? ([['Cégnév', profile.company_name], ['Adószám', profile.tax_number]] as [string, string][])
-                : []),
-              ['Cím', [profile.address_street, profile.address_postal_code, profile.address_city].filter(Boolean).join(', ')],
-              ['Ország', profile.address_country],
-            ].map(([label, value], i, arr) => (
-              <View key={label}>
-                <View style={styles.profileRow}>
-                  <Text variant="caption" style={{ flex: 1 }}>{label}</Text>
-                  <Text style={styles.profileValue}>{value || '—'}</Text>
+          <>
+            <Card padding={16} style={styles.profileCard}>
+              <Text style={styles.addrSectionLabel}>Személyes adatok</Text>
+              {[
+                ['Keresztnév', profile.first_name],
+                ['Vezetéknév', profile.last_name],
+                ['Telefonszám', profile.phone],
+                ...(isCompany
+                  ? ([['Cégnév', profile.company_name], ['Adószám', profile.tax_number]] as [string, string][])
+                  : []),
+              ].map(([label, value], i, arr) => (
+                <View key={label}>
+                  <View style={styles.profileRow}>
+                    <Text variant="caption" style={{ flex: 1 }}>{label}</Text>
+                    <Text style={styles.profileValue}>{value || '—'}</Text>
+                  </View>
+                  {i < arr.length - 1 && <Divider />}
                 </View>
-                {i < arr.length - 1 && <Divider />}
-              </View>
-            ))}
-          </Card>
+              ))}
+            </Card>
+
+            <Card padding={16} style={styles.profileCard}>
+              <Text style={styles.addrSectionLabel}>Számlázási cím</Text>
+              {[
+                ['Ország', profile.address_country],
+                ['Irányítószám', profile.address_postal_code],
+                ['Település', profile.address_city],
+                ['Utca, házszám', profile.address_street],
+                ...(profile.address_extra ? [['Emelet, ajtó, egyéb', profile.address_extra]] as [string, string][] : []),
+              ].map(([label, value], i, arr) => (
+                <View key={label}>
+                  <View style={styles.profileRow}>
+                    <Text variant="caption" style={{ flex: 1 }}>{label}</Text>
+                    <Text style={styles.profileValue}>{value || '—'}</Text>
+                  </View>
+                  {i < arr.length - 1 && <Divider />}
+                </View>
+              ))}
+            </Card>
+
+            {profile.has_shipping_address === '1' && (
+              <Card padding={16} style={styles.profileCard}>
+                <Text style={styles.addrSectionLabel}>Szállítási cím</Text>
+                {[
+                  ['Ország', profile.shipping_country],
+                  ['Irányítószám', profile.shipping_postal_code],
+                  ['Település', profile.shipping_city],
+                  ['Utca, házszám', profile.shipping_street],
+                  ...(profile.shipping_extra ? [['Emelet, ajtó, egyéb', profile.shipping_extra]] as [string, string][] : []),
+                ].map(([label, value], i, arr) => (
+                  <View key={label}>
+                    <View style={styles.profileRow}>
+                      <Text variant="caption" style={{ flex: 1 }}>{label}</Text>
+                      <Text style={styles.profileValue}>{value || '—'}</Text>
+                    </View>
+                    {i < arr.length - 1 && <Divider />}
+                  </View>
+                ))}
+                <Text variant="caption" style={styles.shippingNote}>
+                  A szállítási cím a weboldalon módosítható.
+                </Text>
+              </Card>
+            )}
+          </>
         )}
       </Animated.View>
 
@@ -409,4 +455,17 @@ const styles = StyleSheet.create({
   },
   chevron: { fontSize: 20, color: Colors.textTertiary },
   logoutBtn: { marginTop: Spacing.sm, marginBottom: Spacing.xl },
+  addrSectionLabel: {
+    fontSize: Fonts.sizes.xs,
+    fontWeight: Fonts.weights.semibold,
+    color: Colors.textTertiary,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    marginBottom: Spacing.sm,
+  },
+  shippingNote: {
+    marginTop: Spacing.sm,
+    color: Colors.textTertiary,
+    fontStyle: 'italic',
+  },
 });

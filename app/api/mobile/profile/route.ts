@@ -28,7 +28,8 @@ function parseAddr(raw: string | null | undefined): AddrFields {
 
   const parts = compact.split(",").map((p) => p.trim()).filter(Boolean);
 
-  if (parts.length >= 4) {
+  // ≥3 részes eset: "Ország, IRSZ Város, Utca [, extra...]"
+  if (parts.length >= 3) {
     result.country = parts[0] || result.country;
     const zipCity = parts[1] || "";
     const zipCityMatch = zipCity.match(/^(\d{4})\s+(.+)$/);
@@ -43,6 +44,7 @@ function parseAddr(raw: string | null | undefined): AddrFields {
     return result;
   }
 
+  // 2 részes eset: próbáljunk kinyerni zip+city-t
   const zipCityMatch = compact.match(/(\d{4})\s+([^,]+)/);
   if (zipCityMatch) {
     result.zip = zipCityMatch[1] ?? "";
@@ -137,8 +139,8 @@ export async function GET(request: Request) {
     }) as ProfileRow;
 
     const billing = parseAddr(profile.billing_address);
+    const shipping = parseAddr(profile.shipping_address);
     const { first, last } = splitName(profile.name);
-    const streetLine = [billing.street, billing.extra].filter(Boolean).join(", ");
 
     return Response.json({
       ok: true,
@@ -149,7 +151,14 @@ export async function GET(request: Request) {
       address_country: billing.country,
       address_postal_code: billing.zip,
       address_city: billing.city,
-      address_street: streetLine,
+      address_street: billing.street,
+      address_extra: billing.extra,
+      shipping_country: shipping.country,
+      shipping_postal_code: shipping.zip,
+      shipping_city: shipping.city,
+      shipping_street: shipping.street,
+      shipping_extra: shipping.extra,
+      has_shipping_address: profile.shipping_address ? "1" : "",
       user_type: profile.user_type === "company" ? "company" : "private",
       company_name: profile.company_name ?? "",
       tax_number: profile.tax_number ?? "",
@@ -197,7 +206,7 @@ export async function PATCH(request: Request) {
       zip: String(body.address_postal_code ?? "").trim(),
       city: String(body.address_city ?? "").trim(),
       street: String(body.address_street ?? "").trim(),
-      extra: "",
+      extra: String(body.address_extra ?? "").trim(),
     };
     const billing_address = formatAddr(billingAddr);
 
