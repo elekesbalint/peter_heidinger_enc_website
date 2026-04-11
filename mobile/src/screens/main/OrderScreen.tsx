@@ -83,6 +83,7 @@ export function OrderScreen({ navigation }: Props) {
     items: CATEGORY_DEFAULTS,
   });
   const [settingsLoading, setSettingsLoading] = useState(true);
+  const [devicePriceHuf, setDevicePriceHuf] = useState<number | null>(null);
   const [waitlistModalVisible, setWaitlistModalVisible] = useState(false);
 
   const headerAnim = useFadeIn(0);
@@ -104,8 +105,11 @@ export function OrderScreen({ navigation }: Props) {
       'order_category_guide_ii_items',
       'order_category_guide_iii_items',
       'order_category_guide_iv_items',
+      'device_price_huf',
     ])
       .then((s) => {
+        const priceRaw = parseInt(s.device_price_huf ?? '', 10);
+        if (!isNaN(priceRaw) && priceRaw > 0) setDevicePriceHuf(priceRaw);
         setGuide({
           title: s.order_category_guide_title || 'Kategória magyarázó',
           subtitle:
@@ -225,6 +229,16 @@ export function OrderScreen({ navigation }: Props) {
         <Text variant="caption" style={styles.subtitle}>
           Rendelje meg személyre szabott ENC készülékét az elektronikus útdíj-fizetéshez.
         </Text>
+        {devicePriceHuf != null && (
+          <View style={styles.pricePill}>
+            <Text style={styles.pricePillText}>
+              Aktuális készülékár:{' '}
+              <Text semibold style={styles.pricePillAmount}>
+                {devicePriceHuf.toLocaleString('hu-HU')} Ft
+              </Text>
+            </Text>
+          </View>
+        )}
       </Animated.View>
 
       {/* Info card */}
@@ -583,4 +597,22 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   incompleteBtn: { width: '100%' },
+  pricePill: {
+    alignSelf: 'flex-start',
+    marginTop: Spacing.sm,
+    backgroundColor: Colors.bgCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.full,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  pricePillText: {
+    fontSize: Fonts.sizes.sm,
+    color: Colors.textSecondary,
+  },
+  pricePillAmount: {
+    color: Colors.textPrimary,
+    fontSize: Fonts.sizes.sm,
+  },
 });
