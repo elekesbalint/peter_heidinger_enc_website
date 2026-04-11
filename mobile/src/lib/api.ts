@@ -123,6 +123,8 @@ export type MobileSummaryData = {
   fxEurToHuf: number;
   referralWalletBonusCapHuf: number;
   minBalanceWarningEur: number;
+  displayName: string;
+  avatarUrl: string | null;
   devices: Array<{
     identifier: string;
     category: string;

@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useFadeIn } from '../../hooks/useFadeIn';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -14,8 +15,10 @@ import { Colors, Gradients, Spacing, Fonts, Radius } from '../../theme';
 import { fetchMobileSummary } from '../../lib/api';
 import { assertSupabaseConfigured, supabase } from '../../lib/supabase';
 import type { EncDeviceOrder, StripeTopup, DeviceWallet } from '../../lib/supabase';
+import { useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { HomeStackParamList } from '../../navigation/types';
+import type { HomeStackParamList, MainTabParamList } from '../../navigation/types';
 
 interface Props {
   navigation: NativeStackNavigationProp<HomeStackParamList, 'Dashboard'>;
@@ -43,7 +46,10 @@ function formatHuf(n: number) {
 type DeviceInfo = { identifier: string; category: string; status: string; licensePlate: string | null };
 
 export function DashboardScreen({ navigation }: Props) {
+  const tabNav = useNavigation<BottomTabNavigationProp<MainTabParamList>>();
   const [user, setUser] = useState<{ email?: string; id?: string } | null>(null);
+  const [displayName, setDisplayName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [wallets, setWallets] = useState<DeviceWallet[]>([]);
   const [deviceInfos, setDeviceInfos] = useState<DeviceInfo[]>([]);
   const [orders, setOrders] = useState<EncDeviceOrder[]>([]);
@@ -79,6 +85,8 @@ export function DashboardScreen({ navigation }: Props) {
       const summary = await fetchMobileSummary();
       setFxEurToHuf(summary.fxEurToHuf > 0 ? summary.fxEurToHuf : 400);
       setMinBalanceWarningEur(summary.minBalanceWarningEur ?? 12.5);
+      setDisplayName(summary.displayName || u.email?.split('@')[0] || 'Felhasználó');
+      setAvatarUrl(summary.avatarUrl ?? null);
       setDeviceInfos(summary.devices.map((d) => ({
         identifier: d.identifier,
         category: d.category,
@@ -175,19 +183,27 @@ export function DashboardScreen({ navigation }: Props) {
 
       {/* Header */}
       <Animated.View style={[styles.headerRow, headerAnim]}>
-        <View>
+        <View style={{ flex: 1, marginRight: Spacing.md }}>
           <Text variant="caption">Üdvözöljük,</Text>
-          <Text variant="h3">{user?.email?.split('@')[0] ?? 'Felhasználó'}</Text>
+          <Text variant="h3" numberOfLines={1}>{displayName || user?.email?.split('@')[0] || 'Felhasználó'}</Text>
         </View>
         <TouchableOpacity
           style={styles.avatarCircle}
-          onPress={() => navigation.navigate('BlogList')}
+          onPress={() => tabNav.navigate('ProfileTab')}
+          activeOpacity={0.8}
         >
-          <LinearGradient colors={Gradients.accent} style={styles.avatar}>
-            <Text style={styles.avatarLetter}>
-              {(user?.email?.[0] ?? 'U').toUpperCase()}
-            </Text>
-          </LinearGradient>
+          {avatarUrl ? (
+            <Image
+              source={{ uri: avatarUrl }}
+              style={styles.avatar}
+            />
+          ) : (
+            <LinearGradient colors={Gradients.accent} style={styles.avatar}>
+              <Text style={styles.avatarLetter}>
+                {(displayName?.[0] ?? user?.email?.[0] ?? 'U').toUpperCase()}
+              </Text>
+            </LinearGradient>
+          )}
         </TouchableOpacity>
       </Animated.View>
 

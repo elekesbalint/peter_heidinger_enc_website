@@ -44,10 +44,16 @@ export async function GET(request: Request) {
     const minBalanceWarningEur = Number((minBalanceWarningHuf / fxEurToHuf).toFixed(2));
 
     const [
+      { data: profileRow },
       { data: devices, error: devicesError },
       { data: topups, error: topupsError },
       { data: orders, error: ordersError },
     ] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("name, avatar_url")
+        .eq("auth_user_id", user.id)
+        .maybeSingle(),
       supabase
         .from("devices")
         .select("identifier, category, status, license_plate")
@@ -103,11 +109,17 @@ export async function GET(request: Request) {
       (wallets ?? []).map((w) => [w.device_identifier, Number(w.balance_huf ?? 0)] as const),
     );
 
+    const rawName = (profileRow as { name?: string | null } | null)?.name ?? "";
+    const displayName = rawName.trim() || userEmail.split("@")[0] || "Felhasználó";
+    const avatarUrl = (profileRow as { avatar_url?: string | null } | null)?.avatar_url ?? null;
+
     return Response.json({
       ok: true,
       fxEurToHuf,
       referralWalletBonusCapHuf,
       minBalanceWarningEur,
+      displayName,
+      avatarUrl,
       devices: (devices ?? []).map((d: DeviceRow) => ({
         identifier: d.identifier,
         category: d.category,
