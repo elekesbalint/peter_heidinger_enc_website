@@ -168,6 +168,11 @@ function MainTabs() {
           title: 'Rendelés',
           tabBarIcon: ({ focused }) => <TabIcon emoji="📦" focused={focused} />,
         }}
+        listeners={({ navigation }) => ({
+          tabPress: () => {
+            navigation.navigate('OrderTab', { screen: 'Order' });
+          },
+        })}
       />
       <Tab.Screen
         name="TopupTab"
@@ -176,6 +181,11 @@ function MainTabs() {
           title: 'Feltöltés',
           tabBarIcon: ({ focused }) => <TabIcon emoji="💳" focused={focused} />,
         }}
+        listeners={({ navigation }) => ({
+          tabPress: () => {
+            navigation.navigate('TopupTab', { screen: 'Topup', params: {} });
+          },
+        })}
       />
       <Tab.Screen
         name="ProfileTab"

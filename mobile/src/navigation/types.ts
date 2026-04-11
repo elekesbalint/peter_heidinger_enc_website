@@ -1,3 +1,5 @@
+import type { NavigatorScreenParams } from '@react-navigation/native';
+
 export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
@@ -5,10 +7,10 @@ export type AuthStackParamList = {
 };
 
 export type MainTabParamList = {
-  HomeTab: undefined;
-  OrderTab: undefined;
-  TopupTab: undefined;
-  ProfileTab: undefined;
+  HomeTab: NavigatorScreenParams<HomeStackParamList> | undefined;
+  OrderTab: NavigatorScreenParams<OrderStackParamList> | undefined;
+  TopupTab: NavigatorScreenParams<TopupStackParamList> | undefined;
+  ProfileTab: NavigatorScreenParams<ProfileStackParamList> | undefined;
 };
 
 export type HomeStackParamList = {

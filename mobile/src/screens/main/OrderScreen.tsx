@@ -140,7 +140,11 @@ export function OrderScreen({ navigation }: Props) {
       }
       if (result.url) {
         await Linking.openURL(result.url);
-        navigation.navigate('OrderSuccess', {});
+        Alert.alert(
+          'Fizetési oldal megnyílt',
+          'Ha sikeresen teljesítettéd a fizetést, hamarosan feldolgozzuk a rendelésed. Ellenőrizd a fiókodat.',
+          [{ text: 'Rendben' }],
+        );
       }
     } catch (err: unknown) {
       Alert.alert('Hiba', err instanceof Error ? err.message : 'Rendelés sikertelen.');

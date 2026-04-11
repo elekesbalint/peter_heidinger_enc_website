@@ -228,7 +228,11 @@ export function TopupScreen({ navigation, route }: Props) {
       });
       if (result.url) {
         await Linking.openURL(result.url);
-        navigation.navigate('TopupSuccess', {});
+        Alert.alert(
+          'Fizetési oldal megnyílt',
+          'Ha sikeresen teljesítettéd a fizetést, egyenleged hamarosan frissül. Ellenőrizd a fiókodat.',
+          [{ text: 'Rendben' }],
+        );
       }
     } catch (err: unknown) {
       Alert.alert('Hiba', err instanceof Error ? err.message : 'Feltöltés sikertelen.');
