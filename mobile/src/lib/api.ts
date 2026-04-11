@@ -111,7 +111,7 @@ export async function startDeviceOrderCheckout(body: {
   const res = await apiFetch('/api/mobile/stripe/checkout-device', {
     method: 'POST',
     headers,
-    body: JSON.stringify(body),
+    body: JSON.stringify({ ...body, contractAccepted: true }),
   });
   const data = await res.json();
   if (!data.ok) throw new Error(data.error ?? 'Rendelés indítása sikertelen.');

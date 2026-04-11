@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useFadeIn } from '../../hooks/useFadeIn';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as WebBrowser from 'expo-web-browser';
+import { Linking } from 'react-native';
 import { ScreenWrapper, Text, Button, Input } from '../../components/ui';
 import { Colors, Spacing, Fonts, Radius } from '../../theme';
 import { startDeviceOrderCheckout, getSettings } from '../../lib/api';
@@ -139,7 +139,7 @@ export function OrderScreen({ navigation }: Props) {
         return;
       }
       if (result.url) {
-        await WebBrowser.openBrowserAsync(result.url);
+        await Linking.openURL(result.url);
         navigation.navigate('OrderSuccess', {});
       }
     } catch (err: unknown) {

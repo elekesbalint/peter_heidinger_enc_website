@@ -8,10 +8,11 @@ import {
   ActivityIndicator,
   TextInput,
   ScrollView,
+  useWindowDimensions,
+  Linking,
 } from 'react-native';
 import { useFadeIn } from '../../hooks/useFadeIn';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as WebBrowser from 'expo-web-browser';
 import { ScreenWrapper, Text, Button } from '../../components/ui';
 import { Colors, Gradients, Spacing, Fonts, Radius } from '../../theme';
 import { fetchTopupConfig, startTopupCheckout } from '../../lib/api';
@@ -56,6 +57,7 @@ type TopupConfig = {
 };
 
 export function TopupScreen({ navigation, route }: Props) {
+  const { width: screenWidth } = useWindowDimensions();
   const [config, setConfig] = useState<TopupConfig | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [deviceIdentifier, setDeviceIdentifier] = useState(
@@ -225,7 +227,7 @@ export function TopupScreen({ navigation, route }: Props) {
         travelDestination: travelDestination.trim(),
       });
       if (result.url) {
-        await WebBrowser.openBrowserAsync(result.url);
+        await Linking.openURL(result.url);
         navigation.navigate('TopupSuccess', {});
       }
     } catch (err: unknown) {
@@ -493,7 +495,7 @@ export function TopupScreen({ navigation, route }: Props) {
           {packages.length > 0 && (
             <>
               <Text variant="caption" style={styles.packagesHint}>
-                Gyors választás (automatikusan kitölti az összeget):
+                Gyors választás:
               </Text>
               <View style={styles.packagesGrid}>
                 {packages.map((amount) => {
@@ -502,12 +504,16 @@ export function TopupScreen({ navigation, route }: Props) {
                   );
                   const active = Math.abs(selectedVal - amount) < 0.001;
                   const disabled = amount < minimumRequiredTopup;
-                  const discounted =
-                    discountPercent > 0
-                      ? Number(
-                          ((amount * (100 - Math.min(100, discountPercent))) / 100).toFixed(2),
-                        )
-                      : amount;
+                  const hasDiscount = discountPercent > 0;
+                  const discounted = hasDiscount
+                    ? Number(
+                        ((amount * (100 - Math.min(100, discountPercent))) / 100).toFixed(2),
+                      )
+                    : amount;
+                  // Kártyaszélesség: (rendelkezésre álló szélesség - 2 gap) / 3
+                  const cardGap = 8;
+                  const horizontalPad = Spacing.md * 2 + 2; // sectionCard padding kb.
+                  const cardW = Math.floor((screenWidth - horizontalPad - cardGap * 2) / 3);
                   return (
                     <TouchableOpacity
                       key={amount}
@@ -519,30 +525,41 @@ export function TopupScreen({ navigation, route }: Props) {
                       }}
                       style={[
                         styles.pkgCard,
+                        { width: cardW },
                         active && styles.pkgCardActive,
                         disabled && styles.pkgCardDisabled,
                       ]}
                     >
                       {active && (
                         <LinearGradient
-                          colors={['rgba(108,99,255,0.18)', 'rgba(108,99,255,0.08)']}
+                          colors={['rgba(108,99,255,0.22)', 'rgba(108,99,255,0.06)']}
                           style={StyleSheet.absoluteFill}
                         />
                       )}
-                      <Text style={styles.pkgLabel}>CSOMAG</Text>
-                      <Text semibold style={[styles.pkgAmount, disabled && styles.pkgAmountDisabled]}>
-                        {amount.toLocaleString('hu-HU')} EUR
-                      </Text>
-                      <Text style={[styles.pkgDiscount, disabled && { color: Colors.textTertiary }]}>
-                        Kedvezmény után: {discounted.toLocaleString('hu-HU')} EUR
-                      </Text>
-                      <Text style={[styles.pkgDiscountPct, disabled && { color: Colors.textTertiary }]}>
-                        Kedvezmény: {Math.min(100, discountPercent).toLocaleString('hu-HU')}%
-                      </Text>
+                      {/* Ár */}
+                      <View style={styles.pkgAmountRow}>
+                        <Text semibold style={[styles.pkgAmountNum, disabled && styles.pkgAmountDisabled]}>
+                          {amount.toLocaleString('hu-HU')}
+                        </Text>
+                        <Text style={[styles.pkgAmountCurrency, disabled && styles.pkgAmountDisabled]}>
+                          {' '}EUR
+                        </Text>
+                      </View>
+                      {/* Kedvezmény pill — két sor: % fölül, ár alul */}
+                      {hasDiscount ? (
+                        <View style={[styles.pkgDiscountPill, disabled && styles.pkgDiscountPillDisabled]}>
+                          <Text style={[styles.pkgDiscountPillPct, disabled && { color: Colors.textTertiary }]}>
+                            -{Math.min(100, discountPercent)}%
+                          </Text>
+                          <Text style={[styles.pkgDiscountPillPrice, disabled && { color: Colors.textTertiary }]}>
+                            {discounted.toLocaleString('hu-HU')} EUR
+                          </Text>
+                        </View>
+                      ) : null}
+                      {/* Disabled üzenet */}
                       {disabled && (
-                        <Text style={styles.pkgDisabledNote}>
-                          Ehhez az úticélhoz legalább {minimumRequiredTopup.toLocaleString('hu-HU')}{' '}
-                          EUR szükséges
+                        <Text style={styles.pkgDisabledNote} numberOfLines={2}>
+                          Min. {minimumRequiredTopup.toLocaleString('hu-HU')} EUR
                         </Text>
                       )}
                     </TouchableOpacity>
@@ -697,51 +714,75 @@ const styles = StyleSheet.create({
   },
   amountHint: { color: Colors.textTertiary, marginTop: 6 },
   payableRow: { color: Colors.textSecondary, marginTop: 4 },
-  packagesHint: { color: Colors.textTertiary, marginTop: Spacing.md, marginBottom: 10 },
+  packagesHint: { color: Colors.textTertiary, marginTop: Spacing.md, marginBottom: 8 },
   packagesGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
   },
   pkgCard: {
-    flex: 1,
-    minWidth: '28%',
-    borderRadius: Radius.lg,
-    padding: 16,
+    borderRadius: Radius.md,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
     borderWidth: 1.5,
     borderColor: Colors.border,
     backgroundColor: Colors.bgCard,
     overflow: 'hidden',
+    alignItems: 'center',
   },
   pkgCardActive: { borderColor: Colors.accent },
-  pkgCardDisabled: { opacity: 0.45 },
-  pkgLabel: {
-    fontSize: Fonts.sizes.xs,
-    fontWeight: '600',
-    color: Colors.textTertiary,
-    letterSpacing: 1,
-    marginBottom: 6,
+  pkgCardDisabled: { opacity: 0.42 },
+  pkgAmountRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginBottom: 8,
   },
-  pkgAmount: {
+  pkgAmountNum: {
     fontSize: Fonts.sizes.xl,
     fontWeight: '700',
     color: Colors.textPrimary,
-    marginBottom: 6,
+    lineHeight: Fonts.sizes.xl + 2,
+  },
+  pkgAmountCurrency: {
+    fontSize: Fonts.sizes.xs,
+    fontWeight: '600',
+    color: Colors.textSecondary,
+    lineHeight: Fonts.sizes.xl + 2,
   },
   pkgAmountDisabled: { color: Colors.textTertiary },
-  pkgDiscount: {
-    fontSize: Fonts.sizes.xs,
-    color: Colors.success,
-    marginBottom: 2,
+  pkgDiscountPill: {
+    backgroundColor: Colors.successSoft,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(0,196,140,0.3)',
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    alignSelf: 'stretch',
+    alignItems: 'center',
   },
-  pkgDiscountPct: {
-    fontSize: Fonts.sizes.xs,
+  pkgDiscountPillDisabled: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderColor: Colors.border,
+  },
+  pkgDiscountPillPct: {
+    fontSize: 11,
+    fontWeight: '700',
     color: Colors.success,
+    textAlign: 'center',
+    lineHeight: 15,
+  },
+  pkgDiscountPillPrice: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: Colors.success,
+    textAlign: 'center',
+    lineHeight: 14,
   },
   pkgDisabledNote: {
-    fontSize: Fonts.sizes.xs,
+    fontSize: 10,
     color: Colors.warning,
-    marginTop: 4,
+    marginTop: 6,
+    textAlign: 'center',
+    lineHeight: 14,
   },
   errorBox: {
     borderRadius: Radius.md,
