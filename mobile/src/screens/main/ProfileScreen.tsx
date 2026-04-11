@@ -31,6 +31,7 @@ export function ProfileScreen({ navigation }: Props) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarLoadError, setAvatarLoadError] = useState(false);
   const [referralEmail, setReferralEmail] = useState('');
   const [inviting, setInviting] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState(false);
@@ -113,7 +114,8 @@ export function ProfileScreen({ navigation }: Props) {
     setUploadingAvatar(true);
     try {
       const { avatarUrl } = await uploadProfileAvatar(b64, asset.mimeType ?? 'image/jpeg');
-      setProfile((p) => ({ ...p, avatar_url: avatarUrl }));
+      setAvatarLoadError(false);
+      setProfile((p) => ({ ...p, avatar_url: avatarUrl, updated_at: String(Date.now()) }));
       setForm((p) => ({ ...p, avatar_url: avatarUrl }));
       Alert.alert('Kész', 'Profilkép frissítve.');
     } catch (err: unknown) {
@@ -158,7 +160,11 @@ export function ProfileScreen({ navigation }: Props) {
   }
 
   const displayName = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || 'Felhasználó';
-  const avatarUri = profile.avatar_url?.trim() || '';
+  const rawAvatarUrl = profile.avatar_url?.trim() || '';
+  // Cache-bust: ha ugyanolyan fájlnévvel töltünk fel újat, a RN Image cache-elheti a régit
+  const avatarUri = rawAvatarUrl
+    ? rawAvatarUrl.includes('?') ? rawAvatarUrl : `${rawAvatarUrl}?v=${profile.updated_at || '0'}`
+    : '';
   const isCompany = profile.user_type === 'company';
 
   return (
@@ -181,8 +187,12 @@ export function ProfileScreen({ navigation }: Props) {
           activeOpacity={0.85}
           style={styles.avatarTouch}
         >
-          {avatarUri ? (
-            <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+          {avatarUri && !avatarLoadError ? (
+            <Image
+              source={{ uri: avatarUri }}
+              style={styles.avatarImage}
+              onError={() => setAvatarLoadError(true)}
+            />
           ) : (
             <LinearGradient colors={Gradients.accent} style={styles.avatarCircle}>
               <Text style={styles.avatarLetter}>
