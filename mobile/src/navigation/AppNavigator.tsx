@@ -7,12 +7,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { supabase } from '../lib/supabase';
 import { signOut } from '../lib/auth';
+import { getProfileComplete } from '../lib/api';
 import { Colors, Gradients, Fonts, Radius } from '../theme';
 import { Text } from '../components/ui';
 
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { RegisterScreen } from '../screens/auth/RegisterScreen';
 import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen';
+import { OnboardingScreen } from '../screens/onboarding/OnboardingScreen';
 import { DashboardScreen } from '../screens/main/DashboardScreen';
 import { OrderScreen } from '../screens/main/OrderScreen';
 import { TopupScreen } from '../screens/main/TopupScreen';
@@ -26,6 +28,7 @@ import { SuccessScreen, CancelScreen } from '../screens/secondary/SuccessCancelS
 
 import type {
   AuthStackParamList,
+  OnboardingStackParamList,
   MainTabParamList,
   HomeStackParamList,
   OrderStackParamList,
@@ -34,6 +37,7 @@ import type {
 } from './types';
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
+const OnboardingStack = createNativeStackNavigator<OnboardingStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const HomeStack = createNativeStackNavigator<HomeStackParamList>();
 const OrderStack = createNativeStackNavigator<OrderStackParamList>();
@@ -209,14 +213,25 @@ function AuthStackNavigator() {
   );
 }
 
+function OnboardingStackNavigator({ onComplete }: { onComplete: () => void }) {
+  return (
+    <OnboardingStack.Navigator screenOptions={{ headerShown: false }}>
+      <OnboardingStack.Screen name="Onboarding">
+        {() => <OnboardingScreen onComplete={onComplete} />}
+      </OnboardingStack.Screen>
+    </OnboardingStack.Navigator>
+  );
+}
+
 export function AppNavigator() {
   const [session, setSession] = useState<boolean | null>(null);
+  // null = még nem tudjuk, true = kész, false = hiányos
+  const [profileComplete, setProfileComplete] = useState<boolean | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        // Egyszeri kényszerített kijelentkezés: .env-ben EXPO_PUBLIC_FORCE_LOGOUT_ONCE=1, majd egy indítás után töröld a sort.
         if (process.env.EXPO_PUBLIC_FORCE_LOGOUT_ONCE === '1') {
           await signOut();
         }
@@ -228,6 +243,7 @@ export function AppNavigator() {
     })();
     const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(!!s);
+      if (!s) setProfileComplete(null);
     });
     return () => {
       cancelled = true;
@@ -235,7 +251,18 @@ export function AppNavigator() {
     };
   }, []);
 
-  if (session === null) {
+  // Ha van session, ellenőrizzük a profil teljességét
+  useEffect(() => {
+    if (!session) { setProfileComplete(null); return; }
+    setProfileComplete(null); // reset közben töltés
+    getProfileComplete()
+      .then((complete) => setProfileComplete(complete))
+      .catch(() => setProfileComplete(false));
+  }, [session]);
+
+  const loading = session === null || (session === true && profileComplete === null);
+
+  if (loading) {
     return (
       <LinearGradient colors={Gradients.bg} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color={Colors.accent} size="large" />
@@ -245,7 +272,11 @@ export function AppNavigator() {
 
   return (
     <NavigationContainer>
-      {session ? <MainTabs /> : <AuthStackNavigator />}
+      {!session
+        ? <AuthStackNavigator />
+        : !profileComplete
+          ? <OnboardingStackNavigator onComplete={() => setProfileComplete(true)} />
+          : <MainTabs />}
     </NavigationContainer>
   );
 }

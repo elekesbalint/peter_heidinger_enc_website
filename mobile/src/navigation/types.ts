@@ -6,6 +6,10 @@ export type AuthStackParamList = {
   ForgotPassword: undefined;
 };
 
+export type OnboardingStackParamList = {
+  Onboarding: undefined;
+};
+
 export type MainTabParamList = {
   HomeTab: NavigatorScreenParams<HomeStackParamList> | undefined;
   OrderTab: NavigatorScreenParams<OrderStackParamList> | undefined;
