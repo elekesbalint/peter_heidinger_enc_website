@@ -11,6 +11,7 @@ import {
 import { useFadeIn } from '../../hooks/useFadeIn';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { Text, Button, Input } from '../../components/ui';
 import { Colors, Gradients, Spacing } from '../../theme';
 import { signUp } from '../../lib/auth';
@@ -25,6 +26,8 @@ export function RegisterScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -87,17 +90,33 @@ export function RegisterScreen({ navigation }: Props) {
                   label="Jelszó"
                   value={password}
                   onChangeText={setPassword}
-                  secureTextEntry
+                  secureTextEntry={!showPassword}
                   placeholder="••••••••"
                   error={errors.password}
+                  rightIcon={
+                    <Ionicons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={20}
+                      color={Colors.textTertiary}
+                    />
+                  }
+                  onRightIconPress={() => setShowPassword((v) => !v)}
                 />
                 <Input
                   label="Jelszó megerősítése"
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
-                  secureTextEntry
+                  secureTextEntry={!showConfirm}
                   placeholder="••••••••"
                   error={errors.confirmPassword}
+                  rightIcon={
+                    <Ionicons
+                      name={showConfirm ? 'eye-off-outline' : 'eye-outline'}
+                      size={20}
+                      color={Colors.textTertiary}
+                    />
+                  }
+                  onRightIconPress={() => setShowConfirm((v) => !v)}
                 />
 
                 <Button

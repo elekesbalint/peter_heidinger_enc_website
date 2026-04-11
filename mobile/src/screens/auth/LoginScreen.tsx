@@ -11,6 +11,7 @@ import {
 import { useFadeIn } from '../../hooks/useFadeIn';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { Text, Button, Input } from '../../components/ui';
 import { Colors, Gradients, Spacing, Fonts } from '../../theme';
 import { signIn } from '../../lib/auth';
@@ -98,9 +99,11 @@ export function LoginScreen({ navigation }: Props) {
                 placeholder="••••••••"
                 error={errors.password}
                 rightIcon={
-                  <Text style={styles.showHide}>
-                    {showPassword ? 'Elrejt' : 'Mutat'}
-                  </Text>
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                    color={Colors.textTertiary}
+                  />
                 }
                 onRightIconPress={() => setShowPassword((v) => !v)}
               />
