@@ -52,6 +52,7 @@ const PUBLIC_KEYS = new Set<string>([
   "adatvedelem_title",
   "adatvedelem_intro",
   "adatvedelem_content",
+  "home_blog_posts_json",
 ]);
 
 export async function GET(request: Request) {

@@ -17,7 +17,9 @@ import { DashboardScreen } from '../screens/main/DashboardScreen';
 import { OrderScreen } from '../screens/main/OrderScreen';
 import { TopupScreen } from '../screens/main/TopupScreen';
 import { ProfileScreen } from '../screens/main/ProfileScreen';
+import { DeviceDetailScreen } from '../screens/main/DeviceDetailScreen';
 import { BlogScreen } from '../screens/secondary/BlogScreen';
+import { BlogDetailScreen } from '../screens/secondary/BlogDetailScreen';
 import { ContactScreen } from '../screens/secondary/ContactScreen';
 import { LegalScreen } from '../screens/secondary/LegalScreen';
 import { SuccessScreen, CancelScreen } from '../screens/secondary/SuccessCancelScreens';
@@ -49,9 +51,6 @@ const SCREEN_OPTIONS = {
 // Stable component references to avoid inline function warnings from React Navigation
 function AszfScreen() { return <LegalScreen type="aszf" />; }
 function AdatvedelemScreen() { return <LegalScreen type="adatvedelem" />; }
-function DevicePlaceholderScreen() {
-  return <View style={{ flex: 1, backgroundColor: Colors.bg }} />;
-}
 
 function HomeStackNavigator() {
   return (
@@ -61,12 +60,12 @@ function HomeStackNavigator() {
       <HomeStack.Screen
         name="BlogDetail"
         options={({ route }) => ({ title: route.params.title })}
-        component={AszfScreen}
+        component={BlogDetailScreen}
       />
       <HomeStack.Screen name="Contact" component={ContactScreen} options={{ title: 'Kapcsolat' }} />
       <HomeStack.Screen name="Aszf" component={AszfScreen} options={{ title: 'ÁSZF' }} />
       <HomeStack.Screen name="Adatvedelem" component={AdatvedelemScreen} options={{ title: 'Adatvédelem' }} />
-      <HomeStack.Screen name="DeviceDetail" component={DevicePlaceholderScreen} options={{ title: 'Eszköz' }} />
+      <HomeStack.Screen name="DeviceDetail" component={DeviceDetailScreen} options={{ headerShown: false }} />
     </HomeStack.Navigator>
   );
 }
