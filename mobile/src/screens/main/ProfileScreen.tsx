@@ -337,7 +337,7 @@ export function ProfileScreen({ navigation }: Props) {
       <Animated.View style={referralAnim}>
         <Text variant="title" style={styles.sectionTitle}>Barát meghívása</Text>
         <Card padding={16} style={{ marginBottom: Spacing.md }}>
-          <Text variant="caption" style={{ marginBottom: 10, lineHeight: 18 }}>
+          <Text variant="caption" style={{ marginBottom: 12, lineHeight: 18 }}>
             Hívja meg barátait és mindketten kedvezményt kapnak az első ENC rendelésre.
           </Text>
           {inviteSuccess ? (
@@ -346,21 +346,20 @@ export function ProfileScreen({ navigation }: Props) {
               <Text semibold style={{ marginLeft: 10 }}>Meghívó elküldve!</Text>
             </View>
           ) : (
-            <View style={styles.inviteRow}>
+            <View>
               <Input
                 value={referralEmail}
                 onChangeText={setReferralEmail}
                 placeholder="barát@email.com"
                 keyboardType="email-address"
                 autoCapitalize="none"
-                style={{ flex: 1 }}
+                autoCorrect={false}
               />
               <Button
-                label="Küld"
+                label="Meghívó küldése"
                 onPress={() => void handleInvite()}
                 loading={inviting}
-                size="md"
-                style={{ marginLeft: 8, marginBottom: 16 }}
+                style={{ marginTop: Spacing.xs }}
               />
             </View>
           )}

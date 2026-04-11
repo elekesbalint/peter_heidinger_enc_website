@@ -283,10 +283,19 @@ export async function attachReferral(code: string) {
 
 export async function sendReferralInvite(email: string) {
   const headers = await getAuthHeaders();
-  const res = await apiFetch('/api/referrals/invite', {
+  const res = await apiFetch('/api/mobile/referrals/invite', {
     method: 'POST',
     headers,
     body: JSON.stringify({ email }),
   });
-  return res.json();
+  let data: { ok?: boolean; error?: string } = {};
+  try {
+    data = (await res.json()) as { ok?: boolean; error?: string };
+  } catch {
+    throw new Error('Érvénytelen válasz a szervertől.');
+  }
+  if (!res.ok || !data.ok) {
+    throw new Error(typeof data.error === 'string' ? data.error : 'Meghívó küldése sikertelen.');
+  }
+  return data;
 }
