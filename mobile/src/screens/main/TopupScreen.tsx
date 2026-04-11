@@ -15,10 +15,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
 import { ScreenWrapper, Text, Button } from '../../components/ui';
 import { Colors, Gradients, Spacing, Fonts, Radius } from '../../theme';
-import { fetchTopupConfig, startTopupCheckout } from '../../lib/api';
+import { fetchTopupConfig, startTopupCheckout, getProfileComplete } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
+import { useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { TopupStackParamList } from '../../navigation/types';
+import type { TopupStackParamList, MainTabParamList } from '../../navigation/types';
 
 interface Props {
   navigation: NativeStackNavigationProp<TopupStackParamList, 'Topup'>;
@@ -57,6 +59,8 @@ type TopupConfig = {
 };
 
 export function TopupScreen({ navigation, route }: Props) {
+  const tabNav = useNavigation<BottomTabNavigationProp<MainTabParamList>>();
+  const [profileComplete, setProfileComplete] = useState<boolean | null>(null);
   const { width: screenWidth } = useWindowDimensions();
   const [config, setConfig] = useState<TopupConfig | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -101,6 +105,10 @@ export function TopupScreen({ navigation, route }: Props) {
     } finally {
       setConfigLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    getProfileComplete().then(setProfileComplete).catch(() => setProfileComplete(false));
   }, []);
 
   useEffect(() => {
@@ -241,6 +249,26 @@ export function TopupScreen({ navigation, route }: Props) {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (profileComplete === false) {
+    return (
+      <ScreenWrapper>
+        <View style={styles.incompleteWrap}>
+          <Text style={styles.incompleteIcon}>⚠️</Text>
+          <Text variant="h3" style={styles.incompleteTitle}>Profil kitöltése szükséges</Text>
+          <Text variant="caption" style={styles.incompleteBody}>
+            A feltöltéshez előbb töltsd ki a profilodban a személyes adataidat, valamint a számlázási és szállítási
+            címet.
+          </Text>
+          <Button
+            label="Ugrás a profilhoz"
+            onPress={() => tabNav.navigate('ProfileTab')}
+            style={styles.incompleteBtn}
+          />
+        </View>
+      </ScreenWrapper>
+    );
   }
 
   if (configLoading) {
@@ -822,4 +850,20 @@ const styles = StyleSheet.create({
   shieldIcon: { fontSize: 18 },
   stripeText: { color: '#1e293b' },
   stripeBrand: { color: '#635BFF' },
+  incompleteWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.xl * 2,
+  },
+  incompleteIcon: { fontSize: 48, marginBottom: Spacing.lg },
+  incompleteTitle: { textAlign: 'center', marginBottom: Spacing.sm },
+  incompleteBody: {
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: Spacing.xl,
+    color: Colors.textSecondary,
+  },
+  incompleteBtn: { width: '100%' },
 });

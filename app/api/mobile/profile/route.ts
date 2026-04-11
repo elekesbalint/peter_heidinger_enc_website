@@ -74,6 +74,21 @@ function formatAddr(addr: AddrFields): string | null {
   return [country || "Magyarország", zipCity, street, extra].filter(Boolean).join(", ");
 }
 
+function hasText(v: string | null | undefined): boolean {
+  return Boolean(v && v.trim().length > 0);
+}
+
+function checkProfileComplete(row: ProfileRow): boolean {
+  const isCompany = (row.user_type ?? "private") === "company";
+  return (
+    hasText(row.name) &&
+    hasText(row.phone) &&
+    (!isCompany || (hasText(row.company_name) && hasText(row.tax_number))) &&
+    hasText(row.billing_address) &&
+    hasText(row.shipping_address)
+  );
+}
+
 function parseBearerToken(authHeader: string | null): string | null {
   if (!authHeader) return null;
   const m = authHeader.match(/^Bearer\s+(.+)$/i);
@@ -163,6 +178,7 @@ export async function GET(request: Request) {
       company_name: profile.company_name ?? "",
       tax_number: profile.tax_number ?? "",
       avatar_url: profile.avatar_url ?? "",
+      profile_complete: checkProfileComplete(profile),
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Ismeretlen hiba.";

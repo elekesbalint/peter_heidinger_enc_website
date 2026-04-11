@@ -17,9 +17,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
 import { ScreenWrapper, Text, Button, Input } from '../../components/ui';
 import { Colors, Spacing, Fonts, Radius } from '../../theme';
-import { startDeviceOrderCheckout, getSettings } from '../../lib/api';
+import { startDeviceOrderCheckout, getSettings, getProfileComplete } from '../../lib/api';
+import { useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { OrderStackParamList } from '../../navigation/types';
+import type { OrderStackParamList, MainTabParamList } from '../../navigation/types';
 
 interface Props {
   navigation: NativeStackNavigationProp<OrderStackParamList, 'Order'>;
@@ -68,6 +70,8 @@ function parseGuideItems(raw: string): string[] {
 const ENCBERBEADAS_URL = 'https://encberbeadas.hu';
 
 export function OrderScreen({ navigation }: Props) {
+  const tabNav = useNavigation<BottomTabNavigationProp<MainTabParamList>>();
+  const [profileComplete, setProfileComplete] = useState<boolean | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<CategoryValue>('i');
   const [licensePlate, setLicensePlate] = useState('');
   const [contractAccepted, setContractAccepted] = useState(false);
@@ -86,6 +90,10 @@ export function OrderScreen({ navigation }: Props) {
   const catAnim = useFadeIn(180);
   const plateAnim = useFadeIn(260);
   const ctaAnim = useFadeIn(330);
+
+  useEffect(() => {
+    getProfileComplete().then(setProfileComplete).catch(() => setProfileComplete(false));
+  }, []);
 
   useEffect(() => {
     getSettings([
@@ -160,6 +168,26 @@ export function OrderScreen({ navigation }: Props) {
   }
 
   const currentItems = parseGuideItems(guide.items[selectedCategory]);
+
+  if (profileComplete === false) {
+    return (
+      <ScreenWrapper>
+        <View style={styles.incompleteWrap}>
+          <Text style={styles.incompleteIcon}>⚠️</Text>
+          <Text variant="h3" style={styles.incompleteTitle}>Profil kitöltése szükséges</Text>
+          <Text variant="caption" style={styles.incompleteBody}>
+            A rendeléshez előbb töltsd ki a profilodban a személyes adataidat, valamint a számlázási és szállítási
+            címet.
+          </Text>
+          <Button
+            label="Ugrás a profilhoz"
+            onPress={() => tabNav.navigate('ProfileTab')}
+            style={styles.incompleteBtn}
+          />
+        </View>
+      </ScreenWrapper>
+    );
+  }
 
   return (
     <ScreenWrapper>
@@ -539,4 +567,20 @@ const styles = StyleSheet.create({
     fontSize: Fonts.sizes.sm,
   },
   modalBtn: { marginTop: 0 },
+  incompleteWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.xl * 2,
+  },
+  incompleteIcon: { fontSize: 48, marginBottom: Spacing.lg },
+  incompleteTitle: { textAlign: 'center', marginBottom: Spacing.sm },
+  incompleteBody: {
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: Spacing.xl,
+    color: Colors.textSecondary,
+  },
+  incompleteBtn: { width: '100%' },
 });

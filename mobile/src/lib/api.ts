@@ -193,6 +193,19 @@ export async function getProfile(): Promise<Record<string, string>> {
   return out;
 }
 
+/** Csak a profil teljességét ellenőrzi (name, phone, billing+shipping cím). */
+export async function getProfileComplete(): Promise<boolean> {
+  const headers = await getAuthHeaders();
+  const res = await apiFetch('/api/mobile/profile', { headers });
+  if (!res.ok) return false;
+  try {
+    const data = (await res.json()) as { ok?: boolean; profile_complete?: boolean };
+    return data.ok === true && data.profile_complete === true;
+  } catch {
+    return false;
+  }
+}
+
 export async function patchProfile(profile: Record<string, unknown>) {
   const headers = await getAuthHeaders();
   const res = await apiFetch('/api/mobile/profile', {
