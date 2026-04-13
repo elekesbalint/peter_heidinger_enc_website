@@ -69,6 +69,7 @@ export default function KapcsolatPage() {
               onChange={(e) => setName(e.target.value)}
               className="w-full rounded-xl border border-border/80 bg-white/90 px-4 py-2.5 text-sm shadow-sm transition"
               required
+              minLength={2}
             />
           </div>
           <div>
@@ -95,6 +96,7 @@ export default function KapcsolatPage() {
               rows={5}
               className="w-full rounded-xl border border-border/80 bg-white/90 px-4 py-2.5 text-sm shadow-sm transition"
               required
+              minLength={10}
             />
           </div>
           {err && (
