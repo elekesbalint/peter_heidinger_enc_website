@@ -24,7 +24,8 @@ export async function POST(request: Request) {
     return Response.json({ ok: false, error: "A törlendő felhasználónak nincs e-mail címe." }, { status: 400 });
   }
 
-  if (g.email && targetEmail === g.email.trim().toLowerCase()) {
+  const adminEmail = (g.user.email ?? "").trim().toLowerCase();
+  if (adminEmail && targetEmail === adminEmail) {
     return Response.json({ ok: false, error: "Saját admin fiók itt nem törölhető." }, { status: 400 });
   }
 
