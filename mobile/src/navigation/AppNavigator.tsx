@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -11,6 +12,7 @@ import { getProfileComplete } from '../lib/api';
 import { Colors, Gradients, Fonts, Radius } from '../theme';
 import { Text } from '../components/ui';
 
+import { SplashAnimationScreen } from '../screens/SplashAnimationScreen';
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { RegisterScreen } from '../screens/auth/RegisterScreen';
 import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen';
@@ -140,6 +142,8 @@ function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
 }
 
 function MainTabs() {
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = 56 + insets.bottom;
   return (
     <Tab.Navigator
       screenOptions={{
@@ -148,9 +152,9 @@ function MainTabs() {
           backgroundColor: Colors.bgCard,
           borderTopColor: Colors.border,
           borderTopWidth: 1,
-          paddingBottom: 6,
-          paddingTop: 6,
-          height: 60,
+          paddingBottom: insets.bottom + 6,
+          paddingTop: 8,
+          height: tabBarHeight,
         },
         tabBarActiveTintColor: Colors.accent,
         tabBarInactiveTintColor: Colors.textTertiary,
@@ -225,8 +229,8 @@ function OnboardingStackNavigator({ onComplete }: { onComplete: () => void }) {
 
 export function AppNavigator() {
   const [session, setSession] = useState<boolean | null>(null);
-  // null = még nem tudjuk, true = kész, false = hiányos
   const [profileComplete, setProfileComplete] = useState<boolean | null>(null);
+  const [splashDone, setSplashDone] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -261,6 +265,10 @@ export function AppNavigator() {
   }, [session]);
 
   const loading = session === null || (session === true && profileComplete === null);
+
+  if (!splashDone) {
+    return <SplashAnimationScreen onDone={() => setSplashDone(true)} />;
+  }
 
   if (loading) {
     return (
