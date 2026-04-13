@@ -1,19 +1,20 @@
 /**
- * Opcionalis email (Resend). Ha nincs RESEND_API_KEY, no-op.
+ * Opcionalis email (Resend). Ha nincs RESEND_API_KEY, no-op, false-t ad vissza.
+ * @returns true ha a Resend elfogadta a kerest, false ha kulcs nelkul kihagyva
  */
 export async function sendAppEmail(params: {
   to: string;
   subject: string;
   text: string;
   html?: string;
-}): Promise<void> {
+}): Promise<boolean> {
   const key = process.env.RESEND_API_KEY?.trim();
   const from = process.env.RESEND_FROM_EMAIL?.trim() ?? "AdriaGo <onboarding@resend.dev>";
   if (!key) {
-    console.warn(
-      `[email] Kihagyva (nincs RESEND_API_KEY). Címzett: ${params.to}, tárgy: ${params.subject}`,
+    console.error(
+      `[email] RESEND_API_KEY hianyzik — e-mail nem kuldheto. Cimzett: ${params.to}, targy: ${params.subject}`,
     );
-    return;
+    return false;
   }
 
   const res = await fetch("https://api.resend.com/emails", {
@@ -35,4 +36,5 @@ export async function sendAppEmail(params: {
     const body = await res.text().catch(() => "");
     throw new Error(`Resend hiba (${res.status}): ${body || "ismeretlen hiba"}`);
   }
+  return true;
 }

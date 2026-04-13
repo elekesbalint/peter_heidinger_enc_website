@@ -36,33 +36,50 @@ export async function POST(request: Request) {
     }
 
     const notifyTo = contactNotifyRecipient();
+    let emailNotifyFailed = false;
+    let emailNotifySkipped = false;
     if (notifyTo) {
       const preview = message.length > 2000 ? `${message.slice(0, 2000)}…` : message;
-      void sendAppEmail({
-        to: notifyTo,
-        subject: `AdriaGo — kapcsolatfelvetel: ${name}`,
-        text: [
-          "Uj kapcsolatfelveteli uzenet a weboldalrol.",
-          `Nev: ${name}`,
-          `E-mail (valasz ide): ${email}`,
-          "",
-          preview,
-        ].join("\n"),
-        html: buildEmailHtml({
-          title: "Kapcsolatfelvetel",
-          intro: "Uj uzenet erkezett a kapcsolat oldalrol.",
-          rows: [
-            { label: "Nev", value: name },
-            { label: "E-mail", value: email },
-            { label: "Uzenet", value: preview },
-          ],
-        }),
-      }).catch((err) => {
+      try {
+        const sent = await sendAppEmail({
+          to: notifyTo,
+          subject: `AdriaGo — kapcsolatfelvetel: ${name}`,
+          text: [
+            "Uj kapcsolatfelveteli uzenet a weboldalrol.",
+            `Nev: ${name}`,
+            `E-mail (valasz ide): ${email}`,
+            "",
+            preview,
+          ].join("\n"),
+          html: buildEmailHtml({
+            title: "Kapcsolatfelvetel",
+            intro: "Uj uzenet erkezett a kapcsolat oldalrol.",
+            rows: [
+              { label: "Nev", value: name },
+              { label: "E-mail", value: email },
+              { label: "Uzenet", value: preview },
+            ],
+          }),
+        });
+        if (sent) {
+          console.log(`[contact] Ertesito e-mail elkuldve: ${notifyTo}`);
+        } else {
+          emailNotifySkipped = true;
+          console.error(
+            "[contact] E-mail nem ment ki: allitsd be a RESEND_API_KEY-t (Vercel env). CONTACT_NOTIFY_EMAIL csak a cimzett.",
+          );
+        }
+      } catch (err) {
+        emailNotifyFailed = true;
         console.error("[contact] Ertesito e-mail kuldes sikertelen:", err);
-      });
+      }
     }
 
-    return Response.json({ ok: true });
+    return Response.json({
+      ok: true,
+      ...(emailNotifyFailed ? { emailNotifyFailed: true } : {}),
+      ...(emailNotifySkipped ? { emailNotifySkipped: true } : {}),
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Hiba";
     return Response.json({ ok: false, error: msg }, { status: 500 });

@@ -9,10 +9,12 @@ export default function KapcsolatPage() {
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "ok" | "err">("idle");
   const [err, setErr] = useState<string | null>(null);
+  const [emailSetupWarning, setEmailSetupWarning] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
+    setEmailSetupWarning(false);
     setStatus("sending");
     try {
       const res = await fetch("/api/contact", {
@@ -20,12 +22,18 @@ export default function KapcsolatPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, message }),
       });
-      const data = (await res.json()) as { ok: boolean; error?: string };
+      const data = (await res.json()) as {
+        ok: boolean;
+        error?: string;
+        emailNotifySkipped?: boolean;
+        emailNotifyFailed?: boolean;
+      };
       if (!data.ok) {
         setErr(data.error ?? "Hiba történt.");
         setStatus("err");
         return;
       }
+      setEmailSetupWarning(Boolean(data.emailNotifySkipped || data.emailNotifyFailed));
       setStatus("ok");
       setMessage("");
     } catch {
@@ -53,6 +61,14 @@ export default function KapcsolatPage() {
         <div className="adria-animate-in adria-delay-3 mt-8 rounded-2xl border border-green-200/90 bg-success-light/95 px-6 py-5 text-center shadow-md backdrop-blur-sm">
           <p className="text-lg font-semibold text-success">Köszönjük az üzeneted!</p>
           <p className="mt-1 text-sm text-muted">Hamarosan felvesszük veled a kapcsolatot.</p>
+          {emailSetupWarning ? (
+            <p className="mt-3 border-t border-amber-200/80 pt-3 text-left text-xs leading-relaxed text-amber-900/90">
+              Az üzenet elmentve. Az automatikus értesítő e-mail nem indult el: a szerveren szükséges a{" "}
+              <strong className="font-semibold">RESEND_API_KEY</strong> (és javasolt a{" "}
+              <strong className="font-semibold">RESEND_FROM_EMAIL</strong>) Vercel környezeti változó. A{" "}
+              <strong className="font-semibold">CONTACT_NOTIFY_EMAIL</strong> csak a címzettet adja meg.
+            </p>
+          ) : null}
         </div>
       ) : (
         <form
