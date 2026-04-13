@@ -904,6 +904,31 @@ export function AdminWorkspace() {
     return () => clearInterval(id);
   }, [refreshAdminBadges]);
 
+  // Eszközrendelések fülön automatikus háttérfrissítés:
+  // új rendelés megjelenik manuális oldalfrissítés nélkül is.
+  useEffect(() => {
+    if (tab !== "Eszközrendelések") return;
+
+    const tick = () => {
+      // Háttérben lévő tabon ne kérdezgessen feleslegesen.
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      void loadEnc();
+    };
+
+    const onFocus = () => tick();
+    const onVisibility = () => tick();
+
+    const intervalId = setInterval(tick, 15_000);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [tab, loadEnc]);
+
   const loadDevices = useCallback(async (q = devicesQ) => {
     setDevLoading(true);
     setDevErr(null);
