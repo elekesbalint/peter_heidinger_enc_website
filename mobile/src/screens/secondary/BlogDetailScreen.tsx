@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Animated, View, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
+import { Animated, View, StyleSheet, ActivityIndicator, ScrollView, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFadeIn } from '../../hooks/useFadeIn';
 import { Text } from '../../components/ui';
@@ -32,18 +32,30 @@ function formatDate(iso: string) {
   }
 }
 
-/** Egyszerű szöveg renderelő: üres sorok = bekezdés */
+/** HTML tagek eltávolítása, entitások dekódolása */
+function stripHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<\/h[1-6]>/gi, '\n\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/** Szöveg renderelő: bekezdésenként */
 function PlainContent({ text }: { text: string }) {
-  const paragraphs = text.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+  const clean = stripHtml(text);
+  const paragraphs = clean.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
   if (paragraphs.length === 0) {
-    const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
-    return (
-      <View>
-        {lines.map((line, i) => (
-          <Text key={i} style={styles.paragraph}>{line}</Text>
-        ))}
-      </View>
-    );
+    return <Text style={styles.paragraph}>{clean}</Text>;
   }
   return (
     <View>
@@ -113,10 +125,19 @@ export function BlogDetailScreen({ navigation, route }: Props) {
           {/* Cím */}
           <Text style={styles.title}>{post.title}</Text>
 
-          {/* Kivonat ha van */}
-          {post.excerpt && post.content && post.excerpt !== post.content ? (
+          {/* Borítókép */}
+          {post.image_url ? (
+            <Image
+              source={{ uri: post.image_url }}
+              style={styles.coverImage}
+              resizeMode="cover"
+            />
+          ) : null}
+
+          {/* Kivonat ha van és különbözik a tartalomtól */}
+          {post.excerpt && post.content && stripHtml(post.excerpt).trim() !== stripHtml(post.content).trim() ? (
             <View style={styles.excerptBox}>
-              <Text style={styles.excerptText}>{post.excerpt}</Text>
+              <Text style={styles.excerptText}>{stripHtml(post.excerpt)}</Text>
             </View>
           ) : null}
 
@@ -156,6 +177,12 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     lineHeight: 32,
     letterSpacing: -0.5,
+    marginBottom: Spacing.md,
+  },
+  coverImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: Radius.lg,
     marginBottom: Spacing.md,
   },
   excerptBox: {

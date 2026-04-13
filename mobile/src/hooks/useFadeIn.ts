@@ -8,9 +8,9 @@ import { Animated } from 'react-native';
  * @param delay - optional delay in ms before animation starts
  * @param duration - animation duration in ms (default 400)
  */
-export function useFadeIn(delay = 0, duration = 400) {
+export function useFadeIn(delay = 0, duration = 350) {
   const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(20)).current;
+  const translateY = useRef(new Animated.Value(10)).current;
 
   useEffect(() => {
     Animated.parallel([
