@@ -450,13 +450,15 @@ export function ProfileForm({ forceOpen = false }: { forceOpen?: boolean }) {
       )}
       {error && <p className="text-sm text-danger">{error}</p>}
       {message && <p className="text-sm text-success">{message}</p>}
-      <button
-        type="submit"
-        disabled={saving}
-        className="rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-strong disabled:opacity-60"
-      >
-        {saving ? "Mentés…" : "Profil mentése"}
-      </button>
+      {profileOpen && (
+        <button
+          type="submit"
+          disabled={saving}
+          className="rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-strong disabled:opacity-60"
+        >
+          {saving ? "Mentés…" : "Profil mentése"}
+        </button>
+      )}
     </form>
   );
 }
