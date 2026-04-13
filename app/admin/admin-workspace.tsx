@@ -1017,6 +1017,40 @@ export function AdminWorkspace() {
     }
   }
 
+  async function deleteUserFromAdmin(user: UserRow) {
+    setUsrErr(null);
+    setUsrMsg(null);
+    const email = user.email ?? user.id;
+    const ok = window.confirm(
+      `Biztosan törlöd ezt a felhasználót?\n\n${email}\n\nEz végleges és nem visszavonható. Minden kapcsolódó adat törlődik.`,
+    );
+    if (!ok) return;
+
+    const typed = window.prompt("Megerősítéshez írd be: TORLES") ?? "";
+    if (typed.trim().toUpperCase() !== "TORLES") {
+      setUsrErr("A törlés megszakítva: hibás megerősítés.");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/admin/users/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: user.id }),
+      });
+      const data = (await res.json()) as { ok: boolean; error?: string };
+      if (!data.ok) {
+        setUsrErr(data.error ?? "Törlési hiba.");
+        return;
+      }
+      if (editUser?.id === user.id) setEditUser(null);
+      setUsrMsg(`Felhasználó törölve: ${email}`);
+      await loadUsers();
+    } catch {
+      setUsrErr("Hálózati hiba");
+    }
+  }
+
   function toggleDebtDevice(identifier: string) {
     setSelectedDebtDevices((prev) => {
       const next = new Set(prev);
@@ -2694,13 +2728,22 @@ export function AdminWorkspace() {
                       </div>
                     </td>
                     <td className="px-1.5 py-1.5">
-                      <button
-                        type="button"
-                        className="text-[11px] text-primary underline"
-                        onClick={() => setEditUser({ ...u })}
-                      >
-                        Szerkesztés
-                      </button>
+                      <div className="flex flex-col gap-1">
+                        <button
+                          type="button"
+                          className="text-left text-[11px] text-primary underline"
+                          onClick={() => setEditUser({ ...u })}
+                        >
+                          Szerkesztés
+                        </button>
+                        <button
+                          type="button"
+                          className="text-left text-[11px] text-red-700 underline"
+                          onClick={() => deleteUserFromAdmin(u)}
+                        >
+                          Törlés
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
