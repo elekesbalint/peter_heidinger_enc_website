@@ -8,6 +8,7 @@ import { isProfileComplete } from "@/lib/profile-completion";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import { ProfileForm } from "./profile-form";
 import { ReferralPanel } from "./referral-panel";
+import { AccountDeletePanel } from "./account-delete-panel";
 
 const DEVICE_STATUS_LABELS: Record<string, string> = {
   available: "elérhető",
@@ -489,6 +490,8 @@ export default async function DashboardPage({
           )}
         </div>
       </section>
+
+      <AccountDeletePanel />
     </div>
   );
 }
