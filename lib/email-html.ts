@@ -2,6 +2,7 @@
  * Egységes AdriaGo tranzakciós e-mail keret (Resend HTML).
  * A webhook és az admin ENC műveletek is ezt használják.
  */
+import { buildInsuraBannerHtml } from "@/lib/email-insura-banner";
 
 export type EmailHtmlRow =
   | { label: string; value: string }
@@ -42,6 +43,7 @@ function rowToHtml(r: EmailHtmlRow): string {
 
 export function buildEmailHtml(params: { title: string; intro: string; rows: EmailHtmlRow[] }): string {
   const rowsHtml = params.rows.map((row) => rowToHtml(row)).join("");
+  const insuraBannerHtml = buildInsuraBannerHtml();
 
   return `
   <div style="background:#f8fafc;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
@@ -55,6 +57,7 @@ export function buildEmailHtml(params: { title: string; intro: string; rows: Ema
         <table role="presentation" cellspacing="0" cellpadding="0" width="100%" style="border-collapse:collapse;">
           ${rowsHtml}
         </table>
+        ${insuraBannerHtml}
       </div>
       <div style="padding:12px 20px;background:#f8fafc;color:#64748b;font-size:12px;">
         Ez egy automatikus üzenet, kérjük ne válaszolj rá.

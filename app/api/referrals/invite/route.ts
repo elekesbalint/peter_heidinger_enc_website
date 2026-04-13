@@ -1,6 +1,7 @@
 import { randomBytes } from "crypto";
 import { getCurrentUser } from "@/lib/auth-server";
 import { getIntSetting, getSettingsMap } from "@/lib/app-settings";
+import { buildEmailHtml } from "@/lib/email-html";
 import { sendAppEmail } from "@/lib/notify-email";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
@@ -54,28 +55,23 @@ export async function POST(request: Request) {
       : "";
 
   try {
+    const intro =
+      `Meghívót kaptál az AdriaGo rendszerbe. A linkkel regisztrálva jogosulttá válsz az első ENC készülékvásárlásra.` +
+      (referralBonusHuf > 0
+        ? ` Első vásárlásodkor legfeljebb ${referralBonusHuf.toLocaleString("hu-HU")} Ft induló egyenleg kerül a készülékhez (útdíj / feltöltés); a készülék teljes árát fizeted.`
+        : "");
     await sendAppEmail({
       to: invitedEmail,
       subject: "AdriaGo — meghívó ENC készülékvásárláshoz",
       text: `Meghívót kaptál az AdriaGo rendszerbe. Regisztrálj ezzel a linkkel:${bonusSentence} Link: ${inviteLink}`,
-      html: `
-      <div style="background:#f8fafc;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
-        <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;">
-          <div style="padding:16px 20px;background:linear-gradient(135deg,#1d4ed8,#4f46e5);color:#fff;">
-            <div style="font-size:12px;opacity:.9;letter-spacing:.04em;text-transform:uppercase;">AdriaGo</div>
-            <div style="font-size:20px;font-weight:700;margin-top:6px;">Meghívó</div>
-          </div>
-          <div style="padding:18px 20px;">
-            <p style="margin:0 0 12px 0;color:#334155;font-size:14px;line-height:1.5;">
-              Meghívót kaptál az AdriaGo rendszerbe. A linkkel regisztrálva jogosulttá válsz az első ENC készülékvásárlásra.${referralBonusHuf > 0 ? ` Első vásárlásodkor legfeljebb <strong>${referralBonusHuf.toLocaleString("hu-HU")} Ft</strong> induló egyenleg kerül a készülékhez (útdíj / feltöltés); a készülék teljes árát fizeted.` : ""}
-            </p>
-            <a href="${inviteLink}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 18px;border-radius:10px;">
-              Regisztráció meghívóval
-            </a>
-            <p style="margin:14px 0 0 0;font-size:12px;color:#64748b;word-break:break-all;">${inviteLink}</p>
-          </div>
-        </div>
-      </div>`,
+      html: buildEmailHtml({
+        title: "Meghívó",
+        intro,
+        rows: [
+          { label: "Regisztráció", linkHref: inviteLink, linkText: "Regisztráció meghívóval" },
+          { label: "Meghívó link", value: inviteLink },
+        ],
+      }),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Ismeretlen email hiba";
