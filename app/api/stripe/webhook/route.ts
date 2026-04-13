@@ -86,36 +86,14 @@ function parseDisplayEurFromSession(
   return Math.round((amountHufComputed / fx) * 100) / 100;
 }
 
-/** Parses a stored billing_address string into address components for the invoice. */
-function parseBillingAddress(raw: string | null | undefined): {
-  street: string | null;
-  postalCode: string | null;
-  city: string | null;
-  country: string | null;
-} {
-  if (!raw?.trim()) return { street: null, postalCode: null, city: null, country: null };
-  const parts = raw.split(",").map((s) => s.trim());
-  const country = parts[0] || null;
-  let zip: string | null = null;
-  let city: string | null = null;
-  let street: string | null = null;
-  if (parts.length >= 3) {
-    const zipCity = parts[1] ?? "";
-    const spaceIdx = zipCity.indexOf(" ");
-    zip = spaceIdx > 0 ? zipCity.slice(0, spaceIdx).trim() || null : zipCity.trim() || null;
-    city = spaceIdx > 0 ? zipCity.slice(spaceIdx + 1).trim() || null : null;
-    street = parts.slice(2).join(", ").trim() || null;
-  } else if (parts.length === 2) {
-    street = parts[1] || null;
-  }
-  return { street, postalCode: zip, city, country };
-}
-
-/** Fetches the billing address fields from the user's profile for invoice use. */
+/**
+ * Fetches the full billing_address string from the user's profile.
+ * Returns it as a single formatted line for the invoice (avoids duplicate postal/city rows).
+ */
 async function fetchProfileBillingAddress(
   supabase: ReturnType<typeof createSupabaseAdminClient>,
   authUserId: string,
-): Promise<{ street: string | null; postalCode: string | null; city: string | null; country: string | null }> {
+): Promise<{ fullAddress: string | null }> {
   try {
     const { data } = await supabase
       .from("profiles")
@@ -123,9 +101,9 @@ async function fetchProfileBillingAddress(
       .eq("auth_user_id", authUserId)
       .maybeSingle();
     const raw = (data as { billing_address?: string | null } | null)?.billing_address;
-    return parseBillingAddress(raw);
+    return { fullAddress: raw?.trim() || null };
   } catch {
-    return { street: null, postalCode: null, city: null, country: null };
+    return { fullAddress: null };
   }
 }
 
@@ -448,9 +426,9 @@ export async function POST(request: Request) {
             stripePaidMajorUnits,
             stripeCurrency,
             buyerName: customerName,
-            buyerStreet: profileAddr.street ?? customerAddress?.line1 ?? null,
-            buyerPostalCode: profileAddr.postalCode ?? customerAddress?.postal_code ?? null,
-            buyerCity: profileAddr.city ?? customerAddress?.city ?? null,
+            buyerStreet: profileAddr.fullAddress ?? customerAddress?.line1 ?? null,
+            buyerPostalCode: profileAddr.fullAddress ? null : (customerAddress?.postal_code ?? null),
+            buyerCity: profileAddr.fullAddress ? null : (customerAddress?.city ?? null),
             buyerCountryCode: customerAddress?.country ?? null,
             buyerPhone: customerPhone,
             userEmail: userEmail,
@@ -575,7 +553,7 @@ export async function POST(request: Request) {
           );
           const topupProfileAddr = topupAuthUserId
             ? await fetchProfileBillingAddress(supabase, topupAuthUserId)
-            : { street: null, postalCode: null, city: null, country: null };
+            : { fullAddress: null };
           const inv = await createEracuniInvoice({
             kind: "topup",
             deviceIdentifier,
@@ -583,9 +561,9 @@ export async function POST(request: Request) {
             stripePaidMajorUnits,
             stripeCurrency,
             buyerName: customerName,
-            buyerStreet: topupProfileAddr.street ?? customerAddress?.line1 ?? null,
-            buyerPostalCode: topupProfileAddr.postalCode ?? customerAddress?.postal_code ?? null,
-            buyerCity: topupProfileAddr.city ?? customerAddress?.city ?? null,
+            buyerStreet: topupProfileAddr.fullAddress ?? customerAddress?.line1 ?? null,
+            buyerPostalCode: topupProfileAddr.fullAddress ? null : (customerAddress?.postal_code ?? null),
+            buyerCity: topupProfileAddr.fullAddress ? null : (customerAddress?.city ?? null),
             buyerCountryCode: customerAddress?.country ?? null,
             buyerPhone: customerPhone,
             userEmail: userEmail,
