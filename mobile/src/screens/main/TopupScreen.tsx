@@ -8,8 +8,8 @@ import {
   ActivityIndicator,
   TextInput,
   ScrollView,
-  useWindowDimensions,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useFadeIn } from '../../hooks/useFadeIn';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
@@ -61,7 +61,6 @@ type TopupConfig = {
 export function TopupScreen({ navigation, route }: Props) {
   const tabNav = useNavigation<BottomTabNavigationProp<MainTabParamList>>();
   const [profileComplete, setProfileComplete] = useState<boolean | null>(null);
-  const { width: screenWidth } = useWindowDimensions();
   const [config, setConfig] = useState<TopupConfig | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [deviceIdentifier, setDeviceIdentifier] = useState(
@@ -544,10 +543,6 @@ export function TopupScreen({ navigation, route }: Props) {
                         ((amount * (100 - Math.min(100, discountPercent))) / 100).toFixed(2),
                       )
                     : amount;
-                  // Kártyaszélesség: (rendelkezésre álló szélesség - 2 gap) / 3
-                  const cardGap = 8;
-                  const horizontalPad = Spacing.md * 2 + 2; // sectionCard padding kb.
-                  const cardW = Math.floor((screenWidth - horizontalPad - cardGap * 2) / 3);
                   return (
                     <TouchableOpacity
                       key={amount}
@@ -559,7 +554,6 @@ export function TopupScreen({ navigation, route }: Props) {
                       }}
                       style={[
                         styles.pkgCard,
-                        { width: cardW },
                         active && styles.pkgCardActive,
                         disabled && styles.pkgCardDisabled,
                       ]}
@@ -622,7 +616,7 @@ export function TopupScreen({ navigation, route }: Props) {
           style={styles.orderBtn}
         />
         <View style={styles.stripeBadge}>
-          <Text style={styles.shieldIcon}>🔒</Text>
+          <Ionicons name="shield-checkmark" size={20} color="#16a34a" />
           <Text variant="caption" style={styles.stripeText}>
             Titkos és biztonságos fizetés{' '}
             <Text semibold style={styles.stripeBrand}>
@@ -752,8 +746,10 @@ const styles = StyleSheet.create({
   packagesGrid: {
     flexDirection: 'row',
     gap: 8,
+    alignItems: 'stretch',
   },
   pkgCard: {
+    flex: 1,
     borderRadius: Radius.md,
     paddingVertical: 12,
     paddingHorizontal: 10,
@@ -847,7 +843,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: Spacing.md,
   },
-  shieldIcon: { fontSize: 18 },
   stripeText: { color: '#1e293b' },
   stripeBrand: { color: '#635BFF' },
   incompleteWrap: {

@@ -12,6 +12,7 @@ import {
   Linking,
   Text as RNText,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useFadeIn } from '../../hooks/useFadeIn';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
@@ -379,7 +380,7 @@ export function OrderScreen({ navigation }: Props) {
         />
         {/* Stripe badge */}
         <View style={styles.stripeBadge}>
-          <Text style={styles.shieldIcon}>🔒</Text>
+          <Ionicons name="shield-checkmark" size={20} color="#16a34a" />
           <Text variant="caption" style={styles.stripeText}>
             Titkos és biztonságos fizetés{' '}
             <Text semibold style={styles.stripeBrand}>
@@ -551,7 +552,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: Spacing.md,
   },
-  shieldIcon: { fontSize: 18 },
   stripeText: { color: '#1e293b' },
   stripeBrand: { color: '#635BFF' },
   modalBackdrop: {
