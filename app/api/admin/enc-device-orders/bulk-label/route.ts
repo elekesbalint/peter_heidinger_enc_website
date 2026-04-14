@@ -2,11 +2,13 @@ import { Buffer } from "buffer";
 import { PDFDocument } from "pdf-lib";
 import { requireAdmin } from "@/lib/admin-guard";
 import { getSettingsMap } from "@/lib/app-settings";
+import { buildEmailHtml, type EmailHtmlRow } from "@/lib/email-html";
 import {
   createMplSandboxShipmentAndLabel,
   createMplSandboxShipmentLabelOnly,
 } from "@/lib/mpl-sandbox";
 import { sendAppEmail } from "@/lib/notify-email";
+import { buildPostaTrackingPageUrl } from "@/lib/posta-tracking-url";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 type AddressFields = {
@@ -128,7 +130,7 @@ export async function POST(request: Request) {
 
   const { data: orderRows, error: orderErr } = await supabase
     .from("enc_device_orders")
-    .select("id, auth_user_id, user_email, tracking_number")
+    .select("id, auth_user_id, user_email, tracking_number, device_identifier, category")
     .in("id", ids);
   if (orderErr) {
     return Response.json({ ok: false, error: orderErr.message }, { status: 500 });
@@ -172,6 +174,8 @@ export async function POST(request: Request) {
     labelBytes: Uint8Array;
     mplPayloadForDb: unknown;
     userEmail: string | null;
+    deviceIdentifier: string | null;
+    category: string | null;
   };
   const generated: GenerationResult[] = [];
 
@@ -193,6 +197,9 @@ export async function POST(request: Request) {
           labelResponse: labelResult.mplLabelResponse,
         },
         userEmail: order.user_email ?? null,
+        deviceIdentifier:
+          typeof order.device_identifier === "string" ? order.device_identifier : null,
+        category: typeof order.category === "string" ? order.category : null,
       });
       continue;
     }
@@ -290,6 +297,9 @@ export async function POST(request: Request) {
         labelType: mplResult.labelType,
       },
       userEmail: order.user_email ?? null,
+      deviceIdentifier:
+        typeof order.device_identifier === "string" ? order.device_identifier : null,
+      category: typeof order.category === "string" ? order.category : null,
     });
   }
 
@@ -316,10 +326,47 @@ export async function POST(request: Request) {
       return Response.json({ ok: false, error: error.message }, { status: 500 });
     }
     if (row.userEmail && row.trackingNumber) {
+      const trackingUrl = buildPostaTrackingPageUrl(row.trackingNumber);
+      const deviceIdf =
+        typeof row.deviceIdentifier === "string" && row.deviceIdentifier.trim()
+          ? row.deviceIdentifier.trim()
+          : "—";
+      const categoryLabel =
+        typeof row.category === "string" && row.category.trim()
+          ? row.category.trim().toUpperCase()
+          : "—";
+      const rows: EmailHtmlRow[] = [
+        { label: "Szállító", value: "Magyar Posta (MPL)" },
+        { label: "Eszköz azonosító", value: deviceIdf },
+        { label: "Kategória", value: categoryLabel },
+      ];
+      if (trackingUrl.startsWith("https://")) {
+        rows.push({
+          label: "Csomagkövetési szám",
+          linkHref: trackingUrl,
+          linkText: row.trackingNumber,
+        });
+      } else {
+        rows.push({ label: "Csomagkövetési szám", value: row.trackingNumber });
+      }
+
       await sendAppEmail({
         to: row.userEmail,
-        subject: "AdriaGo — csomagfeladás megtörtént",
-        text: `A csomagod feladásra került. Csomagkövetési azonosító: ${row.trackingNumber}`,
+        subject: "AdriaGo — csomagod feladásra került (MPL)",
+        text: [
+          "A megrendelt ENC csomagod feladásra került.",
+          "Szállító: Magyar Posta (MPL)",
+          `Eszköz: ${deviceIdf}`,
+          `Kategória: ${categoryLabel}`,
+          `Csomagkövetési szám: ${row.trackingNumber}`,
+          `Nyomkövetés (posta.hu): ${trackingUrl}`,
+        ].join("\n"),
+        html: buildEmailHtml({
+          title: "Csomagfeladás — MPL",
+          intro:
+            "A megrendelt ENC csomagod feladásra került. A szállítást a Magyar Posta (MPL) végzi. A követési számra kattintva a Posta nyomkövető oldalán ellenőrizheted a küldemény állapotát.",
+          rows,
+        }),
       }).catch(() => undefined);
     }
   }
