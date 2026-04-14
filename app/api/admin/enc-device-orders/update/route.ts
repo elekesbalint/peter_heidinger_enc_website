@@ -95,6 +95,18 @@ function sanitizePhone(raw: string | null | undefined): string | null {
   return `+${digits}`;
 }
 
+function normalizeRecipientStreet(street: string): string {
+  let out = street.trim();
+  out = out.replace(/^(Magyarország|Hungary)\s*,?\s*/i, "");
+  // Remove repeated "<zip> <city>" prefixes if they leak into street line.
+  for (let i = 0; i < 3; i += 1) {
+    const next = out.replace(/^\d{4}\s+[^,]+,?\s*/i, "").trim();
+    if (next === out) break;
+    out = next;
+  }
+  return out;
+}
+
 export async function POST(request: Request) {
   const g = await requireAdmin();
   if (!g.ok) return g.response;
@@ -237,6 +249,7 @@ export async function POST(request: Request) {
             shippingAddr.street && shippingAddr.extra
               ? `${shippingAddr.street}, ${shippingAddr.extra}`
               : shippingAddr.street || shippingAddr.extra;
+          const normalizedStreet = normalizeRecipientStreet(streetWithExtra);
           const settings = await getSettingsMap();
           const senderAddressCountry =
             settings.mpl_sender_country?.trim() || "Magyarország";
@@ -303,7 +316,7 @@ export async function POST(request: Request) {
                 address: {
                   postCode: shippingAddr.zip,
                   city: shippingAddr.city,
-                  address: streetWithExtra,
+                  address: normalizedStreet,
                   remark: "auto",
                 },
                 disabled: false,
