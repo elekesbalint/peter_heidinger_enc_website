@@ -35,26 +35,46 @@ function parseAddress(raw: string | null | undefined): AddressFields {
     .map((p) => p.trim())
     .filter(Boolean);
 
-  if (parts.length >= 4) {
-    const [country, zipCity, street, ...rest] = parts;
-    const zipCityMatch = zipCity.match(/^(\d{4})\s+(.+)$/);
+  if (parts.length >= 3) {
+    const zipCityPattern = /^(\d{4})\s+(.+)$/;
+    const countryPattern = /^(Magyarország|Hungary)$/i;
+    let country = empty.country;
+    let zipCity = "";
+    let streetParts: string[] = [];
+
+    if (countryPattern.test(parts[0] ?? "")) {
+      country = parts[0] ?? empty.country;
+      zipCity = parts[1] ?? "";
+      streetParts = parts.slice(2);
+    } else if (zipCityPattern.test(parts[0] ?? "")) {
+      zipCity = parts[0] ?? "";
+      streetParts = parts.slice(1);
+    } else {
+      country = parts[0] || empty.country;
+      zipCity = parts[1] ?? "";
+      streetParts = parts.slice(2);
+    }
+
+    const zipCityMatch = zipCity.match(zipCityPattern);
     return {
       ...empty,
-      country: country || empty.country,
+      country,
       zip: zipCityMatch ? zipCityMatch[1] ?? "" : "",
       city: zipCityMatch ? zipCityMatch[2] ?? "" : zipCity,
-      street: street || "",
-      extra: rest.join(", "),
+      street: streetParts[0] ?? "",
+      extra: streetParts.slice(1).join(", "),
     };
   }
 
   const zipCityMatch = compact.match(/(\d{4})\s+([^,]+)/);
   if (zipCityMatch) {
+    const withoutCountry = compact.replace(/^(Magyarország|Hungary)[,\s]*/i, "");
+    const withoutZipCity = withoutCountry.replace(/^\d{4}\s+[^,]+,?\s*/, "").trim();
     return {
       ...empty,
       zip: zipCityMatch[1] ?? "",
       city: (zipCityMatch[2] ?? "").trim(),
-      street: compact,
+      street: withoutZipCity || compact,
     };
   }
 
