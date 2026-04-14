@@ -35,6 +35,8 @@ const TABS = [
 
 type TabId = (typeof TABS)[number];
 const SHOW_ORDER_SHIP_BUTTON = false;
+const MIN_BALANCE_WARNING_KEY = "min_balance_warning_huf";
+const FX_EUR_TO_HUF_KEY = "fx_eur_to_huf";
 
 function hufToEur(huf: number, fxEurToHuf: number): number {
   if (!Number.isFinite(huf)) return 0;
@@ -46,6 +48,22 @@ function eurToHuf(eur: number, fxEurToHuf: number): number {
   if (!Number.isFinite(eur)) return 0;
   if (!Number.isFinite(fxEurToHuf) || fxEurToHuf <= 0) return Math.round(eur);
   return Math.round(eur * fxEurToHuf);
+}
+
+function parseDraftNumber(raw: string | undefined): number | null {
+  if (!raw) return null;
+  const normalized = raw.replace(/\s+/g, "").replace(",", ".");
+  const n = Number.parseFloat(normalized);
+  return Number.isFinite(n) ? n : null;
+}
+
+function formatAdminNumber(value: number, maxFractionDigits = 2): string {
+  if (!Number.isFinite(value)) return "";
+  return value.toLocaleString("hu-HU", {
+    useGrouping: false,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: maxFractionDigits,
+  });
 }
 
 type EncOrder = {
@@ -135,8 +153,8 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
     hint: "1 EUR hány Ft legyen a rendszerben.",
   },
   min_balance_warning_huf: {
-    label: "Alacsony egyenleg küszöb (Ft)",
-    hint: "Ezen összeg alatt küld figyelmeztető e-mailt.",
+    label: "Alacsony egyenleg küszöb (EUR)",
+    hint: "Ezen EUR érték alatt küld figyelmeztető e-mailt (háttérben Ft-ban tároljuk).",
   },
   topup_block_smallest_for_categories: {
     label: "Legkisebb csomag tiltása kategóriákra",
@@ -985,6 +1003,11 @@ export function AdminWorkspace() {
       setSettings(items);
       const d: Record<string, string> = {};
       for (const r of items) d[r.key] = r.value;
+      const fx = parseDraftNumber(d[FX_EUR_TO_HUF_KEY]) ?? 400;
+      const minBalanceHuf = parseDraftNumber(d[MIN_BALANCE_WARNING_KEY]);
+      if (minBalanceHuf !== null && fx > 0) {
+        d[MIN_BALANCE_WARNING_KEY] = formatAdminNumber(hufToEur(minBalanceHuf, fx));
+      }
       setSetDraft(d);
     } catch {
       setSetErr("Hálózati hiba");
@@ -1637,7 +1660,13 @@ export function AdminWorkspace() {
     setSetErr(null);
     setSetMsg(null);
     setSetSaving(true);
-    const entries = Object.entries(setDraft).map(([key, value]) => ({ key, value }));
+    const preparedDraft: Record<string, string> = { ...setDraft };
+    if (MIN_BALANCE_WARNING_KEY in preparedDraft) {
+      const fx = parseDraftNumber(preparedDraft[FX_EUR_TO_HUF_KEY]) ?? 400;
+      const minBalanceEur = parseDraftNumber(preparedDraft[MIN_BALANCE_WARNING_KEY]) ?? 0;
+      preparedDraft[MIN_BALANCE_WARNING_KEY] = String(eurToHuf(minBalanceEur, fx));
+    }
+    const entries = Object.entries(preparedDraft).map(([key, value]) => ({ key, value }));
     const maxJsonChars = 3_000_000;
     const chunks: { key: string; value: string }[][] = [];
     let cur: { key: string; value: string }[] = [];
