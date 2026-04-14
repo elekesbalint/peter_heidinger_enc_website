@@ -41,9 +41,25 @@ function parseAddress(raw: string | null | undefined): AddressFields {
 
   const parts = compact.split(",").map((p) => p.trim()).filter(Boolean);
 
-  if (parts.length >= 4) {
-    result.country = parts[0] || result.country;
-    const zipCity = parts[1] || "";
+  if (parts.length >= 3) {
+    const zipCityPattern = /^(\d{4})\s+(.+)$/;
+    const countryPattern = /^(Magyarország|Hungary)$/i;
+    let zipCity = "";
+    let streetParts: string[] = [];
+
+    if (countryPattern.test(parts[0] ?? "")) {
+      result.country = parts[0] ?? result.country;
+      zipCity = parts[1] ?? "";
+      streetParts = parts.slice(2);
+    } else if (zipCityPattern.test(parts[0] ?? "")) {
+      zipCity = parts[0] ?? "";
+      streetParts = parts.slice(1);
+    } else {
+      result.country = parts[0] || result.country;
+      zipCity = parts[1] ?? "";
+      streetParts = parts.slice(2);
+    }
+
     const zipCityMatch = zipCity.match(/^(\d{4})\s+(.+)$/);
     if (zipCityMatch) {
       result.zip = zipCityMatch[1] ?? "";
@@ -51,8 +67,8 @@ function parseAddress(raw: string | null | undefined): AddressFields {
     } else {
       result.city = zipCity;
     }
-    result.street = parts[2] || "";
-    result.extra = parts.slice(3).join(", ");
+    result.street = streetParts[0] || "";
+    result.extra = streetParts.slice(1).join(", ");
     return result;
   }
 
@@ -60,11 +76,17 @@ function parseAddress(raw: string | null | undefined): AddressFields {
   if (zipCityMatch) {
     result.zip = zipCityMatch[1] ?? "";
     result.city = (zipCityMatch[2] ?? "").trim();
+    const withoutCountry = compact.replace(/^(Magyarország|Hungary)[,\s]*/i, "");
+    const withoutZipCity = withoutCountry.replace(/^\d{4}\s+[^,]+,?\s*/, "").trim();
+    result.street = withoutZipCity || compact;
+    return result;
   }
 
   const countryMatch = compact.match(/^(Magyarország|Hungary)[,\s]+/i);
   if (countryMatch) {
     result.country = countryMatch[1] ?? result.country;
+    result.street = compact.replace(/^(Magyarország|Hungary)[,\s]*/i, "").trim();
+    return result;
   }
 
   result.street = compact;
