@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 export default function LoginPage() {
@@ -10,7 +10,75 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function validateUserLoginContext(): Promise<boolean> {
+    const supabase = createSupabaseBrowserClient();
+    const validate = await fetch("/api/auth/validate-login-context", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ context: "user" }),
+      credentials: "include",
+    });
+    const data = (await validate.json()) as {
+      ok?: boolean;
+      code?: string;
+      message?: string;
+    };
+    if (!data.ok) {
+      await supabase.auth.signOut();
+      setError(
+        data.message ??
+          "Admin fiókkal csak az admin bejelentkezés oldalon lehet belépni.",
+      );
+      return false;
+    }
+    return true;
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function handleOAuthReturn() {
+      if (typeof window === "undefined") return;
+      const search = new URLSearchParams(window.location.search);
+      if (search.get("oauth") !== "google") return;
+
+      setIsGoogleLoading(true);
+      setError(null);
+      try {
+        const supabase = createSupabaseBrowserClient();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (!session) {
+          if (!cancelled) {
+            setError("Google bejelentkezés nem sikerült. Próbáld újra.");
+          }
+          return;
+        }
+        const ok = await validateUserLoginContext();
+        if (ok && !cancelled) {
+          router.push("/dashboard");
+          router.refresh();
+        }
+      } catch {
+        if (!cancelled) {
+          setError("Google bejelentkezés közben hiba történt.");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsGoogleLoading(false);
+        }
+      }
+    }
+
+    void handleOAuthReturn();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -38,30 +106,41 @@ export default function LoginPage() {
         return;
       }
 
-      const validate = await fetch("/api/auth/validate-login-context", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ context: "user" }),
-        credentials: "include",
-      });
-      const data = (await validate.json()) as {
-        ok?: boolean;
-        code?: string;
-        message?: string;
-      };
-      if (!data.ok) {
-        await supabase.auth.signOut();
-        setError(
-          data.message ??
-            "Admin fiókkal csak az admin bejelentkezés oldalon lehet belépni.",
-        );
-        return;
-      }
+      const ok = await validateUserLoginContext();
+      if (!ok) return;
 
       router.push("/dashboard");
       router.refresh();
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function onGoogleSignIn() {
+    setError(null);
+    setIsGoogleLoading(true);
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const redirectTo =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/login?oauth=google`
+          : undefined;
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          ...(redirectTo ? { redirectTo } : {}),
+          queryParams: {
+            prompt: "select_account",
+          },
+        },
+      });
+      if (oauthError) {
+        setError(oauthError.message);
+        setIsGoogleLoading(false);
+      }
+    } catch {
+      setError("Google bejelentkezés indítása sikertelen.");
+      setIsGoogleLoading(false);
     }
   }
 
@@ -120,10 +199,18 @@ export default function LoginPage() {
             )}
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || isGoogleLoading}
               className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-strong disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isLoading ? "Belépés folyamatban…" : "Belépés"}
+            </button>
+            <button
+              type="button"
+              onClick={onGoogleSignIn}
+              disabled={isLoading || isGoogleLoading}
+              className="w-full rounded-xl border border-border bg-white px-4 py-3 text-sm font-semibold text-foreground shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isGoogleLoading ? "Google belépés folyamatban…" : "Belépés Google-fiókkal"}
             </button>
           </form>
           <div className="mt-6 flex flex-col gap-3 text-sm">
