@@ -1,6 +1,25 @@
 import { useCallback, useEffect, useState } from 'react';
-import * as LocalAuthentication from 'expo-local-authentication';
-import * as SecureStore from 'expo-secure-store';
+
+type LocalAuthModule = typeof import('expo-local-authentication');
+type SecureStoreModule = typeof import('expo-secure-store');
+
+function getLocalAuthModule(): LocalAuthModule | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('expo-local-authentication') as LocalAuthModule;
+  } catch {
+    return null;
+  }
+}
+
+function getSecureStoreModule(): SecureStoreModule | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('expo-secure-store') as SecureStoreModule;
+  } catch {
+    return null;
+  }
+}
 
 const BIOMETRIC_ENABLED_KEY = 'biometric_enabled';
 
@@ -30,6 +49,15 @@ export function useBiometricAuth(): UseBiometricAuthReturn {
   useEffect(() => {
     (async () => {
       try {
+        const LocalAuthentication = getLocalAuthModule();
+        const SecureStore = getSecureStoreModule();
+        if (!LocalAuthentication || !SecureStore) {
+          setIsSupported(false);
+          setIsEnabled(false);
+          setBiometricType('none');
+          return;
+        }
+
         const hasHardware = await LocalAuthentication.hasHardwareAsync();
         const isEnrolled = await LocalAuthentication.isEnrolledAsync();
         const supported = hasHardware && isEnrolled;
@@ -55,12 +83,19 @@ export function useBiometricAuth(): UseBiometricAuthReturn {
   }, []);
 
   const setEnabled = useCallback(async (enabled: boolean) => {
+    const SecureStore = getSecureStoreModule();
+    if (!SecureStore) {
+      setIsEnabled(false);
+      return;
+    }
     await SecureStore.setItemAsync(BIOMETRIC_ENABLED_KEY, enabled ? '1' : '0');
     setIsEnabled(enabled);
   }, []);
 
   const authenticate = useCallback(async (): Promise<boolean> => {
     try {
+      const LocalAuthentication = getLocalAuthModule();
+      if (!LocalAuthentication) return false;
       const result = await LocalAuthentication.authenticateAsync({
         promptMessage: 'Azonosítás az ENC apphoz',
         cancelLabel: 'Mégsem',
