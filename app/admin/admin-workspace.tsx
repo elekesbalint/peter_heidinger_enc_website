@@ -2652,12 +2652,12 @@ export function AdminWorkspace() {
 
         {tab === "Felhasználók" && (
           <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-            <div className="flex gap-2">
-              <h2 className="text-xl font-semibold">Felhasználók (Auth)</h2>
+            <div className="flex flex-wrap items-start gap-2">
+              <h2 className="w-full text-xl font-semibold sm:w-auto">Felhasználók (Auth)</h2>
               <button
                 type="button"
                 onClick={() => sendDebtWarnings([...selectedDebtDevices])}
-                className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-sm text-amber-900"
+                className="w-full rounded border border-amber-200 bg-amber-50 px-2 py-1 text-sm text-amber-900 sm:w-auto"
               >
                 Tartozás figyelmeztető e-mail (kijelöltek)
               </button>
