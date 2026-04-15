@@ -5,9 +5,14 @@
  */
 module.exports = () => {
   const appJson = require('./app.json');
+  const existingPlugins = appJson.expo.plugins || [];
   return {
     expo: {
       ...appJson.expo,
+      plugins: [
+        ...existingPlugins.filter((p) => p !== 'expo-secure-store' && (Array.isArray(p) ? p[0] !== 'expo-secure-store' : true)),
+        'expo-secure-store',
+      ],
       extra: {
         ...(appJson.expo.extra || {}),
         supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL ?? '',

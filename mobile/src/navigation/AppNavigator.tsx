@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, AppState, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -9,8 +9,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../lib/supabase';
 import { signOut } from '../lib/auth';
 import { getProfileComplete } from '../lib/api';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors, Gradients, Fonts, Radius } from '../theme';
 import { Text } from '../components/ui';
+import { BiometricLockScreen } from '../components/BiometricLockScreen';
+import { useBiometricAuth } from '../hooks/useBiometricAuth';
 
 import { SplashAnimationScreen } from '../screens/SplashAnimationScreen';
 import { LoginScreen } from '../screens/auth/LoginScreen';
@@ -133,11 +136,19 @@ function ProfileStackNavigator() {
   );
 }
 
-function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
+function TabIcon({
+  name,
+  focused,
+}: {
+  name: React.ComponentProps<typeof Ionicons>['name'];
+  focused: boolean;
+}) {
   return (
-    <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ fontSize: focused ? 22 : 20, opacity: focused ? 1 : 0.5 }}>{emoji}</Text>
-    </View>
+    <Ionicons
+      name={focused ? name : (`${name}-outline` as React.ComponentProps<typeof Ionicons>['name'])}
+      size={24}
+      color={focused ? Colors.accent : Colors.textTertiary}
+    />
   );
 }
 
@@ -166,7 +177,7 @@ function MainTabs() {
         component={HomeStackNavigator}
         options={{
           title: 'Fiókom',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🏠" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon name="home" focused={focused} />,
         }}
       />
       <Tab.Screen
@@ -174,7 +185,7 @@ function MainTabs() {
         component={OrderStackNavigator}
         options={{
           title: 'Rendelés',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="📦" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon name="cube" focused={focused} />,
         }}
         listeners={({ navigation }) => ({
           tabPress: () => {
@@ -187,7 +198,7 @@ function MainTabs() {
         component={TopupStackNavigator}
         options={{
           title: 'Feltöltés',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="💳" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon name="card" focused={focused} />,
         }}
         listeners={({ navigation }) => ({
           tabPress: () => {
@@ -200,7 +211,7 @@ function MainTabs() {
         component={ProfileStackNavigator}
         options={{
           title: 'Profil',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="👤" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon name="person-circle" focused={focused} />,
         }}
       />
     </Tab.Navigator>
@@ -231,6 +242,10 @@ export function AppNavigator() {
   const [session, setSession] = useState<boolean | null>(null);
   const [profileComplete, setProfileComplete] = useState<boolean | null>(null);
   const [splashDone, setSplashDone] = useState(false);
+  const [locked, setLocked] = useState(false);
+
+  const { isEnabled, biometricType, authenticate } = useBiometricAuth();
+  const appStateRef = useRef(AppState.currentState);
 
   useEffect(() => {
     let cancelled = false;
@@ -247,7 +262,10 @@ export function AppNavigator() {
     })();
     const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(!!s);
-      if (!s) setProfileComplete(null);
+      if (!s) {
+        setProfileComplete(null);
+        setLocked(false);
+      }
     });
     return () => {
       cancelled = true;
@@ -258,11 +276,40 @@ export function AppNavigator() {
   // Ha van session, ellenőrizzük a profil teljességét
   useEffect(() => {
     if (!session) { setProfileComplete(null); return; }
-    setProfileComplete(null); // reset közben töltés
+    setProfileComplete(null);
     getProfileComplete()
       .then((complete) => setProfileComplete(complete))
       .catch(() => setProfileComplete(false));
   }, [session]);
+
+  // App előtérbe kerüléskor zárolás, ha biometria be van kapcsolva
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState) => {
+      const prev = appStateRef.current;
+      appStateRef.current = nextState;
+      if (
+        isEnabled &&
+        session &&
+        profileComplete &&
+        (prev === 'background' || prev === 'inactive') &&
+        nextState === 'active'
+      ) {
+        setLocked(true);
+      }
+    });
+    return () => sub.remove();
+  }, [isEnabled, session, profileComplete]);
+
+  const handleBiometricAuthenticate = useCallback(async () => {
+    const success = await authenticate();
+    if (success) setLocked(false);
+    return success;
+  }, [authenticate]);
+
+  const handleBiometricFallback = useCallback(async () => {
+    await signOut();
+    setLocked(false);
+  }, []);
 
   const loading = session === null || (session === true && profileComplete === null);
 
@@ -279,12 +326,21 @@ export function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
-      {!session
-        ? <AuthStackNavigator />
-        : !profileComplete
-          ? <OnboardingStackNavigator onComplete={() => setProfileComplete(true)} />
-          : <MainTabs />}
-    </NavigationContainer>
+    <>
+      <NavigationContainer>
+        {!session
+          ? <AuthStackNavigator />
+          : !profileComplete
+            ? <OnboardingStackNavigator onComplete={() => setProfileComplete(true)} />
+            : <MainTabs />}
+      </NavigationContainer>
+      {locked && (
+        <BiometricLockScreen
+          biometricType={biometricType}
+          onAuthenticate={handleBiometricAuthenticate}
+          onFallback={() => void handleBiometricFallback()}
+        />
+      )}
+    </>
   );
 }

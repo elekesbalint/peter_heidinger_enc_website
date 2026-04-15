@@ -6,15 +6,18 @@ import {
   Alert,
   ActivityIndicator,
   TouchableOpacity,
+  Switch,
   Image,
 } from 'react-native';
 import { useFadeIn } from '../../hooks/useFadeIn';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 import { ScreenWrapper, Text, Button, Input, Card, Divider } from '../../components/ui';
 import { Colors, Gradients, Spacing, Fonts, Radius } from '../../theme';
 import { getProfile, patchProfile, uploadProfileAvatar, sendReferralInvite } from '../../lib/api';
 import { signOut } from '../../lib/auth';
+import { useBiometricAuth } from '../../hooks/useBiometricAuth';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { ProfileStackParamList } from '../../navigation/types';
 
@@ -35,6 +38,27 @@ export function ProfileScreen({ navigation }: Props) {
   const [referralEmail, setReferralEmail] = useState('');
   const [inviting, setInviting] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState(false);
+
+  const { isSupported, isEnabled, biometricType, setEnabled: setBiometricEnabled } = useBiometricAuth();
+
+  const handleBiometricToggle = useCallback(async (value: boolean) => {
+    if (value) {
+      const label = biometricType === 'face' ? 'Face ID' : 'Touch ID / ujjlenyomat';
+      Alert.alert(
+        `${label} bekapcsolása`,
+        `Ezután az app előtérbe kerülésekor ${label} azonosítást kér. Folytatod?`,
+        [
+          { text: 'Mégsem', style: 'cancel' },
+          {
+            text: 'Bekapcsolás',
+            onPress: () => void setBiometricEnabled(true),
+          },
+        ],
+      );
+    } else {
+      await setBiometricEnabled(false);
+    }
+  }, [biometricType, setBiometricEnabled]);
 
   const avatarAnim = useFadeIn(0);
   const formAnim = useFadeIn(100);
@@ -366,10 +390,33 @@ export function ProfileScreen({ navigation }: Props) {
         </Card>
       </Animated.View>
 
-      {/* Legal links */}
+      {/* Legal links + biometric */}
       <Animated.View style={legalAnim}>
         <Text variant="title" style={styles.sectionTitle}>Egyebek</Text>
         <Card padding={0} style={{ marginBottom: Spacing.md, overflow: 'hidden' }}>
+          {/* Biometric row – only shown when device supports it */}
+          {isSupported && (
+            <>
+              <View style={styles.menuRow}>
+                <Ionicons
+                  name={biometricType === 'face' ? 'scan-outline' : 'finger-print-outline'}
+                  size={20}
+                  color={Colors.accent}
+                  style={{ marginRight: 12 }}
+                />
+                <Text style={{ flex: 1 }}>
+                  {biometricType === 'face' ? 'Face ID' : 'Touch ID / ujjlenyomat'}
+                </Text>
+                <Switch
+                  value={isEnabled}
+                  onValueChange={(v) => void handleBiometricToggle(v)}
+                  trackColor={{ false: Colors.border, true: Colors.accentSoft }}
+                  thumbColor={isEnabled ? Colors.accent : Colors.textTertiary}
+                />
+              </View>
+              <Divider style={{ marginVertical: 0 }} />
+            </>
+          )}
           {[
             { label: 'ÁSZF', screen: 'Aszf', icon: '📄' },
             { label: 'Adatvédelmi nyilatkozat', screen: 'Adatvedelem', icon: '🔒' },
