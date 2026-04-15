@@ -36,7 +36,7 @@ function statusLabel(s: string) {
 
 function categoryLabel(c: string) {
   const map: Record<string, string> = {
-    ia: '0. kat. (IA)', i: 'I. kat.', ii: 'II. kat.', iii: 'III. kat.', iv: 'IV. kat.',
+    ia: 'IA', i: 'I. kat.', ii: 'II. kat.', iii: 'III. kat.', iv: 'IV. kat.',
   };
   return map[c.toLowerCase()] ?? c.toUpperCase();
 }

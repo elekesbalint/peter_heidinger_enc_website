@@ -32,7 +32,7 @@ const CATEGORY_VALUES = ['ia', 'i', 'ii', 'iii', 'iv'] as const;
 type CategoryValue = (typeof CATEGORY_VALUES)[number];
 
 const CATEGORY_LABELS: Record<CategoryValue, string> = {
-  ia: '0. kat. (IA)',
+  ia: 'IA',
   i: 'I. kat.',
   ii: 'II. kat.',
   iii: 'III. kat.',

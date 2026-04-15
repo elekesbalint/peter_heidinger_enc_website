@@ -3,7 +3,7 @@ export const DEVICE_CATEGORY_VALUES = ["ia", "i", "ii", "iii", "iv"] as const;
 export type DeviceCategoryValue = (typeof DEVICE_CATEGORY_VALUES)[number];
 
 export const DEVICE_CATEGORY_LABELS: Record<DeviceCategoryValue, string> = {
-  ia: "0. kat. (IA)",
+  ia: "IA",
   i: "I. kat.",
   ii: "II. kat.",
   iii: "III. kat.",
