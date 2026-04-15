@@ -1854,7 +1854,7 @@ export function AdminWorkspace() {
                 value={encQuery}
                 onChange={(e) => setEncQuery(e.target.value)}
                 placeholder="Keresés: eszköz, e-mail, szállítási cím"
-                className="min-w-[280px] flex-1 rounded-xl border border-border bg-white px-3 py-2 text-sm"
+                className="w-full sm:min-w-[280px] flex-1 rounded-xl border border-border bg-white px-3 py-2 text-sm"
               />
               <select
                 value={encFilter}
@@ -2166,45 +2166,47 @@ export function AdminWorkspace() {
             {waitErr && <p className="mt-2 text-sm text-red-600">{waitErr}</p>}
             {assignErr && <p className="mt-2 text-sm text-red-600">{assignErr}</p>}
             {assignMsg && <p className="mt-2 text-sm text-emerald-700">{assignMsg}</p>}
-            <table className="mt-4 min-w-full text-left text-sm">
-              <thead>
-                <tr className="border-b text-slate-500">
-                  <th className="px-2 py-2">E-mail</th>
-                  <th className="px-2 py-2">Kat.</th>
-                  <th className="px-2 py-2">Megjegyzés</th>
-                  <th className="px-2 py-2">Idő</th>
-                  <th className="px-2 py-2"> </th>
-                </tr>
-              </thead>
-              <tbody>
-                {waitlist
-                  .filter((w) => (waitQ.trim() ? (w.user_email ?? "").toLowerCase().includes(waitQ.trim().toLowerCase()) : true))
-                  .map((w) => (
-                  <tr key={w.id} className="border-b border-border/60">
-                    <td className="px-2 py-2">{w.user_email ?? "—"}</td>
-                    <td className="px-2 py-2">{w.category}</td>
-                    <td className="px-2 py-2">{w.note ?? "—"}</td>
-                    <td className="px-2 py-2">{new Date(w.created_at).toLocaleString("hu-HU")}</td>
-                    <td className="px-2 py-2">
-                      <button
-                        type="button"
-                        className="mr-2 text-xs text-emerald-700 underline"
-                        onClick={() => assignOneWaitlist(w.id)}
-                      >
-                        Kiosztás
-                      </button>
-                      <button
-                        type="button"
-                        className="text-xs text-red-700 underline"
-                        onClick={() => removeWaitlist(w.id)}
-                      >
-                        Törlés
-                      </button>
-                    </td>
+            <div className="mt-4 overflow-x-auto rounded-xl border border-border/70">
+              <table className="min-w-[720px] text-left text-sm">
+                <thead>
+                  <tr className="border-b text-slate-500">
+                    <th className="px-2 py-2">E-mail</th>
+                    <th className="px-2 py-2">Kat.</th>
+                    <th className="px-2 py-2">Megjegyzés</th>
+                    <th className="px-2 py-2">Idő</th>
+                    <th className="px-2 py-2"> </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {waitlist
+                    .filter((w) => (waitQ.trim() ? (w.user_email ?? "").toLowerCase().includes(waitQ.trim().toLowerCase()) : true))
+                    .map((w) => (
+                    <tr key={w.id} className="border-b border-border/60">
+                      <td className="px-2 py-2">{w.user_email ?? "—"}</td>
+                      <td className="px-2 py-2">{w.category}</td>
+                      <td className="px-2 py-2">{w.note ?? "—"}</td>
+                      <td className="px-2 py-2">{new Date(w.created_at).toLocaleString("hu-HU")}</td>
+                      <td className="px-2 py-2 whitespace-nowrap">
+                        <button
+                          type="button"
+                          className="mr-2 text-xs text-emerald-700 underline"
+                          onClick={() => assignOneWaitlist(w.id)}
+                        >
+                          Kiosztás
+                        </button>
+                        <button
+                          type="button"
+                          className="text-xs text-red-700 underline"
+                          onClick={() => removeWaitlist(w.id)}
+                        >
+                          Törlés
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             {waitLoading && <p className="mt-2 text-sm text-muted">Betöltés…</p>}
           </div>
         )}
@@ -2251,35 +2253,37 @@ export function AdminWorkspace() {
                 </button>
               </div>
               {devErr && <p className="mt-2 text-sm text-red-600">{devErr}</p>}
-              <table className="mt-4 min-w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b text-slate-500">
-                    <th className="px-2 py-2">Azonosító</th>
-                    <th className="px-2 py-2">Kat.</th>
-                    <th className="px-2 py-2">Státusz</th>
-                    <th className="px-2 py-2">Rendszám</th>
-                    <th className="px-2 py-2"> </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {devices.map((d) => (
-                    <tr key={d.id} className="border-b border-border/60">
-                      <td className="px-2 py-2 font-medium">{d.identifier}</td>
-                      <td className="px-2 py-2">{d.category}</td>
-                      <td className="px-2 py-2">
-                        {DEVICE_STATUS_LABELS[(d.status as (typeof DEVICE_STATUSES)[number]) ?? "available"] ??
-                          d.status}
-                      </td>
-                      <td className="px-2 py-2">{d.license_plate ?? "—"}</td>
-                      <td className="px-2 py-2">
-                        <button type="button" className="text-xs text-primary underline" onClick={() => setEditDevice({ ...d })}>
-                          Szerkesztés
-                        </button>
-                      </td>
+              <div className="mt-4 overflow-x-auto rounded-xl border border-border/70">
+                <table className="min-w-[680px] text-left text-sm">
+                  <thead>
+                    <tr className="border-b text-slate-500">
+                      <th className="px-2 py-2">Azonosító</th>
+                      <th className="px-2 py-2">Kat.</th>
+                      <th className="px-2 py-2">Státusz</th>
+                      <th className="px-2 py-2">Rendszám</th>
+                      <th className="px-2 py-2"> </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {devices.map((d) => (
+                      <tr key={d.id} className="border-b border-border/60">
+                        <td className="px-2 py-2 font-medium">{d.identifier}</td>
+                        <td className="px-2 py-2">{d.category}</td>
+                        <td className="px-2 py-2">
+                          {DEVICE_STATUS_LABELS[(d.status as (typeof DEVICE_STATUSES)[number]) ?? "available"] ??
+                            d.status}
+                        </td>
+                        <td className="px-2 py-2">{d.license_plate ?? "—"}</td>
+                        <td className="px-2 py-2 whitespace-nowrap">
+                          <button type="button" className="text-xs text-primary underline" onClick={() => setEditDevice({ ...d })}>
+                            Szerkesztés
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
               {devLoading && <p className="mt-2 text-sm text-muted">Betöltés…</p>}
             </div>
             {editDevice && (
@@ -2682,7 +2686,7 @@ export function AdminWorkspace() {
                 value={usrQuery}
                 onChange={(e) => setUsrQuery(e.target.value)}
                 placeholder="Keresés: név, e-mail vagy eszközazonosító"
-                className="min-w-[280px] flex-1 rounded-xl border border-border bg-white px-3 py-2 text-sm"
+                className="w-full sm:min-w-[280px] flex-1 rounded-xl border border-border bg-white px-3 py-2 text-sm"
               />
               {usrQuery.trim().length > 0 && (
                 <button
@@ -2694,7 +2698,8 @@ export function AdminWorkspace() {
                 </button>
               )}
             </div>
-            <table className="mt-4 w-full table-fixed text-left text-xs">
+            <div className="mt-4 overflow-x-auto rounded-xl border border-border/70">
+            <table className="min-w-[980px] w-full table-fixed text-left text-xs">
               <thead>
                 <tr className="border-b text-slate-500">
                   <th className="w-[24%] px-1.5 py-1.5">E-mail</th>
@@ -2806,6 +2811,7 @@ export function AdminWorkspace() {
                 ))}
               </tbody>
             </table>
+            </div>
             {!usrLoading && filteredUsers.length === 0 && (
               <p className="mt-2 text-sm text-muted">Nincs találat a megadott szűrésre.</p>
             )}
