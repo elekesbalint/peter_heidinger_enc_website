@@ -939,7 +939,7 @@ export function AdminWorkspace() {
     const onFocus = () => tick();
     const onVisibility = () => tick();
 
-    const intervalId = setInterval(tick, 15_000);
+    const intervalId = setInterval(tick, 10_000);
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisibility);
 
