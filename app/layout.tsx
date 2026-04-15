@@ -54,8 +54,8 @@ export default async function RootLayout({
       lang="hu"
       className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body suppressHydrationWarning className="relative flex min-h-full flex-col text-foreground">
-        <div className="relative z-10 flex min-h-full flex-1 flex-col">
+      <body suppressHydrationWarning className="relative flex min-h-full flex-col overflow-x-hidden text-foreground">
+        <div className="relative z-10 flex min-h-full flex-1 flex-col overflow-x-hidden">
           <header className="sticky top-0 z-40 w-full border-b border-white/40 bg-white/55 shadow-sm backdrop-blur-xl transition-shadow duration-300 hover:shadow-md">
             <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-6">
               <Link
