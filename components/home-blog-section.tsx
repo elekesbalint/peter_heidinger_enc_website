@@ -43,17 +43,23 @@ export function HomeBlogSection({
             }`}
           >
             {post.image_url && (
-              <img
-                src={post.image_url}
-                alt={post.title || "Blog borítókép"}
-                className="h-36 w-full object-cover"
-              />
+              <Link href={`/blog/${post.slug}`} className="block overflow-hidden">
+                <img
+                  src={post.image_url}
+                  alt={post.title || "Blog borítókép"}
+                  className="h-36 w-full object-cover transition-transform duration-300 hover:scale-[1.02]"
+                />
+              </Link>
             )}
             <div className="p-5">
               {post.date && (
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-blue-700/70">{post.date}</p>
               )}
-              <h3 className="mt-2 text-lg font-semibold text-foreground">{post.title || "Blog bejegyzés"}</h3>
+              <h3 className="mt-2 text-lg font-semibold text-foreground">
+                <Link href={`/blog/${post.slug}`} className="hover:text-primary hover:underline">
+                  {post.title || "Blog bejegyzés"}
+                </Link>
+              </h3>
               <p className="mt-2 text-sm leading-relaxed text-muted">
                 {post.excerpt || "Rövid leírás hamarosan."}
               </p>

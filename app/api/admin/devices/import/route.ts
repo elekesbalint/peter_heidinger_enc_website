@@ -1,37 +1,37 @@
-import { getCurrentUser, isAdminEmail } from "@/lib/auth-server";
+import { requireAdmin } from "@/lib/admin-guard";
 import { parseDevicesCsv } from "@/lib/devices-csv";
+import { isDeviceCategory } from "@/lib/device-categories";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 export async function POST(request: Request) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return Response.json({ ok: false, error: "Nincs bejelentkezve." }, { status: 401 });
-    }
-    if (!isAdminEmail(user.email)) {
-      return Response.json({ ok: false, error: "Nincs admin jogosultsag." }, { status: 403 });
-    }
+    const g = await requireAdmin();
+    if (!g.ok) return g.response;
 
     const supabase = createSupabaseAdminClient();
     const formData = await request.formData();
     const file = formData.get("file");
+    const categoryRaw = String(formData.get("category") ?? "").trim().toLowerCase();
 
     if (!(file instanceof File)) {
       return Response.json(
-        { ok: false, error: "A 'file' mezo kotelezo." },
+        { ok: false, error: "A 'file' mező kötelező." },
         { status: 400 },
       );
     }
 
+    const categoryOverride = isDeviceCategory(categoryRaw) ? categoryRaw : undefined;
+
     const content = await file.text();
-    const rows = parseDevicesCsv(content);
+    const rows = parseDevicesCsv(content, { categoryOverride });
 
     if (rows.length === 0) {
       return Response.json(
         {
           ok: false,
-          error:
-            "A CSV nem tartalmaz importalhato eszkozt (identifier + kategoria).",
+          error: categoryOverride
+            ? "A CSV nem tartalmaz importálható azonosítót (üres fájl?)."
+            : "A CSV nem tartalmaz importálható eszközt (identifier + kategoria szükséges, vagy válassz kategóriát a legördülőből).",
         },
         { status: 400 },
       );
@@ -71,10 +71,11 @@ export async function POST(request: Request) {
       parsedRows: rows.length,
       insertedRows: inserted,
       skippedRows: skipped,
+      category: categoryOverride ?? "CSV-ből",
     });
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Ismeretlen hiba tortent.";
+      error instanceof Error ? error.message : "Ismeretlen hiba történt.";
     return Response.json({ ok: false, error: message }, { status: 500 });
   }
 }

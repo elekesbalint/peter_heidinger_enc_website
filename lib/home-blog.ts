@@ -72,7 +72,20 @@ function normalizePost(input: Partial<HomeBlogPost>, index: number): HomeBlogPos
 export type ParseHomeBlogPostsOptions = {
   /** Admin: új, még üres bejegyzés is maradjon a listában (főoldal / publikus nézetben ne). */
   keepEmptyDrafts?: boolean;
+  /** Ha false, megőrzi a bemeneti sorrendet (admin szerkesztéshez). */
+  sortByDateDesc?: boolean;
 };
+
+function parseDateToTime(input: string): number {
+  const trimmed = String(input ?? "").trim();
+  if (!trimmed) return Number.NEGATIVE_INFINITY;
+  const t = Date.parse(trimmed);
+  return Number.isFinite(t) ? t : Number.NEGATIVE_INFINITY;
+}
+
+export function sortBlogPostsByDateDesc(posts: HomeBlogPost[]): HomeBlogPost[] {
+  return [...posts].sort((a, b) => parseDateToTime(b.date) - parseDateToTime(a.date));
+}
 
 export function parseHomeBlogPosts(
   raw: string | null | undefined,
@@ -84,14 +97,17 @@ export function parseHomeBlogPosts(
     const normalized = parsed.map((item, index) =>
       normalizePost((item ?? {}) as Partial<HomeBlogPost>, index),
     );
-    if (options?.keepEmptyDrafts) {
-      return normalized;
-    }
-    return normalized.filter(
+    const filtered = options?.keepEmptyDrafts
+      ? normalized
+      : normalized.filter(
       (post) => post.title.trim() || post.excerpt.trim() || post.content.trim(),
     );
+    if (options?.sortByDateDesc === false) {
+      return filtered;
+    }
+    return sortBlogPostsByDateDesc(filtered);
   } catch {
-    return [...DEFAULT_HOME_BLOG_POSTS];
+    return sortBlogPostsByDateDesc([...DEFAULT_HOME_BLOG_POSTS]);
   }
 }
 

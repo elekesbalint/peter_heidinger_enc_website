@@ -21,6 +21,11 @@ interface BlogPost {
   category?: string;
 }
 
+function parseDateToTime(value?: string): number {
+  const t = Date.parse(String(value ?? '').trim());
+  return Number.isFinite(t) ? t : Number.NEGATIVE_INFINITY;
+}
+
 function AnimatedPostItem({ children, delay }: { children: React.ReactNode; delay: number }) {
   const anim = useFadeIn(delay, 400);
   return <Animated.View style={anim}>{children}</Animated.View>;
@@ -36,7 +41,9 @@ export function BlogScreen({ navigation }: Props) {
     getSettings(['home_blog_posts_json']).then((s) => {
       try {
         const parsed = JSON.parse(s.home_blog_posts_json ?? '[]');
-        setPosts(Array.isArray(parsed) ? parsed : []);
+        const next = Array.isArray(parsed) ? parsed : [];
+        next.sort((a, b) => parseDateToTime(b?.date) - parseDateToTime(a?.date));
+        setPosts(next);
       } catch {
         setPosts([]);
       }

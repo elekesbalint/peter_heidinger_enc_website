@@ -36,9 +36,49 @@ function pickField(record: Record<string, string>, aliases: string[]): string {
   return "";
 }
 
-export function parseDevicesCsv(content: string): DeviceCsvRow[] {
-  const records = parse(content, {
-    delimiter: DELIMITER,
+export type ParseDevicesCsvOptions = {
+  /** Ha meg van adva, ezt a kategóriát alkalmazza minden sorra (CSV kategória mező opcionális lesz). */
+  categoryOverride?: DeviceCategory;
+};
+
+/**
+ * CSV beolvasása.
+ * - Ha `categoryOverride` meg van adva: elég egy oszlop az azonosítóknak (nincs szükség kategória oszlopra).
+ * - Ha nincs override: a CSV-ben kötelező az identifier + kategoria oszlop (régi viselkedés).
+ *
+ * A CSV lehet pontosvesszővel (;) vagy vesszővel (,) tagolt, fejléces vagy fejléc nélküli (csak azonosítók).
+ */
+export function parseDevicesCsv(
+  content: string,
+  options?: ParseDevicesCsvOptions,
+): DeviceCsvRow[] {
+  const categoryOverride = options?.categoryOverride ?? null;
+  const trimmed = content.trim();
+  if (!trimmed) return [];
+
+  // Fejléc nélküli, egysoros lista esetén (pl. csak azonosítók egymás után soronként)
+  // észleljük ha nincs header: ha az első sor nem tartalmaz ismert fejléckulcsot
+  const firstLine = trimmed.split(/\r?\n/)[0] ?? "";
+  const hasHeader =
+    /keszulek|identifier|device|kategoria|category/i.test(firstLine);
+
+  // Elválasztó detektálása: ha az első sorban pontosvessző van → ";" egyébként ","
+  const delimiter = firstLine.includes(";") ? ";" : ",";
+
+  if (!hasHeader && categoryOverride) {
+    // Egyszerű lista: minden sor egy azonosító
+    return trimmed
+      .split(/\r?\n/)
+      .map((line, idx) => {
+        const identifier = line.trim();
+        if (!identifier) return null;
+        return { identifier, category: categoryOverride, sourceLineNumber: idx + 1 };
+      })
+      .filter((row): row is DeviceCsvRow => Boolean(row));
+  }
+
+  const records = parse(trimmed, {
+    delimiter,
     columns: true,
     skip_empty_lines: true,
     trim: true,
@@ -54,13 +94,17 @@ export function parseDevicesCsv(content: string): DeviceCsvRow[] {
         "identifier",
         "device id",
       ]);
-      const categoryRaw = pickField(record, [
-        "kategoria",
-        "category",
-        "jarmukategoria",
-        "jarmu kategoria",
-      ]);
-      const category = mapCategory(categoryRaw);
+
+      let category: DeviceCategory | null = categoryOverride;
+      if (!category) {
+        const categoryRaw = pickField(record, [
+          "kategoria",
+          "category",
+          "jarmukategoria",
+          "jarmu kategoria",
+        ]);
+        category = mapCategory(categoryRaw);
+      }
 
       if (!identifier || !category) return null;
 

@@ -124,6 +124,16 @@ function addressSummary(addr: AddressFields): string {
   return [zipCity, addr.street.trim(), addr.extra.trim()].filter(Boolean).join(", ") || "Nincs kitöltve";
 }
 
+function addressesEqual(a: AddressFields, b: AddressFields): boolean {
+  return (
+    a.country.trim() === b.country.trim() &&
+    a.zip.trim() === b.zip.trim() &&
+    a.city.trim() === b.city.trim() &&
+    a.street.trim() === b.street.trim() &&
+    a.extra.trim() === b.extra.trim()
+  );
+}
+
 function hasProfileData(profile: Profile, billingAddress: AddressFields, shippingAddress: AddressFields): boolean {
   return Boolean(
     (profile.name ?? "").trim() ||
@@ -158,6 +168,7 @@ export function ProfileForm({ forceOpen = false }: { forceOpen?: boolean }) {
   const [profileOpen, setProfileOpen] = useState(true);
   const [billingOpen, setBillingOpen] = useState(true);
   const [shippingOpen, setShippingOpen] = useState(true);
+  const [shippingSameAsBilling, setShippingSameAsBilling] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -185,6 +196,7 @@ export function ProfileForm({ forceOpen = false }: { forceOpen?: boolean }) {
         const parsedShipping = parseAddress(data.profile?.shipping_address);
         setBillingAddress(parsedBilling);
         setShippingAddress(parsedShipping);
+        setShippingSameAsBilling(addressesEqual(parsedBilling, parsedShipping));
         setProfileOpen(
           forceOpen ||
             !hasProfileData(
@@ -218,6 +230,13 @@ export function ProfileForm({ forceOpen = false }: { forceOpen?: boolean }) {
   useEffect(() => {
     if (forceOpen) setProfileOpen(true);
   }, [forceOpen]);
+
+  function updateBillingAddress(next: AddressFields) {
+    setBillingAddress(next);
+    if (shippingSameAsBilling) {
+      setShippingAddress(next);
+    }
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -388,32 +407,32 @@ export function ProfileForm({ forceOpen = false }: { forceOpen?: boolean }) {
           <div className="mt-2 grid gap-3 rounded-xl border border-border/70 bg-slate-50/70 p-4 md:grid-cols-2">
             <input
               value={billingAddress.country}
-              onChange={(e) => setBillingAddress({ ...billingAddress, country: e.target.value })}
+              onChange={(e) => updateBillingAddress({ ...billingAddress, country: e.target.value })}
               className={fieldClass}
               placeholder="Ország"
             />
             <input
               value={billingAddress.zip}
-              onChange={(e) => setBillingAddress({ ...billingAddress, zip: e.target.value })}
+              onChange={(e) => updateBillingAddress({ ...billingAddress, zip: e.target.value })}
               className={fieldClass}
               placeholder="Irányítószám (pl. 1117)"
               inputMode="numeric"
             />
             <input
               value={billingAddress.city}
-              onChange={(e) => setBillingAddress({ ...billingAddress, city: e.target.value })}
+              onChange={(e) => updateBillingAddress({ ...billingAddress, city: e.target.value })}
               className={fieldClass}
               placeholder="Város"
             />
             <input
               value={billingAddress.street}
-              onChange={(e) => setBillingAddress({ ...billingAddress, street: e.target.value })}
+              onChange={(e) => updateBillingAddress({ ...billingAddress, street: e.target.value })}
               className={fieldClass}
               placeholder="Utca, házszám"
             />
             <input
               value={billingAddress.extra}
-              onChange={(e) => setBillingAddress({ ...billingAddress, extra: e.target.value })}
+              onChange={(e) => updateBillingAddress({ ...billingAddress, extra: e.target.value })}
               className="md:col-span-2 w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm transition"
               placeholder="Emelet, ajtó, egyéb (opcionális)"
             />
@@ -432,6 +451,21 @@ export function ProfileForm({ forceOpen = false }: { forceOpen?: boolean }) {
           </span>
           <span className="text-xs font-semibold text-muted">{shippingOpen ? "Összecsukás" : "Szerkesztés"}</span>
         </button>
+        <label className="mt-2 flex cursor-pointer items-center gap-2 rounded-lg border border-border/60 bg-white/70 px-3 py-2 text-xs text-muted">
+          <input
+            type="checkbox"
+            checked={shippingSameAsBilling}
+            onChange={(e) => {
+              const checked = e.target.checked;
+              setShippingSameAsBilling(checked);
+              if (checked) {
+                setShippingAddress(billingAddress);
+              }
+            }}
+            className="h-4 w-4 rounded border-border accent-primary"
+          />
+          <span>Megegyezik a számlázási címmel (automatikus kitöltés)</span>
+        </label>
         {shippingOpen && (
           <div className="mt-2 grid gap-3 rounded-xl border border-border/70 bg-slate-50/70 p-4 md:grid-cols-2">
             <input
@@ -439,6 +473,7 @@ export function ProfileForm({ forceOpen = false }: { forceOpen?: boolean }) {
               onChange={(e) => setShippingAddress({ ...shippingAddress, country: e.target.value })}
               className={fieldClass}
               placeholder="Ország"
+              disabled={shippingSameAsBilling}
             />
             <input
               value={shippingAddress.zip}
@@ -446,24 +481,28 @@ export function ProfileForm({ forceOpen = false }: { forceOpen?: boolean }) {
               className={fieldClass}
               placeholder="Irányítószám (pl. 1117)"
               inputMode="numeric"
+              disabled={shippingSameAsBilling}
             />
             <input
               value={shippingAddress.city}
               onChange={(e) => setShippingAddress({ ...shippingAddress, city: e.target.value })}
               className={fieldClass}
               placeholder="Város"
+              disabled={shippingSameAsBilling}
             />
             <input
               value={shippingAddress.street}
               onChange={(e) => setShippingAddress({ ...shippingAddress, street: e.target.value })}
               className={fieldClass}
               placeholder="Utca, házszám"
+              disabled={shippingSameAsBilling}
             />
             <input
               value={shippingAddress.extra}
               onChange={(e) => setShippingAddress({ ...shippingAddress, extra: e.target.value })}
               className="md:col-span-2 w-full rounded-xl border border-border bg-white px-4 py-2.5 text-sm transition"
               placeholder="Emelet, ajtó, egyéb (opcionális)"
+              disabled={shippingSameAsBilling}
             />
           </div>
         )}
