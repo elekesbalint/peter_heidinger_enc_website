@@ -496,6 +496,7 @@ export async function createEracuniInvoice(params: {
     return {
       paymentMethodForInvoice: paymentMethod,
       paymentMethod,
+      paymentAmount: linePrice,
       amount: linePrice,
       paidAmount: linePrice,
       price: linePrice,
