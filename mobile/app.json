@@ -3,6 +3,7 @@
     "name": "AdriaGo",
     "slug": "adriago-mobile",
     "version": "1.0.0",
+    "scheme": "adriago",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -14,6 +15,9 @@
     },
     "ios": {
       "supportsTablet": true,
+      "config": {
+        "usesNonExemptEncryption": false
+      },
       "bundleIdentifier": "hu.heidinger.adriago",
       "infoPlist": {
         "NSAppTransportSecurity": {
@@ -50,6 +54,14 @@
           "photosPermission": "A profilképed kiválasztásához szükség van a fotók elérésére."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "supabaseUrl": "",
+      "supabaseAnonKey": "",
+      "apiBaseUrl": "",
+      "eas": {
+        "projectId": "805f4f8a-e079-41bb-80dd-3d79b48b9ef3"
+      }
+    }
   }
 }

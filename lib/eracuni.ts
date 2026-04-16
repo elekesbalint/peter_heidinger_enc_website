@@ -489,6 +489,23 @@ export async function createEracuniInvoice(params: {
     return withCurrencyAliases(out);
   }
 
+  /** Build a PaymentRecord that marks the invoice as already paid via Stripe/configured method. */
+  function buildPaymentRecord(): Record<string, unknown> {
+    const paymentMethodRaw = process.env.E_RACUNI_PAYMENT_METHOD?.trim() || "Stripe";
+    const paymentMethod = resolveEracuniPaymentMethod(paymentMethodRaw);
+    return {
+      paymentMethodForInvoice: paymentMethod,
+      paymentMethod,
+      amount: linePrice,
+      paidAmount: linePrice,
+      price: linePrice,
+      date: today,
+      paymentDate: today,
+      currencyCode: invoiceCurrency,
+      currency: invoiceCurrency,
+    };
+  }
+
   /** Merge partner/buyer aliases and optional payment so strict tenants accept the document. */
   function finalizeSalesInvoice(invoice: Record<string, unknown>): Record<string, unknown> {
     const base = buildPartnerPayload();
@@ -549,6 +566,23 @@ export async function createEracuniInvoice(params: {
       out.paymentMethodForInvoice = paymentMethod;
       out.payType = paymentMethod;
     }
+
+    // Mark invoice as already paid — Stripe already collected the money before invoice creation.
+    const paymentRecord = buildPaymentRecord();
+    out.PaymentRecord = paymentRecord;
+    out.paymentRecord = paymentRecord;
+    out.PaymentRecords = [paymentRecord];
+    out.paymentRecords = [paymentRecord];
+    out.Payments = [paymentRecord];
+    out.payments = [paymentRecord];
+    out.isPaid = true;
+    out.paid = true;
+    out.alreadyPaid = linePrice;
+    out.paidAmount = linePrice;
+    out.paidDate = today;
+    out.paymentDate = today;
+    out.datePaid = today;
+
     return withCurrencyAliases(out);
   }
 
