@@ -1,14 +1,18 @@
 /**
  * Barion Payment API integráció.
  *
- * Környezetek:
- *   Sandbox:  BARION_API_URL=https://api.test.barion.com  (alapértelmezett)
- *   Éles:     BARION_API_URL=https://api.barion.com
+ * Környezetek (POSKey és API host **párosan** kell hogy stimmeljen):
+ *   Sandbox:  BARION_API_URL=https://api.test.barion.com  + sandbox bolt POSKey
+ *   Éles:     BARION_API_URL=https://api.barion.com       + éles bolt POSKey
+ *
+ * Alapértelmezés BARION_API_URL nélkül:
+ *   Vercel production → https://api.barion.com
+ *   egyéb (local, preview) → https://api.test.barion.com
  *
  * Szükséges env változók:
  *   BARION_POSKEY   — Shop titkos kulcsa (Barion admin → Shop részletek)
- *   BARION_PAYEE    — Elfogadó Barion e-mail cím (pl. dpccroatia@gmail.com)
- *   BARION_API_URL  — (opcionális) API alap URL, alapértelmezett: sandbox
+ *   BARION_PAYEE    — Elfogadó Barion e-mail (a bolt Barion wallet címe)
+ *   BARION_API_URL  — (opcionális) felülírja a fenti alapértelmezést
  */
 
 export type BarionItem = {
@@ -105,7 +109,15 @@ export type BarionPaymentStateResponse = {
 };
 
 export function getBarionApiUrl(): string {
-  return (process.env.BARION_API_URL ?? "https://api.test.barion.com").replace(/\/$/, "");
+  const explicit = process.env.BARION_API_URL?.trim();
+  if (explicit) {
+    return explicit.replace(/\/$/, "");
+  }
+  // Éles domain + éles POSKey gyakori; preview/local marad sandbox API alapértelmezésben.
+  if (process.env.VERCEL_ENV === "production") {
+    return "https://api.barion.com";
+  }
+  return "https://api.test.barion.com";
 }
 
 export function getBarionPosKey(): string {
@@ -145,17 +157,28 @@ export async function startBarionPayment(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      // Shop auth: a dokumentáció szerint headerben is elfogadott.
       "x-pos-key": posKey,
     },
     body: JSON.stringify({ ...req, POSKey: posKey }),
   });
 
-  const data = (await res.json()) as BarionStartPaymentResponse;
+  const rawText = await res.text();
+  let data: BarionStartPaymentResponse;
+  try {
+    data = JSON.parse(rawText) as BarionStartPaymentResponse;
+  } catch {
+    throw new Error(
+      `Barion válasz nem értelmezhető (HTTP ${res.status}). Ellenőrizd a BARION_API_URL címet (host: ${new URL(apiUrl).host}).`,
+    );
+  }
 
   if (data.Errors?.length) {
     const msg = data.Errors.map((e) => `${e.Title}: ${e.Description}`).join("; ");
-    throw new Error(`Barion hiba: ${msg}`);
+    const authFail = data.Errors.some((e) => e.ErrorCode === "AuthenticationFailed");
+    const hint = authFail
+      ? ` Jelenlegi API host: ${new URL(apiUrl).host}. Sandbox kulcshoz állítsd a BARION_API_URL-t https://api.test.barion.com-ra; éles kulcshoz https://api.barion.com-ra (Vercel production alapból éles API-t használ, ha nincs BARION_API_URL).`
+      : "";
+    throw new Error(`Barion hiba: ${msg}${hint}`);
   }
 
   if (!data.GatewayUrl) {
