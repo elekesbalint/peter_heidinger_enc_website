@@ -18,7 +18,24 @@
  * E_RACUNI_ALLOW_CUSTOM_PRICE_ON_PRODUCT_LINE: ha true, az E_RACUNI_ITEM_PRODUCT_CODE sorhoz küldünk explicit árat
  * (Stripe szerinti összeg). Ehhez az e-racuni terméknél be kell kapcsolni az „ár változtatása a számlán”
  * (allowChangeOfPriceOnTheInvoice) opciót. Alapértelmezés: false — a katalógus ára érvényesül, egyedi ár nem megy ki.
+ *
+ * E_RACUNI_INVOICE_TIMEZONE: IANA időzóna a számla / fizetés napmezőihez (alap: Europe/Zagreb). Ha üresen maradna
+ * a UTC naptár (toISOString), éjfél körül az e-racuni „Backdating is not allowed” hibát adhat.
  */
+/** Naptári YYYY-MM-DD adott IANA zónában — elkerüli az e-racuni „Backdating” hibát UTC vs. helyi éjfél esetén. */
+function calendarDateInTimeZone(date: Date, timeZone: string): string {
+  try {
+    return new Intl.DateTimeFormat("sv-SE", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(date);
+  } catch {
+    return date.toISOString().slice(0, 10);
+  }
+}
+
 export async function createEracuniInvoice(params: {
   kind: "device_sale" | "topup";
   deviceIdentifier: string;
@@ -86,7 +103,8 @@ export async function createEracuniInvoice(params: {
     params.kind === "device_sale" ? "ENC készülék / ENC uređaj" : "ENC készülék feltöltése";
   const note = `Azonosító / Identifikacijski broj: ${params.deviceIdentifier}`;
   const itemDescriptionWithIdentifier = `${itemName} — Eszköz azonosító: ${params.deviceIdentifier}`;
-  const today = new Date().toISOString().slice(0, 10);
+  const invoiceTz = process.env.E_RACUNI_INVOICE_TIMEZONE?.trim() || "Europe/Zagreb";
+  const today = calendarDateInTimeZone(new Date(), invoiceTz);
   const stripeCurUpper = (params.stripeCurrency ?? "HUF").toUpperCase();
   const invoiceCurrency = (() => {
     const fallback = process.env.E_RACUNI_CURRENCY?.trim();
