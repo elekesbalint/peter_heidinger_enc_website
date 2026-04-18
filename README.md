@@ -16,7 +16,7 @@ Stack:
 - Next.js (App Router) + TypeScript
 - Tailwind CSS
 - Supabase (Postgres + API)
-- A kovetkezo lepesben: Stripe integracio
+- Fizetes: Barion (checkout + IPN callback)
 
 ## Getting Started
 
@@ -54,27 +54,22 @@ Regisztracio es admin fiok:
 - Site URL / Redirect URLs: add meg a `NEXT_PUBLIC_APP_URL`-t (pl. `http://localhost:3000`), hogy a megerosito link visszairanyitson.
 - A fix admin cim (`encrendszer@gmail.com`) **nem** regisztralhato a nyilvanos `/register` oldalon — lasd `docs/ADMIN.md` a rendszergazda fiok letrehozasahoz es jelszohoz.
 
-Stripe setup:
+Barion setup:
 
-1. `.env` valtozok:
+1. `.env` / Vercel valtozok:
    - `NEXT_PUBLIC_APP_URL` (pl. `http://localhost:3000`)
-   - `STRIPE_SECRET_KEY`
-   - `STRIPE_WEBHOOK_SECRET` (lasd lent: Stripe CLI)
-   - `ENC_DEVICE_PRICE_HUF` (opcionalis, alapertelmezett: 499000 — ENC keszulek Stripe `unit_amount` HUF-ban)
-2. **Local webhook (nem kell publikus URL):** a Stripe Dashboard nem fogad `localhost` endpointot. Hasznald a Stripe CLI-t:
-   - Telepites: `brew install stripe/stripe-cli/stripe`
-   - Masik terminalban: `npm run stripe:listen`
-   - A parancs kiirja: `Your webhook signing secret is whsec_...` — masold be `.env` → `STRIPE_WEBHOOK_SECRET`
-   - **Fontos:** uj `stripe listen` inditasnal altalaban uj `whsec` jon — frissitsd az `.env`-et es inditsd ujra `npm run dev`-et.
-   - Teszt: `stripe trigger checkout.session.completed` (kulon terminal, `STRIPE_SECRET_KEY` kell a kornyezetben vagy `stripe login`)
+   - `BARION_POSKEY` — bolt Secret key / POSKey
+   - `BARION_PAYEE` — elfogadó Barion e-mail (wallet)
+   - `BARION_API_URL` — `https://api.test.barion.com` (sandbox) vagy `https://api.barion.com` (eles)
+2. Barion adminban engedelyezd az IPN / callback URL-t: `https://<domain>/api/barion/callback`
 3. Endpointok:
    - `GET /api/topup/config` — csomagok, kedvezmeny %, sajat keszulekek, uicel lista (`destinations`)
-   - `POST /api/stripe/checkout` — egyenlegfeltoltes (kotelezo: fiokhoz tartozo `device_identifier`, `baseAmountHuf`, `travelDestination`)
-   - `POST /api/stripe/checkout-device` (ENC keszulek vasarlas)
-   - `POST /api/stripe/webhook`
+   - `POST /api/barion/checkout` — egyenlegfeltoltes
+   - `POST /api/barion/checkout-device` — ENC keszulek vasarlas
+   - `POST /api/barion/callback` — sikeres fizetes (IPN)
    - `POST /api/contact` — kapcsolatfelvetel (`contact_messages`, phase2)
 4. Oldalak:
-   - `/order` — kategoria, rendszam, szerzodes, Stripe Checkout vagy varolista
+   - `/order` — kategoria, rendszam, szerzodes, Barion fizetes vagy varolista
    - `/order/success`, `/order/cancel`
    - `/topup` — csomag + uicel + csak sajat keszulek; legkisebb csomag tiltasa II/III/IV kategoriaknal (beallithato)
    - `/topup/success`
@@ -83,7 +78,7 @@ Stripe setup:
 
 Wallet konyveles es ENC vasarlas:
 
-- A webhook `checkout.session.completed` esemenynel mindig: mentes `stripe_topups` tablaba.
+- A Barion callback sikeres fizetesnel: mentes `stripe_topups` tablaba (torteneti nev).
 - **Egyenlegfeltoltes** (`order_type` = `topup`): ha van `device_identifier`, `apply_topup(...)` hivas.
 - **ENC keszulek** (`order_type` = `device_purchase`): eszkoz `status` → `sold`, `auth_user_id` beallitasa, `enc_device_orders` rekord (nincs wallet jovairas).
 
@@ -160,4 +155,4 @@ Fontos route-ok:
 
 - [Next.js docs](https://nextjs.org/docs)
 - [Supabase docs](https://supabase.com/docs)
-- [Stripe docs](https://docs.stripe.com/)
+- [Barion docs](https://docs.barion.com/)

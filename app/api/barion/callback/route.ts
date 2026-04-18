@@ -31,6 +31,8 @@ type BarionMeta = {
   travel_destination?: string | null;
   fx_eur_to_huf?: number;
   payment_request_id?: string;
+  /** Várólistás admin fizetési link — foglalás + eszköz státusz ugyanúgy, mint közvetlen rendelésnél. */
+  reservation_id?: string;
 };
 
 function parseBillingAddress(raw: string | null | undefined): {
@@ -221,9 +223,10 @@ export async function POST(request: Request) {
     if (meta.order_type === "device_purchase") {
       const deviceId = meta.device_id ?? null;
       const category = meta.category ?? null;
-      const licensePlate = meta.license_plate ?? null;
+      const licensePlate = (meta.license_plate ?? "").trim() || null;
       const referralWalletBonusHuf = Math.max(0, meta.referral_wallet_bonus_huf ?? 0);
       const referralInviteId = (meta.referral_invite_id ?? "").trim();
+      const reservationId = (meta.reservation_id ?? "").trim();
 
       const authUserId = await resolveAuthUserIdByEmail(supabase, userEmail, meta.user_id);
 
@@ -232,26 +235,93 @@ export async function POST(request: Request) {
         return new Response("ok", { status: 200 });
       }
 
-      const { data: updatedRows, error: deviceUpdateError } = await supabase
-        .from("devices")
-        .update({
-          status: "sold",
-          auth_user_id: authUserId,
-          sold_at: paidAt,
-          updated_at: paidAt,
-          license_plate: licensePlate,
-        })
-        .eq("id", deviceId)
-        .in("status", ["assigned", "available"])
-        .select("id");
+      let updatedRows: Array<{ id: string }> | null = null;
+      let deviceUpdateError: { message: string } | null = null;
+
+      if (reservationId) {
+        const { data: reservationRow, error: reservationErr } = await supabase
+          .from("device_payment_reservations")
+          .select("id, expires_at, paid_at, cancelled_at")
+          .eq("id", reservationId)
+          .maybeSingle();
+        if (reservationErr || !reservationRow) {
+          console.error("[barion-callback] Foglalás nem található:", reservationErr?.message ?? "");
+          return new Response("ok", { status: 200 });
+        }
+        const expired =
+          reservationRow.cancelled_at !== null ||
+          reservationRow.paid_at !== null ||
+          new Date(reservationRow.expires_at).getTime() < Date.now();
+        if (expired) {
+          console.error("[barion-callback] Foglalás lejárt vagy már feldolgozva:", reservationId);
+          return new Response("ok", { status: 200 });
+        }
+        const devUpdate = await supabase
+          .from("devices")
+          .update({
+            status: "sold",
+            auth_user_id: authUserId,
+            sold_at: paidAt,
+            updated_at: paidAt,
+            license_plate: licensePlate,
+          })
+          .eq("id", deviceId)
+          .in("status", ["assigned", "available"])
+          .select("id");
+        updatedRows = devUpdate.data as Array<{ id: string }> | null;
+        deviceUpdateError = devUpdate.error ? { message: devUpdate.error.message } : null;
+        if (!deviceUpdateError && (!updatedRows || updatedRows.length === 0)) {
+          const { data: currentDevice, error: currentDeviceErr } = await supabase
+            .from("devices")
+            .select("id, status, auth_user_id")
+            .eq("id", deviceId)
+            .maybeSingle();
+          if (currentDeviceErr) {
+            console.error("[barion-callback] Eszköz újraellenőrzés hiba:", currentDeviceErr.message);
+            return new Response("ok", { status: 200 });
+          }
+          const alreadyAssignedToUser =
+            currentDevice?.status === "sold" && currentDevice?.auth_user_id === authUserId;
+          if (alreadyAssignedToUser) {
+            updatedRows = [{ id: String(currentDevice.id) }];
+          } else {
+            console.error(
+              "[barion-callback] Foglalásos fizetés OK, de eszköz hozzárendelés sikertelen:",
+              paymentId,
+            );
+            return new Response("ok", { status: 200 });
+          }
+        }
+        if (!deviceUpdateError) {
+          await supabase
+            .from("device_payment_reservations")
+            .update({ paid_at: paidAt })
+            .eq("id", reservationId)
+            .is("cancelled_at", null);
+        }
+      } else {
+        const devUpdate = await supabase
+          .from("devices")
+          .update({
+            status: "sold",
+            auth_user_id: authUserId,
+            sold_at: paidAt,
+            updated_at: paidAt,
+            license_plate: licensePlate,
+          })
+          .eq("id", deviceId)
+          .eq("status", "available")
+          .select("id");
+        updatedRows = devUpdate.data as Array<{ id: string }> | null;
+        deviceUpdateError = devUpdate.error ? { message: devUpdate.error.message } : null;
+      }
 
       if (deviceUpdateError) {
         console.error("[barion-callback] Device update hiba:", deviceUpdateError.message);
         return new Response("ok", { status: 200 });
       }
 
-      const assignmentOk =
-        Array.isArray(updatedRows) && updatedRows.length > 0;
+      const assignmentOk = Array.isArray(updatedRows) && updatedRows.length > 0;
 
       await supabase.from("enc_device_orders").upsert(
         {

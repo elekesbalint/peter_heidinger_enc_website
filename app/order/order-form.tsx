@@ -82,7 +82,7 @@ export function OrderForm({
         window.location.href = data.url;
         return;
       }
-      setError("Nem kaptunk Stripe URL-t.");
+      setError("Nem kaptunk fizetési URL-t.");
     } catch {
       setError("Hálózati hiba történt.");
     } finally {
@@ -154,14 +154,14 @@ export function OrderForm({
           className="w-full rounded-xl border border-border/80 bg-white/90 px-4 py-2.5 text-sm uppercase shadow-sm transition"
         />
         <p className="mt-1.5 text-xs text-muted">
-          A rendszám a készülékhez és a számlához kapcsolódik; Stripe fizetés után rögzítjük.
+          A rendszám a készülékhez és a számlához kapcsolódik; sikeres fizetés után rögzítjük.
         </p>
       </div>
 
       <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-5 shadow-inner backdrop-blur-sm">
         <p className="font-semibold text-foreground">Vásárlási feltételek</p>
         <ul className="mt-3 list-inside list-disc space-y-1.5 text-sm text-muted">
-          <li>A megrendelés Stripe-on keresztüli fizetést követ.</li>
+          <li>A megrendelés Barion fizetést követ.</li>
           <li>Sikeres fizetés után a készülék a fiókodhoz kapcsolódik.</li>
           <li>Ha nincs szabad készülék, várólistára kerülsz — értesítünk.</li>
         </ul>
@@ -239,7 +239,7 @@ export function OrderForm({
           <path d="m9 12 2 2 4-4" />
         </svg>
         <p className="text-base font-semibold text-slate-800">
-          Titkos és biztonságos fizetés <span className="ml-1 font-extrabold text-[#635BFF]">stripe</span>
+          Titkos és biztonságos fizetés <span className="ml-1 font-extrabold text-[#2d7a4d]">Barion</span>
         </p>
       </div>
     </form>

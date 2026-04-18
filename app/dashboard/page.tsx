@@ -425,7 +425,7 @@ export default async function DashboardPage({
           {text("dashboard_topups_title", "Feltöltési előzmények")}
         </h2>
         <p className="mt-2 text-sm text-muted">
-          {text("dashboard_topups_subtitle", "Stripe-fizetések (e-mail alapján).")}
+          {text("dashboard_topups_subtitle", "Fizetési előzmények (e-mail alapján).")}
         </p>
         <div className="mt-4 overflow-x-auto">
           <table className="min-w-full text-left text-sm">

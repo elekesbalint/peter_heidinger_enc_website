@@ -35,7 +35,7 @@ export default async function TopupPage({
           Egyenlegfeltöltés
         </h1>
         <p className="adria-animate-in adria-delay-2 mt-3 text-base leading-relaxed text-muted">
-          Válaszd ki a készülékedet, az úticélt és a feltöltési csomagot, majd fizess Stripe-on keresztül.
+          Válaszd ki a készülékedet, az úticélt és a feltöltési csomagot, majd fizess Barionon keresztül.
         </p>
         <p className="adria-animate-in adria-delay-2 mt-2 text-sm text-slate-500">
           Bejelentkezve: <span className="font-medium text-slate-700">{user.email}</span>

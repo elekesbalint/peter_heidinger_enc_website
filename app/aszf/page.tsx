@@ -10,7 +10,7 @@ export default async function AszfPage() {
   const documentUrl = settings.aszf_document_url?.trim() || "";
   const content =
     settings.aszf_content?.trim() ||
-    "1. Szolgáltatás\nENC eszköz értékesítés, egyenlegfeltöltés, útdíj levonás — részletes leírás szükséges.\n\n2. Fizetés és szállítás\nStripe fizetés; szállítási és garanciális feltételek — pótolni.\n\n3. Panaszkezelés és visszavonás\nPanaszkezelési eljárás, elállás — pótolni.";
+    "1. Szolgáltatás\nENC eszköz értékesítés, egyenlegfeltöltés, útdíj levonás — részletes leírás szükséges.\n\n2. Fizetés és szállítás\nBarion fizetés; szállítási és garanciális feltételek — pótolni.\n\n3. Panaszkezelés és visszavonás\nPanaszkezelési eljárás, elállás — pótolni.";
   const blocks = content
     .split(/\n\s*\n/g)
     .map((b) => b.trim())

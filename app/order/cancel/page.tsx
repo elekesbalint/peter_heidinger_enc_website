@@ -9,7 +9,7 @@ export default function OrderCancelPage() {
         </div>
         <h1 className="text-2xl font-bold text-foreground">Fizetés megszakítva</h1>
         <p className="mt-3 text-muted">
-          A Stripe fizetés nem sikerült vagy meg lett szakítva. A készülék nem lett lefoglalva.
+          A fizetés nem sikerült vagy meg lett szakítva. A készülék nem lett lefoglalva.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link

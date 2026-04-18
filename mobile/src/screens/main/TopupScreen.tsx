@@ -305,7 +305,7 @@ export function TopupScreen({ navigation, route }: Props) {
         <Text variant="h2">Egyenlegfeltöltés</Text>
         <Text variant="caption" style={styles.subtitle}>
           Válaszd ki a készülékedet, az úticélt és a feltöltési csomagot, majd fizess
-          Stripe-on keresztül.
+          Barionon keresztül.
         </Text>
       </Animated.View>
 
@@ -609,7 +609,7 @@ export function TopupScreen({ navigation, route }: Props) {
       {/* CTA */}
       <Animated.View style={ctaAnim}>
         <Button
-          label={loading ? 'Átirányítás…' : 'Fizetés Stripe-pal'}
+          label={loading ? 'Átirányítás…' : 'Fizetés Barionnal'}
           onPress={handleTopup}
           loading={loading}
           disabled={devices.length === 0}
@@ -620,7 +620,7 @@ export function TopupScreen({ navigation, route }: Props) {
           <Text variant="caption" style={styles.stripeText}>
             Titkos és biztonságos fizetés{' '}
             <Text semibold style={styles.stripeBrand}>
-              stripe
+              Barion
             </Text>
           </Text>
         </View>
@@ -844,7 +844,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   stripeText: { color: '#1e293b' },
-  stripeBrand: { color: '#635BFF' },
+  stripeBrand: { color: '#2d7a4d' },
   incompleteWrap: {
     flex: 1,
     alignItems: 'center',

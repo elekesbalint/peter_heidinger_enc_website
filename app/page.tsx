@@ -42,7 +42,7 @@ export default async function Home() {
       title: text("home_feature_1_title", "ENC eszközrendelés"),
       desc: text(
         "home_feature_1_desc",
-        "Válaszd ki a járműkategóriát, add meg a rendszámot és fizess biztonságosan Stripe-on keresztül.",
+        "Válaszd ki a járműkategóriát, add meg a rendszámot és fizess biztonságosan Barionon keresztül.",
       ),
       icon: "📦",
     },
@@ -99,7 +99,7 @@ export default async function Home() {
       question: text("home_faq_2_question", "Hogyan tudom feltölteni az egyenlegemet?"),
       answer: text(
         "home_faq_2_answer",
-        "A Feltöltés oldalon úticél választás után megadod az összeget, majd Stripe fizetéssel pár kattintásban feltöltheted az egyenleget.",
+        "A Feltöltés oldalon úticél választás után megadod az összeget, majd Barion fizetéssel pár kattintásban feltöltheted az egyenleget.",
       ),
     },
     {

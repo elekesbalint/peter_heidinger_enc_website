@@ -515,7 +515,7 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
         disabled={isLoading || devices.length === 0}
         className="adria-animate-in adria-delay-5 adria-btn-primary w-full rounded-xl px-5 py-3.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:transform-none"
       >
-        {isLoading ? "Átirányítás…" : "Fizetés Stripe-pal"}
+        {isLoading ? "Átirányítás…" : "Fizetés Barionnal"}
       </button>
 
       <div className="adria-animate-in adria-delay-6 flex items-center justify-center gap-3 rounded-2xl border border-emerald-200/70 bg-emerald-50/90 px-4 py-3 text-center shadow-sm">
@@ -533,7 +533,7 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
           <path d="m9 12 2 2 4-4" />
         </svg>
         <p className="text-base font-semibold text-slate-800">
-          Titkos és biztonságos fizetés <span className="ml-1 font-extrabold text-[#635BFF]">stripe</span>
+          Titkos és biztonságos fizetés <span className="ml-1 font-extrabold text-[#2d7a4d]">Barion</span>
         </p>
       </div>
     </section>

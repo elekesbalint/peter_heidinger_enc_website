@@ -146,7 +146,7 @@ const DEVICE_STATUS_LABELS: Record<(typeof DEVICE_STATUSES)[number], string> = {
 const SETTINGS_META: Record<string, { label: string; hint: string }> = {
   device_price_huf: {
     label: "Készülék alapár (Ft)",
-    hint: "ENC készülék teljes ára (Stripe); az ajánló bónusz külön a walletbe kerül.",
+    hint: "ENC készülék teljes ára (fizetési szolgáltató); az ajánló bónusz külön a walletbe kerül.",
   },
   fx_eur_to_huf: {
     label: "EUR -> HUF árfolyam",
@@ -183,7 +183,7 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
   referral_device_discount_huf: {
     label: "Ajánlói induló egyenleg (Ft)",
     hint:
-      "Meghívott első készülékvásárlásakor legfeljebb ennyi Ft kerül a vásárolt készülék walletjébe. A Stripe-ban a teljes készülékár (device_price_huf) fizetendő — ez az összeg nem kerül levonásra az árból. Kulcs neve: referral_device_discount_huf (történelmi név).",
+      "Meghívott első készülékvásárlásakor legfeljebb ennyi Ft kerül a vásárolt készülék walletjébe. A fizetési szolgáltatónál a teljes készülékár (device_price_huf) fizetendő — ez az összeg nem kerül levonásra az árból. Kulcs neve: referral_device_discount_huf (történelmi név).",
   },
   hero_bg_desktop: {
     label: "Főoldali banner kép (asztali)",
@@ -422,7 +422,7 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
   },
   referral_section_subtitle_suffix: {
     label: "Referral alcím vége",
-    hint: "Az induló egyenleg összege utáni rész (pl. „EUR induló egyenleg a készülék walletjében, teljes ár a Stripe-ban”).",
+    hint: "Az induló egyenleg összege utáni rész (pl. „EUR induló egyenleg a készülék walletjében, teljes ár a fizetési szolgáltatónál”).",
   },
   referral_email_placeholder: {
     label: "Referral email placeholder",

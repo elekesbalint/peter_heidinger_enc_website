@@ -334,7 +334,7 @@ export function OrderScreen({ navigation }: Props) {
           maxLength={12}
         />
         <Text variant="caption" style={styles.inputHint}>
-          A rendszám a készülékhez és a számlához kapcsolódik; Stripe fizetés után rögzítjük.
+          A rendszám a készülékhez és a számlához kapcsolódik; sikeres fizetés után rögzítjük.
         </Text>
       </Animated.View>
 
@@ -344,7 +344,7 @@ export function OrderScreen({ navigation }: Props) {
           Vásárlási feltételek
         </Text>
         {[
-          'A megrendelés Stripe-on keresztüli fizetést követ.',
+          'A megrendelés Barion fizetést követ.',
           'Sikeres fizetés után a készülék a fiókodhoz kapcsolódik.',
           'Ha nincs szabad készülék, várólistára kerülsz — értesítünk.',
         ].map((item, i) => (
@@ -378,13 +378,13 @@ export function OrderScreen({ navigation }: Props) {
           loading={loading}
           style={styles.orderBtn}
         />
-        {/* Stripe badge */}
+        {/* Barion badge */}
         <View style={styles.stripeBadge}>
           <Ionicons name="shield-checkmark" size={20} color="#16a34a" />
           <Text variant="caption" style={styles.stripeText}>
             Titkos és biztonságos fizetés{' '}
             <Text semibold style={styles.stripeBrand}>
-              stripe
+              Barion
             </Text>
           </Text>
         </View>
@@ -553,7 +553,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   stripeText: { color: '#1e293b' },
-  stripeBrand: { color: '#635BFF' },
+  stripeBrand: { color: '#2d7a4d' },
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.55)',

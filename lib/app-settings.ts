@@ -15,7 +15,7 @@ export const SETTINGS_DEFAULTS: Record<string, string> = {
   topup_package_3_huf: "100",
   /** Vesszovel elvalasztott kategoriak (pl. ii,iii,iv): ezekhez nem valaszthato a legkisebb topup csomag. */
   topup_block_smallest_for_categories: "ii,iii,iv",
-  /** Meghívott első készülékvásárlásakor ennyi Ft (max) kerül a készülék walletjébe; a Stripe-ban a teljes készülékár fizetendő. */
+  /** Meghívott első készülékvásárlásakor ennyi Ft (max) kerül a készülék walletjébe; a teljes készülékár a fizetési szolgáltatónál fizetendő. */
   referral_device_discount_huf: "25000",
   hero_bg_desktop: "/images/enc-hero-bg.png",
   hero_bg_tablet: "/images/enc-hero-bg.png",
@@ -50,7 +50,7 @@ export const SETTINGS_DEFAULTS: Record<string, string> = {
     "Egy platformon kezeled az eszközeidet, az egyenlegedet és az adminisztrációt.",
   home_feature_1_title: "ENC eszközrendelés",
   home_feature_1_desc:
-    "Válaszd ki a járműkategóriát, add meg a rendszámot és fizess biztonságosan Stripe-on keresztül.",
+    "Válaszd ki a járműkategóriát, add meg a rendszámot és fizess biztonságosan Barionon keresztül.",
   home_feature_2_title: "Egyenlegfeltöltés",
   home_feature_2_desc:
     "Választható csomagokkal gyorsan feltöltheted az egyenlegedet az utazásaidhoz.",
@@ -72,7 +72,7 @@ export const SETTINGS_DEFAULTS: Record<string, string> = {
     "A rendelés feldolgozása után e-mailben küldünk visszaigazolást, a szállítás ideje jellemzően 1-3 munkanap.",
   home_faq_2_question: "Hogyan tudom feltölteni az egyenlegemet?",
   home_faq_2_answer:
-    "A Feltöltés oldalon úticél választás után megadod az összeget, majd Stripe fizetéssel pár kattintásban feltöltheted az egyenleget.",
+    "A Feltöltés oldalon úticél választás után megadod az összeget, majd Barion fizetéssel pár kattintásban feltöltheted az egyenleget.",
   home_faq_3_question: "Látom valahol a készülékem és az egyenlegem állapotát?",
   home_faq_3_answer:
     "Igen, a Fiókom oldalon eszközönként látod az aktuális egyenleget, valamint a feltöltési és útvonal előzményeket is.",
@@ -111,7 +111,7 @@ export const SETTINGS_DEFAULTS: Record<string, string> = {
   dashboard_wallet_subtitle: "Eszközönkénti aktuális egyenleg.",
   dashboard_wallet_empty: "Még nincs wallet-rekord.",
   dashboard_topups_title: "Feltöltési előzmények",
-  dashboard_topups_subtitle: "Stripe-fizetések (e-mail alapján).",
+  dashboard_topups_subtitle: "Fizetési előzmények (e-mail alapján).",
   dashboard_topups_empty: "Még nincs feltöltési rekord.",
   referral_section_title: "Ajánlás",
   referral_section_subtitle_prefix: "Meghívó küldése e-mailben. A meghívott első készülékvásárlásakor",
@@ -135,7 +135,7 @@ export const SETTINGS_DEFAULTS: Record<string, string> = {
     "Ez egy helyőrző oldal. Az első valódi jogi szöveget cseréld le a Google Docs / ügyvédi dokumentum alapján.",
   aszf_document_url: "",
   aszf_content:
-    "1. Szolgáltatás\nENC eszköz értékesítés, egyenlegfeltöltés, útdíj levonás — részletes leírás szükséges.\n\n2. Fizetés és szállítás\nStripe fizetés; szállítási és garanciális feltételek — pótolni.\n\n3. Panaszkezelés és visszavonás\nPanaszkezelési eljárás, elállás — pótolni.",
+    "1. Szolgáltatás\nENC eszköz értékesítés, egyenlegfeltöltés, útdíj levonás — részletes leírás szükséges.\n\n2. Fizetés és szállítás\nBarion fizetés; szállítási és garanciális feltételek — pótolni.\n\n3. Panaszkezelés és visszavonás\nPanaszkezelési eljárás, elállás — pótolni.",
   adatvedelem_title: "Adatvédelmi tájékoztató",
   adatvedelem_intro:
     "Helyőrző. Illeszd be a GDPR / 2011. évi CXII. törvény szerinti teljes szöveget, illetve a cookie / marketing beállításokat.",

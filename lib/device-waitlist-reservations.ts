@@ -4,7 +4,12 @@ import { getIntSetting, getSettingsMap } from "@/lib/app-settings";
 import { getDevicePriceHuf, type DeviceCategoryValue } from "@/lib/device-categories";
 import { sendAppEmail } from "@/lib/notify-email";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
-import { getBaseUrl, getStripe } from "@/lib/stripe";
+import {
+  generatePaymentRequestId,
+  getBarionPayee,
+  getBaseUrl,
+  startBarionPayment,
+} from "@/lib/barion";
 
 const RESERVATION_TTL_HOURS = 48;
 
@@ -38,10 +43,6 @@ async function resolveAuthUserIdByEmail(
   }
 }
 
-function toStripeHufAmount(hufAmount: number): number {
-  return hufAmount * 100;
-}
-
 function formatExpiryLabel(iso: string): string {
   const dt = new Date(iso);
   return dt.toLocaleString("hu-HU", { hour12: false });
@@ -63,16 +64,6 @@ export async function releaseExpiredDeviceReservations(): Promise<number> {
 
   const rows = expiredRows ?? [];
   if (rows.length === 0) return 0;
-
-  const stripe = getStripe();
-  for (const row of rows) {
-    if (!row.stripe_session_id) continue;
-    try {
-      await stripe.checkout.sessions.expire(row.stripe_session_id);
-    } catch {
-      // Session may already be completed/expired; this is safe to ignore.
-    }
-  }
 
   const deviceIds = Array.from(
     new Set(
@@ -152,44 +143,72 @@ export async function createWaitlistPaymentReservation(params: {
   const expiresAtIso = new Date(Date.now() + RESERVATION_TTL_HOURS * 60 * 60 * 1000).toISOString();
   const reservationId = randomUUID();
 
-  const stripe = getStripe();
   const baseUrl = getBaseUrl();
-  const session = await stripe.checkout.sessions.create({
-    mode: "payment",
-    customer_email: waitlist.user_email,
-    success_url: `${baseUrl}/order/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${baseUrl}/order/cancel`,
-    line_items: [
+  const payee = getBarionPayee();
+  const paymentRequestId = generatePaymentRequestId("waitlist");
+
+  const barionResult = await startBarionPayment({
+    PaymentType: "Immediate",
+    GuestCheckOut: true,
+    FundingSources: ["All"],
+    PaymentRequestId: paymentRequestId,
+    Locale: "hu-HU",
+    Currency: "HUF",
+    RedirectUrl: `${baseUrl}/order/success?barion=1`,
+    CallbackUrl: `${baseUrl}/api/barion/callback`,
+    PayerHint: waitlist.user_email,
+    Transactions: [
       {
-        quantity: 1,
-        price_data: {
-          currency: "huf",
-          unit_amount: toStripeHufAmount(payableHuf),
-          product_data: {
-            name: `AdriaGo ENC keszulek — ${waitlist.category.toUpperCase()} kat.`,
-            description: `Eszköz azonosító: ${device.identifier} (várólistás kiosztás)`,
+        POSTransactionId: paymentRequestId,
+        Payee: payee,
+        Total: payableHuf,
+        Items: [
+          {
+            Name: `AdriaGo ENC keszulek — ${waitlist.category.toUpperCase()} kat.`,
+            Description: `Eszköz azonosító: ${device.identifier} (várólistás kiosztás)`,
+            Quantity: 1,
+            Unit: "db",
+            UnitPrice: payableHuf,
+            ItemTotal: payableHuf,
+            SKU: `enc-waitlist-${waitlist.category}`,
           },
-        },
+        ],
       },
     ],
-    metadata: {
-      order_type: "device_purchase",
-      reservation_id: reservationId,
-      source_waitlist_id: waitlist.id,
-      user_id: resolvedAuthUserId,
-      user_email: waitlist.user_email,
-      device_id: device.id,
-      device_identifier: device.identifier,
-      category: waitlist.category,
-      amount_huf: String(payableHuf),
-      base_amount_huf: String(basePriceHuf),
-      referral_wallet_bonus_huf: String(referralWalletBonusHuf),
-      referral_invite_id: activeReferral?.id ?? "",
-    },
   });
 
-  if (!session.url) {
-    throw new Error("A Stripe nem adott vissza fizetési URL-t.");
+  const checkoutUrl = barionResult.GatewayUrl;
+  if (!checkoutUrl) {
+    throw new Error("A Barion nem adott vissza fizetési URL-t.");
+  }
+
+  const { error: pendingTopupErr } = await supabase.from("stripe_topups").insert({
+    stripe_session_id: barionResult.PaymentId,
+    user_id: resolvedAuthUserId,
+    user_email: waitlist.user_email,
+    device_identifier: device.identifier,
+    amount_huf: payableHuf,
+    currency: "HUF",
+    status: "pending",
+    payload: {
+      barion: {
+        order_type: "device_purchase",
+        user_id: resolvedAuthUserId,
+        user_email: waitlist.user_email,
+        device_id: device.id,
+        device_identifier: device.identifier,
+        category: waitlist.category,
+        amount_huf: payableHuf,
+        license_plate: "",
+        referral_wallet_bonus_huf: referralWalletBonusHuf,
+        referral_invite_id: activeReferral?.id ?? "",
+        reservation_id: reservationId,
+        payment_request_id: paymentRequestId,
+      },
+    },
+  });
+  if (pendingTopupErr) {
+    console.error("[waitlist] Barion pending rekord mentése sikertelen:", pendingTopupErr.message);
   }
 
   const { data: updatedRows, error: reserveErr } = await supabase
@@ -219,8 +238,8 @@ export async function createWaitlistPaymentReservation(params: {
     category: waitlist.category,
     device_id: device.id,
     device_identifier: device.identifier,
-    stripe_session_id: session.id,
-    stripe_checkout_url: session.url,
+    stripe_session_id: barionResult.PaymentId,
+    stripe_checkout_url: checkoutUrl,
     amount_huf: payableHuf,
     expires_at: expiresAtIso,
     created_by_admin_auth_user_id: adminAuthUserId,
@@ -245,7 +264,7 @@ export async function createWaitlistPaymentReservation(params: {
       text: [
         `Jó hír! Elérhetővé vált számodra egy ${waitlist.category.toUpperCase()} kategóriás ENC készülék (${device.identifier}).`,
         `Fizetendő összeg: ${payableHuf.toLocaleString("hu-HU")} Ft.`,
-        `Fizetési link (48 óráig él): ${session.url}`,
+        `Fizetési link (48 óráig él): ${checkoutUrl}`,
         `Link lejárata: ${formatExpiryLabel(expiresAtIso)}`,
         "Ha a fizetés nem történik meg időben, a készülék automatikusan visszakerül a szabad készletbe.",
       ].join("\n"),
@@ -256,7 +275,7 @@ export async function createWaitlistPaymentReservation(params: {
           <p>Fizetendő összeg: <strong>${payableHuf.toLocaleString("hu-HU")} Ft</strong></p>
           <p>A fizetési link <strong>48 óráig</strong> érvényes, lejárat: <strong>${formatExpiryLabel(expiresAtIso)}</strong>.</p>
           <p>
-            <a href="${session.url}" style="display:inline-block;background:#1d4ed8;color:#fff;text-decoration:none;padding:10px 16px;border-radius:8px;font-weight:600;">
+            <a href="${checkoutUrl}" style="display:inline-block;background:#1d4ed8;color:#fff;text-decoration:none;padding:10px 16px;border-radius:8px;font-weight:600;">
               Fizetés megnyitása
             </a>
           </p>
@@ -275,11 +294,6 @@ export async function createWaitlistPaymentReservation(params: {
       })
       .eq("id", device.id)
       .eq("status", "assigned");
-    try {
-      await stripe.checkout.sessions.expire(session.id);
-    } catch {
-      // Ignore session expiry errors during compensation.
-    }
     const message = mailError instanceof Error ? mailError.message : "Nem sikerült kiküldeni az e-mailt.";
     throw new Error(message);
   }
@@ -312,7 +326,7 @@ export async function createWaitlistPaymentReservation(params: {
     user_email: waitlist.user_email,
     category: waitlist.category,
     device_identifier: device.identifier,
-    checkout_url: session.url,
+    checkout_url: checkoutUrl,
     expires_at: expiresAtIso,
   };
 }

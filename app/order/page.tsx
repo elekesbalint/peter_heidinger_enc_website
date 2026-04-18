@@ -76,7 +76,7 @@ export default async function OrderPage() {
           ENC készülék megrendelése
         </h1>
         <p className="adria-animate-in adria-delay-2 mt-3 text-base leading-relaxed text-muted">
-          Válaszd ki a járműkategóriát, add meg a rendszámodat, fogadd el a feltételeket, majd fizess biztonságosan a Stripe
+          Válaszd ki a járműkategóriát, add meg a rendszámodat, fogadd el a feltételeket, majd fizess biztonságosan a Barion
           Checkout-on keresztül.
         </p>
         <div className="adria-animate-in adria-delay-3 mt-4 inline-flex items-center gap-2 rounded-2xl border border-primary/20 bg-white/60 px-4 py-2.5 text-sm font-medium text-primary shadow-sm backdrop-blur-sm">
@@ -91,7 +91,7 @@ export default async function OrderPage() {
               (útdíj / feltöltés a fiókban).
             </p>
             <p className="mt-1">
-              A készülék teljes ára: <strong>{price.toLocaleString("hu-HU")} Ft</strong> — a Stripe-ban is ezt fizeted.
+              A készülék teljes ára: <strong>{price.toLocaleString("hu-HU")} Ft</strong> — a fizetési oldalon is ezt fizeted.
             </p>
           </div>
         )}
