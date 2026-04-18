@@ -52,6 +52,8 @@ export async function createEracuniInvoice(params: {
   buyerCountryCode?: string | null;
   buyerPhone?: string | null;
   userEmail: string | null;
+  /** Optional explicit invoice payment method (e.g. Barion, Stripe). */
+  paymentMethodForInvoice?: string;
 }): Promise<{
   ok: boolean;
   skipped?: boolean;
@@ -489,7 +491,7 @@ export async function createEracuniInvoice(params: {
     if (tax) {
       extra.buyerTaxNumber = tax;
     }
-    const pmRaw = process.env.E_RACUNI_PAYMENT_METHOD?.trim();
+    const pmRaw = params.paymentMethodForInvoice?.trim() || process.env.E_RACUNI_PAYMENT_METHOD?.trim();
     if (pmRaw) {
       const pm = resolveEracuniPaymentMethod(pmRaw);
       extra.methodOfPayment = pm;
@@ -509,7 +511,10 @@ export async function createEracuniInvoice(params: {
 
   /** Build a PaymentRecord that marks the invoice as already paid via Stripe/configured method. */
   function buildPaymentRecord(): Record<string, unknown> {
-    const paymentMethodRaw = process.env.E_RACUNI_PAYMENT_METHOD?.trim() || "Barion";
+    const paymentMethodRaw =
+      params.paymentMethodForInvoice?.trim() ||
+      process.env.E_RACUNI_PAYMENT_METHOD?.trim() ||
+      "Barion";
     const paymentMethod = resolveEracuniPaymentMethod(paymentMethodRaw);
     return {
       paymentMethodForInvoice: paymentMethod,
@@ -531,7 +536,10 @@ export async function createEracuniInvoice(params: {
     const partnerCode = process.env.E_RACUNI_PARTNER_CODE?.trim() || "";
     const partnerIdRaw = process.env.E_RACUNI_BUYER_PARTNER_ID?.trim() || "";
     const buyerOib = process.env.E_RACUNI_BUYER_OIB?.trim() || "";
-    const paymentMethodRaw = process.env.E_RACUNI_PAYMENT_METHOD?.trim() || "";
+    const paymentMethodRaw =
+      params.paymentMethodForInvoice?.trim() ||
+      process.env.E_RACUNI_PAYMENT_METHOD?.trim() ||
+      "";
     const paymentMethod = paymentMethodRaw ? resolveEracuniPaymentMethod(paymentMethodRaw) : "";
 
     const partner: Record<string, unknown> = { ...base };
