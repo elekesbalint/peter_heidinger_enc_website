@@ -15,6 +15,28 @@
  *   BARION_API_URL  — (opcionális) felülírja a fenti alapértelmezést
  */
 
+/** Vercel / .env gyakori hiba: érték idézőjelekkel vagy BOM-mal — levágjuk. */
+function normalizeMaybeQuotedEnv(value: string | undefined): string {
+  if (!value) return "";
+  let s = value.trim().replace(/^\uFEFF/, "");
+  if (
+    (s.startsWith('"') && s.endsWith('"')) ||
+    (s.startsWith("'") && s.endsWith("'"))
+  ) {
+    s = s.slice(1, -1).trim();
+  }
+  if (s.startsWith("{") && s.endsWith("}")) {
+    s = s.slice(1, -1).trim();
+  }
+  return s;
+}
+
+function isLikelyBarionPosKeyGuid(key: string): boolean {
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+    key.trim(),
+  );
+}
+
 export type BarionItem = {
   Name: string;
   Description: string;
@@ -109,7 +131,7 @@ export type BarionPaymentStateResponse = {
 };
 
 export function getBarionApiUrl(): string {
-  const explicit = process.env.BARION_API_URL?.trim();
+  const explicit = normalizeMaybeQuotedEnv(process.env.BARION_API_URL);
   if (explicit) {
     return explicit.replace(/\/$/, "");
   }
@@ -121,13 +143,18 @@ export function getBarionApiUrl(): string {
 }
 
 export function getBarionPosKey(): string {
-  const key = process.env.BARION_POSKEY?.trim();
+  const key = normalizeMaybeQuotedEnv(process.env.BARION_POSKEY);
   if (!key) throw new Error("Hiányzó BARION_POSKEY környezeti változó.");
+  if (!isLikelyBarionPosKeyGuid(key)) {
+    throw new Error(
+      "A BARION_POSKEY formátuma nem tűnik Barion GUID-nak (8-4-4-4-12 hex). Gyakran a „Shop ID” / más mező kerül ide a Secret key helyett.",
+    );
+  }
   return key;
 }
 
 export function getBarionPayee(): string {
-  const payee = process.env.BARION_PAYEE?.trim();
+  const payee = normalizeMaybeQuotedEnv(process.env.BARION_PAYEE);
   if (!payee) throw new Error("Hiányzó BARION_PAYEE környezeti változó.");
   return payee;
 }
@@ -155,10 +182,7 @@ export async function startBarionPayment(
   // Fontos: a Barion szerver útvonala case-sensitive — /v2/Payment/Start (nem .../payment/start).
   const res = await fetch(`${apiUrl}/v2/Payment/Start`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-pos-key": posKey,
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ...req, POSKey: posKey }),
   });
 
@@ -175,8 +199,9 @@ export async function startBarionPayment(
   if (data.Errors?.length) {
     const msg = data.Errors.map((e) => `${e.Title}: ${e.Description}`).join("; ");
     const authFail = data.Errors.some((e) => e.ErrorCode === "AuthenticationFailed");
+    const host = new URL(apiUrl).host;
     const hint = authFail
-      ? ` Jelenlegi API host: ${new URL(apiUrl).host}. Sandbox kulcshoz állítsd a BARION_API_URL-t https://api.test.barion.com-ra; éles kulcshoz https://api.barion.com-ra (Vercel production alapból éles API-t használ, ha nincs BARION_API_URL).`
+      ? ` (Barion API: ${host}). Ez általában nem az URL hibája, ha már ${host} van beállítva: a BARION_POSKEY-nek ugyanahhoz a Barion környezethez kell tartoznia (sandbox bolt „Secret key” / POSKey a test felületen, ne éles bolt kulcsa). Vercelen ellenőrizd: a változó a megfelelő környezethez van-e kötve (Production / Preview), és env módosítás után legyen új deployment.`
       : "";
     throw new Error(`Barion hiba: ${msg}${hint}`);
   }
@@ -202,7 +227,7 @@ export async function getBarionPaymentState(
   url.searchParams.set("POSKey", posKey);
   url.searchParams.set("PaymentId", paymentId);
 
-  const res = await fetch(url.toString(), { headers: { "x-pos-key": posKey } });
+  const res = await fetch(url.toString());
   const data = (await res.json()) as BarionPaymentStateResponse;
   return data;
 }
