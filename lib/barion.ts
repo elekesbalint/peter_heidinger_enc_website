@@ -198,12 +198,25 @@ export async function startBarionPayment(
 
   if (data.Errors?.length) {
     const msg = data.Errors.map((e) => `${e.Title}: ${e.Description}`).join("; ");
-    const authFail = data.Errors.some((e) => e.ErrorCode === "AuthenticationFailed");
     const host = new URL(apiUrl).host;
-    const hint = authFail
-      ? ` (Barion API: ${host}). Ez általában nem az URL hibája, ha már ${host} van beállítva: a BARION_POSKEY-nek ugyanahhoz a Barion környezethez kell tartoznia (sandbox bolt „Secret key” / POSKey a test felületen, ne éles bolt kulcsa). Vercelen ellenőrizd: a változó a megfelelő környezethez van-e kötve (Production / Preview), és env módosítás után legyen új deployment.`
-      : "";
-    throw new Error(`Barion hiba: ${msg}${hint}`);
+    const authFail = data.Errors.some((e) => e.ErrorCode === "AuthenticationFailed");
+    const eurUnsupported = data.Errors.some((e) =>
+      /supports\s+EUR|account that supports EUR|Payment is not supported/i.test(
+        `${e.Title ?? ""} ${e.Description ?? ""}`,
+      ),
+    );
+    const hints: string[] = [];
+    if (authFail) {
+      hints.push(
+        ` (Barion API: ${host}). Ez általában nem az URL hibája, ha már ${host} van beállítva: a BARION_POSKEY-nek ugyanahhoz a Barion környezethez kell tartoznia (sandbox bolt „Secret key” / POSKey a test felületen, ne éles bolt kulcsa). Vercelen ellenőrizd: a változó a megfelelő környezethez van-e kötve (Production / Preview), és env módosítás után legyen új deployment.`,
+      );
+    }
+    if (eurUnsupported) {
+      hints.push(
+        " Az EUR-os feltöltéshez a Barion elfogadóhelynek (POS) engedélyeznie kell az EUR fogadást: Barion admin » Elfogadóhely / bolt beállítások (pénznem, számla, onboarding). Sandbox és éles környezet külön-külön; a kódban a feltöltés szándékosan EUR-ban marad.",
+      );
+    }
+    throw new Error(`Barion hiba: ${msg}${hints.join("")}`);
   }
 
   if (!data.GatewayUrl) {
