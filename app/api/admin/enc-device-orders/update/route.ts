@@ -7,6 +7,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 import {
   createMplSandboxShipmentAndLabel,
   createMplSandboxShipmentLabelOnly,
+  formatMplShipmentDate,
 } from "@/lib/mpl-sandbox";
 
 type Action = "archive" | "restore" | "cancel" | "uncancel" | "ship" | "update_shipping";
@@ -277,7 +278,7 @@ export async function POST(request: Request) {
               developer: "AdriaGo",
               webshopId: "1",
               orderId: demoOrderId,
-              shipmentDate: new Date().toISOString(),
+              shipmentDate: formatMplShipmentDate(),
               tag: "demo",
               sender: {
                 agreement: senderAgreement,

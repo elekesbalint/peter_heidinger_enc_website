@@ -6,6 +6,7 @@ import { buildEmailHtml, type EmailHtmlRow } from "@/lib/email-html";
 import {
   createMplSandboxShipmentAndLabel,
   createMplSandboxShipmentLabelOnly,
+  formatMplShipmentDate,
 } from "@/lib/mpl-sandbox";
 import { sendAppEmail } from "@/lib/notify-email";
 import { buildPostaTrackingPageUrl } from "@/lib/posta-tracking-url";
@@ -239,7 +240,7 @@ export async function POST(request: Request) {
         developer: "AdriaGo",
         webshopId: "1",
         orderId: `enc-${order.id.replace(/-/g, "").slice(0, 12)}`,
-        shipmentDate: new Date().toISOString(),
+        shipmentDate: formatMplShipmentDate(),
         tag: "bulk",
         sender: {
           agreement: senderAgreement,

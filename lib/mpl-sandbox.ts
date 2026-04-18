@@ -72,6 +72,48 @@ function normalizeShipmentsPayload(mplPayload: unknown): unknown[] {
   throw new Error("Invalid MPL payload: expected shipment object or array");
 }
 
+/**
+ * MPL Post API: a `shipmentDate` gyakran csak naptári dátum (YYYY-MM-DD), nem ISO datetime —
+ * hiba: "The data type for field shipmentDate is invalid" (code 102).
+ */
+export function formatMplShipmentDate(
+  date: Date = new Date(),
+  timeZone = "Europe/Budapest",
+): string {
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function normalizeShipmentsShipmentDate(shipments: unknown[]): unknown[] {
+  return shipments.map((s) => {
+    if (!s || typeof s !== "object") return s;
+    const sh = { ...(s as Record<string, unknown>) };
+    const raw = sh.shipmentDate;
+    if (raw === undefined || raw === null) {
+      sh.shipmentDate = formatMplShipmentDate();
+      return sh;
+    }
+    if (typeof raw === "string") {
+      const t = raw.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(t)) {
+        sh.shipmentDate = t;
+        return sh;
+      }
+      const parsed = new Date(t);
+      if (!Number.isNaN(parsed.getTime())) {
+        sh.shipmentDate = formatMplShipmentDate(parsed);
+        return sh;
+      }
+    }
+    sh.shipmentDate = formatMplShipmentDate();
+    return sh;
+  });
+}
+
 function sanitizeParcelPickupSite(shipments: unknown[]): unknown[] {
   // MPL: ha a deliveryMode nem CS/PP, akkor a parcelPickupSite mező nem lehet megadva / nem passzolhat.
   return shipments.map((s) => {
@@ -113,7 +155,9 @@ export async function createMplSandboxShipmentAndLabel(mplPayload: unknown) {
   const baseUrl = process.env.MPL_SANDBOX_BASE_URL?.trim() || MPL_SANDBOX_BASE_URL_DEFAULT;
   const xAccountingCode = process.env.MPL_X_ACCOUNTING_CODE?.trim();
 
-  const shipments = sanitizeParcelPickupSite(normalizeShipmentsPayload(mplPayload));
+  const shipments = normalizeShipmentsShipmentDate(
+    sanitizeParcelPickupSite(normalizeShipmentsPayload(mplPayload)),
+  );
   const labelType = extractLabelType(mplPayload, "A5");
 
   const accessToken = await getMplSandboxAccessToken();
