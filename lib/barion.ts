@@ -140,9 +140,14 @@ export async function startBarionPayment(
   const posKey = getBarionPosKey();
   const apiUrl = getBarionApiUrl();
 
-  const res = await fetch(`${apiUrl}/v2/payment/start`, {
+  // Fontos: a Barion szerver útvonala case-sensitive — /v2/Payment/Start (nem .../payment/start).
+  const res = await fetch(`${apiUrl}/v2/Payment/Start`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      // Shop auth: a dokumentáció szerint headerben is elfogadott.
+      "x-pos-key": posKey,
+    },
     body: JSON.stringify({ ...req, POSKey: posKey }),
   });
 
@@ -170,11 +175,11 @@ export async function getBarionPaymentState(
   const posKey = getBarionPosKey();
   const apiUrl = getBarionApiUrl();
 
-  const url = new URL(`${apiUrl}/v2/payment/getpaymentstate`);
+  const url = new URL(`${apiUrl}/v2/Payment/GetPaymentState`);
   url.searchParams.set("POSKey", posKey);
   url.searchParams.set("PaymentId", paymentId);
 
-  const res = await fetch(url.toString());
+  const res = await fetch(url.toString(), { headers: { "x-pos-key": posKey } });
   const data = (await res.json()) as BarionPaymentStateResponse;
   return data;
 }
