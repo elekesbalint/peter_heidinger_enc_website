@@ -51,7 +51,7 @@ export function OrderForm({
     }
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/stripe/checkout-device", {
+      const response = await fetch("/api/barion/checkout-device", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

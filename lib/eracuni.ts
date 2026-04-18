@@ -491,7 +491,7 @@ export async function createEracuniInvoice(params: {
 
   /** Build a PaymentRecord that marks the invoice as already paid via Stripe/configured method. */
   function buildPaymentRecord(): Record<string, unknown> {
-    const paymentMethodRaw = process.env.E_RACUNI_PAYMENT_METHOD?.trim() || "Stripe";
+    const paymentMethodRaw = process.env.E_RACUNI_PAYMENT_METHOD?.trim() || "Barion";
     const paymentMethod = resolveEracuniPaymentMethod(paymentMethodRaw);
     return {
       paymentMethodForInvoice: paymentMethod,

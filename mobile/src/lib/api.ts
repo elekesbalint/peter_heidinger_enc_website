@@ -91,7 +91,7 @@ export async function startTopupCheckout(body: {
     deviceIdentifier: body.deviceIdentifier,
     travelDestination: body.travelDestination,
   };
-  const res = await apiFetch('/api/mobile/stripe/checkout', {
+  const res = await apiFetch('/api/mobile/barion/checkout', {
     method: 'POST',
     headers,
     body: JSON.stringify(payload),
@@ -108,7 +108,7 @@ export async function startDeviceOrderCheckout(body: {
   referralInviteId?: string;
 }) {
   const headers = await getAuthHeaders();
-  const res = await apiFetch('/api/mobile/stripe/checkout-device', {
+  const res = await apiFetch('/api/mobile/barion/checkout-device', {
     method: 'POST',
     headers,
     body: JSON.stringify({ ...body, contractAccepted: true }),
