@@ -180,10 +180,15 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
     label: "3. topup csomag (EUR)",
     hint: "A legnagyobb feltöltési csomag ára EUR-ban.",
   },
-  referral_device_discount_huf: {
-    label: "Ajánlói induló egyenleg (Ft)",
+  referral_wallet_bonus_cap_eur: {
+    label: "Ajánlói induló egyenleg plafon (EUR)",
     hint:
-      "Meghívott első készülékvásárlásakor legfeljebb ennyi Ft kerül a vásárolt készülék walletjébe. A fizetési szolgáltatónál a teljes készülékár (device_price_huf) fizetendő — ez az összeg nem kerül levonásra az árból. Kulcs neve: referral_device_discount_huf (történelmi név).",
+      "Meghívott első készülékvásárlásakor legfeljebb ennyi EUR érték kerül a vásárolt készülék walletjébe (a wallet és a fiók felületen is EUR az egyenleg). A Barionnál a teljes készülékár (device_price_huf) fizetendő — ez nem vonódik az árból. Ha üresen hagyod, a rendszer a referral_device_discount_huf (régi Ft plafon) és az árfolyam alapján számol.",
+  },
+  referral_device_discount_huf: {
+    label: "Ajánlói induló egyenleg — Ft tartalék (régi kulcs)",
+    hint:
+      "Csak akkor számít, ha nincs megadva a referral_wallet_bonus_cap_eur. Ekkor a plafon ≈ Ft / EUR→HUF árfolyam.",
   },
   hero_bg_desktop: {
     label: "Főoldali banner kép (asztali)",

@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 
 import { getIntSetting, getSettingsMap } from "@/lib/app-settings";
+import { computeReferralWalletBonusHuf } from "@/lib/referral-wallet-bonus";
 import { getDevicePriceHuf, type DeviceCategoryValue } from "@/lib/device-categories";
 import { sendAppEmail } from "@/lib/notify-email";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
@@ -118,10 +119,7 @@ export async function createWaitlistPaymentReservation(params: {
     waitlist.auth_user_id,
   );
   const settings = await getSettingsMap();
-  const referralWalletBonusCapHuf = Math.max(
-    0,
-    getIntSetting(settings, "referral_device_discount_huf", 25000),
-  );
+  const fxEurToHuf = Math.max(1, getIntSetting(settings, "fx_eur_to_huf", 400));
   const basePriceHuf = Math.max(
     1,
     getIntSetting(settings, "device_price_huf", getDevicePriceHuf()),
@@ -135,9 +133,12 @@ export async function createWaitlistPaymentReservation(params: {
     .limit(1)
     .maybeSingle();
 
-  const referralWalletBonusHuf = activeReferral
-    ? Math.min(basePriceHuf, referralWalletBonusCapHuf)
-    : 0;
+  const referralWalletBonusHuf = computeReferralWalletBonusHuf({
+    basePriceHuf,
+    fxEurToHuf,
+    hasActiveReferral: Boolean(activeReferral),
+    settings,
+  });
   const payableHuf = basePriceHuf;
   const nowIso = new Date().toISOString();
   const expiresAtIso = new Date(Date.now() + RESERVATION_TTL_HOURS * 60 * 60 * 1000).toISOString();

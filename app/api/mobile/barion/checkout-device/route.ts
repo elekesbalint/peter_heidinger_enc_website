@@ -11,6 +11,7 @@ import {
   startBarionPayment,
 } from "@/lib/barion";
 import { getIntSetting, getSettingsMap } from "@/lib/app-settings";
+import { computeReferralWalletBonusHuf } from "@/lib/referral-wallet-bonus";
 import { releaseExpiredDeviceReservations } from "@/lib/device-waitlist-reservations";
 import {
   ORDER_WAITLIST_MESSAGE_SEGMENTS,
@@ -114,10 +115,7 @@ export async function POST(request: Request) {
     }
 
     const settings = await getSettingsMap();
-    const referralWalletBonusCapHuf = Math.max(
-      0,
-      getIntSetting(settings, "referral_device_discount_huf", 25000),
-    );
+    const fxEurToHuf = Math.max(1, getIntSetting(settings, "fx_eur_to_huf", 400));
     const { data: activeReferral } = await supabase
       .from("referral_invites")
       .select("id")
@@ -128,9 +126,12 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     const basePriceHuf = Math.max(1, getIntSetting(settings, "device_price_huf", getDevicePriceHuf()));
-    const referralWalletBonusHuf = activeReferral
-      ? Math.min(basePriceHuf, referralWalletBonusCapHuf)
-      : 0;
+    const referralWalletBonusHuf = computeReferralWalletBonusHuf({
+      basePriceHuf,
+      fxEurToHuf,
+      hasActiveReferral: Boolean(activeReferral),
+      settings,
+    });
 
     const baseUrl = getBaseUrl();
     const payee = getBarionPayee();

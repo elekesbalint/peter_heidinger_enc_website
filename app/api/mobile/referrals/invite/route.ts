@@ -1,5 +1,6 @@
 import { randomBytes } from "crypto";
 import { getIntSetting, getSettingsMap } from "@/lib/app-settings";
+import { getReferralWalletBonusCapEur } from "@/lib/referral-wallet-bonus";
 import { buildEmailHtml } from "@/lib/email-html";
 import { sendAppEmail } from "@/lib/notify-email";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
@@ -58,17 +59,22 @@ export async function POST(request: Request) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || "http://localhost:3000";
     const inviteLink = `${baseUrl.replace(/\/$/, "")}/register?ref=${encodeURIComponent(inviteToken)}`;
     const settings = await getSettingsMap();
-    const referralBonusHuf = Math.max(0, getIntSetting(settings, "referral_device_discount_huf", 25000));
+    const fxEurToHuf = Math.max(1, getIntSetting(settings, "fx_eur_to_huf", 400));
+    const capEur = getReferralWalletBonusCapEur(settings, fxEurToHuf);
+    const capEurLabel = capEur.toLocaleString("hu-HU", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
     const bonusSentence =
-      referralBonusHuf > 0
-        ? ` Első ENC készülékvásárlásodkor legfeljebb ${referralBonusHuf.toLocaleString("hu-HU")} Ft induló egyenleg kerül a készülékhez (útdíj / feltöltés). A készülék teljes árát fizeted.`
+      capEur > 0
+        ? ` Első ENC készülékvásárlásodkor legfeljebb ${capEurLabel} EUR induló egyenleg kerül a készülékhez (útdíj / feltöltés). A készülék teljes árát fizeted.`
         : "";
 
     try {
       const intro =
         `Meghívót kaptál az AdriaGo rendszerbe. A linkkel regisztrálva jogosulttá válsz az első ENC készülékvásárlásra.` +
-        (referralBonusHuf > 0
-          ? ` Első vásárlásodkor legfeljebb ${referralBonusHuf.toLocaleString("hu-HU")} Ft induló egyenleg kerül a készülékhez (útdíj / feltöltés); a készülék teljes árát fizeted.`
+        (capEur > 0
+          ? ` Első vásárlásodkor legfeljebb ${capEurLabel} EUR induló egyenleg kerül a készülékhez (útdíj / feltöltés); a készülék teljes árát fizeted.`
           : "");
       await sendAppEmail({
         to: invitedEmail,

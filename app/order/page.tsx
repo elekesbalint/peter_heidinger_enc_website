@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth-server";
 import { getIntSetting, getSettingsMap } from "@/lib/app-settings";
+import { computeReferralWalletBonusForDisplay } from "@/lib/referral-wallet-bonus";
 import type { DeviceCategoryValue } from "@/lib/device-categories";
 import { getDevicePriceHuf } from "@/lib/device-categories";
 import { isProfileComplete } from "@/lib/profile-completion";
@@ -23,10 +24,6 @@ export default async function OrderPage() {
     1,
     getIntSetting(settings, "device_price_huf", getDevicePriceHuf()),
   );
-  const referralWalletBonusCapHuf = Math.max(
-    0,
-    getIntSetting(settings, "referral_device_discount_huf", 25000),
-  );
   const supabase = createSupabaseAdminClient();
   const { data: activeReferral } = await supabase
     .from("referral_invites")
@@ -36,8 +33,12 @@ export default async function OrderPage() {
     .order("accepted_at", { ascending: true, nullsFirst: false })
     .limit(1)
     .maybeSingle();
-  const referralWalletBonusHuf = activeReferral ? Math.min(price, referralWalletBonusCapHuf) : 0;
-  const referralWalletBonusEur = Number((referralWalletBonusHuf / fxEurToHuf).toFixed(2));
+  const { bonusEur: referralWalletBonusEur } = computeReferralWalletBonusForDisplay({
+    basePriceHuf: price,
+    fxEurToHuf,
+    hasActiveReferral: Boolean(activeReferral),
+    settings,
+  });
   const categoryGuideTitle =
     settings.order_category_guide_title?.trim() || "Kategória magyarázó";
   const categoryGuideSubtitle =
@@ -83,7 +84,7 @@ export default async function OrderPage() {
           <span>Aktuális készülékár:</span>
           <span className="font-bold tabular-nums">{price.toLocaleString("hu-HU")} Ft</span>
         </div>
-        {referralWalletBonusHuf > 0 && (
+        {referralWalletBonusEur > 0 && (
           <div className="adria-animate-in adria-delay-4 mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
             <p>
               Ajánlói juttatás: első készülékvásárlásod után{" "}

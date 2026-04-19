@@ -121,6 +121,8 @@ export async function startDeviceOrderCheckout(body: {
 export type MobileSummaryData = {
   ok: true;
   fxEurToHuf: number;
+  /** Plafon EUR-ban (a `referralWalletBonusCapHuf` = kerekített EUR×árfolyam, kompatibilitás). */
+  referralWalletBonusCapEur: number;
   referralWalletBonusCapHuf: number;
   minBalanceWarningEur: number;
   displayName: string;

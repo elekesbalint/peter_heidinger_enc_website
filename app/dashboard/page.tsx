@@ -3,6 +3,7 @@ import Link from "next/link";
 import { LogoutButton } from "@/app/components/logout-button";
 import { getCurrentUser } from "@/lib/auth-server";
 import { getIntSetting, getSettingsMap } from "@/lib/app-settings";
+import { getReferralWalletBonusCapEur } from "@/lib/referral-wallet-bonus";
 import { DEVICE_CATEGORY_LABELS, type DeviceCategoryValue } from "@/lib/device-categories";
 import { isProfileComplete } from "@/lib/profile-completion";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
@@ -141,8 +142,7 @@ export default async function DashboardPage({
     .order("executed_at", { ascending: false })
     .limit(50);
 
-  const referralWalletBonusCapHuf = getIntSetting(settings, "referral_device_discount_huf", 25000);
-  const referralWalletBonusCapEur = hufToEur(referralWalletBonusCapHuf, fxEurToHuf);
+  const referralWalletBonusCapEur = getReferralWalletBonusCapEur(settings, fxEurToHuf);
   let referralInvites: Array<{
     id: string;
     invited_email: string;

@@ -1,4 +1,5 @@
 import { getIntSetting, getSettingsMap } from "@/lib/app-settings";
+import { getReferralWalletBonusCapEur } from "@/lib/referral-wallet-bonus";
 import { createSupabaseAdminClient } from "@/lib/supabase-admin";
 
 type DeviceRow = {
@@ -36,10 +37,8 @@ export async function GET(request: Request) {
 
     const settings = await getSettingsMap();
     const fxEurToHuf = Math.max(1, getIntSetting(settings, "fx_eur_to_huf", 400));
-    const referralWalletBonusCapHuf = Math.max(
-      0,
-      getIntSetting(settings, "referral_device_discount_huf", 25000),
-    );
+    const referralWalletBonusCapEur = getReferralWalletBonusCapEur(settings, fxEurToHuf);
+    const referralWalletBonusCapHuf = Math.round(referralWalletBonusCapEur * fxEurToHuf);
     const minBalanceWarningHuf = Math.max(0, getIntSetting(settings, "min_balance_warning_huf", 5000));
     const minBalanceWarningEur = Number((minBalanceWarningHuf / fxEurToHuf).toFixed(2));
 
@@ -116,6 +115,7 @@ export async function GET(request: Request) {
     return Response.json({
       ok: true,
       fxEurToHuf,
+      referralWalletBonusCapEur,
       referralWalletBonusCapHuf,
       minBalanceWarningEur,
       displayName,

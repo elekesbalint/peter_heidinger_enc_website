@@ -15,7 +15,10 @@ export const SETTINGS_DEFAULTS: Record<string, string> = {
   topup_package_3_huf: "100",
   /** Vesszovel elvalasztott kategoriak (pl. ii,iii,iv): ezekhez nem valaszthato a legkisebb topup csomag. */
   topup_block_smallest_for_categories: "ii,iii,iv",
-  /** Meghívott első készülékvásárlásakor ennyi Ft (max) kerül a készülék walletjébe; a teljes készülékár a fizetési szolgáltatónál fizetendő. */
+  /**
+   * Legacy: ajánlói plafon Ft-ban, ha nincs beállítva a `referral_wallet_bonus_cap_eur`.
+   * A tényleges plafon számítás: `lib/referral-wallet-bonus.ts`.
+   */
   referral_device_discount_huf: "25000",
   hero_bg_desktop: "/images/enc-hero-bg.png",
   hero_bg_tablet: "/images/enc-hero-bg.png",
