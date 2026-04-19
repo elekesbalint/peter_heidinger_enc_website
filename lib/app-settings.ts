@@ -16,10 +16,10 @@ export const SETTINGS_DEFAULTS: Record<string, string> = {
   /** Vesszovel elvalasztott kategoriak (pl. ii,iii,iv): ezekhez nem valaszthato a legkisebb topup csomag. */
   topup_block_smallest_for_categories: "ii,iii,iv",
   /**
-   * Legacy: ajánlói plafon Ft-ban, ha nincs beállítva a `referral_wallet_bonus_cap_eur`.
-   * A tényleges plafon számítás: `lib/referral-wallet-bonus.ts`.
+   * Ajánlói induló egyenleg plafon (EUR). Üres = a rendszer a DB-ben lévő régi Ft kulcsot vagy alapértelmezést használja (lib/referral-wallet-bonus.ts).
+   * A régi `referral_device_discount_huf` kulcs nem szerepel az admin listában, de az adatbázisban tárolt érték továbbra is beolvadt.
    */
-  referral_device_discount_huf: "25000",
+  referral_wallet_bonus_cap_eur: "",
   hero_bg_desktop: "/images/enc-hero-bg.png",
   hero_bg_tablet: "/images/enc-hero-bg.png",
   hero_bg_mobile: "/images/enc-hero-bg.png",
