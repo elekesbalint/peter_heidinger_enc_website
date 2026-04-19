@@ -76,6 +76,11 @@ Barion setup:
    - `/topup/cancel`
    - `/aszf`, `/adatvedelem`, `/kapcsolat`
 
+MPL címke (admin «Küldés» / PDF):
+
+- **`MPL_SENDER_AGREEMENT`** — csak szerver-oldali env (a böngésző nem látja). Kötelező az MPL fizetős/címker generálás admin műveleteihez.
+- Korábbi `NEXT_PUBLIC_MPL_SENDER_AGREEMENT` kulcs **ne** legyen kitöltve; értékét másold át ide, majd töröld a nyilvános változót Vercelen / `.env`-ben.
+
 Wallet konyveles es ENC vasarlas:
 
 - A Barion callback sikeres fizetesnel: mentes `stripe_topups` tablaba (torteneti nev).

@@ -639,7 +639,6 @@ export function AdminWorkspace() {
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [encFilter, setEncFilter] = useState<"all" | "active" | "shipped" | "archived" | "cancelled">("all");
   const [encQuery, setEncQuery] = useState("");
-  const [mplAgreementCode] = useState(process.env.NEXT_PUBLIC_MPL_SENDER_AGREEMENT ?? "");
   const [labelLoadingForId, setLabelLoadingForId] = useState<string | null>(null);
   const [bulkLabelsLoading, setBulkLabelsLoading] = useState(false);
   const [editShippingOrderId, setEditShippingOrderId] = useState<string | null>(null);
@@ -1380,7 +1379,6 @@ export function AdminWorkspace() {
       await postOrderUpdate(orderId, "ship", {
         tracking_number: (trackingNumber ?? "").trim(),
         mpl_payload: null,
-        mpl_sender_agreement: mplAgreementCode.trim() || null,
         send_customer_email: true,
       });
       if (!options?.skipReload) {
@@ -1458,10 +1456,7 @@ export function AdminWorkspace() {
       const res = await fetch("/api/admin/enc-device-orders/bulk-label", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ids,
-          mpl_sender_agreement: mplAgreementCode.trim() || null,
-        }),
+        body: JSON.stringify({ ids }),
       });
       if (!res.ok) {
         const maybe = (await res.json().catch(() => null)) as { error?: string } | null;
