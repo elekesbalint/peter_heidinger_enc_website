@@ -46,6 +46,7 @@ Supabase setup:
    - `supabase/phase2_full_spec.sql` — profil, rendszam, beallitasok, uicel a topupnal, wallet trigger utvonalakhoz
    - `supabase/referrals.sql` — ajanlo linkek, meghivo allapotok, referral kedvezmeny setting
    - `supabase/waitlist_payment_links.sql` — varolistas fizetesi link + 48 oras keszulek rezervacio
+   - `supabase/admin_security.sql` — admin login attempt naplo + lockout tamogatas
    - `supabase/company_profile_fields.sql` — cegnev + adoszam mezok a ceges profilhoz
 
 Regisztracio es admin fiok:
@@ -61,6 +62,7 @@ Barion setup:
    - `BARION_POSKEY` — bolt Secret key / POSKey
    - `BARION_PAYEE` — elfogadó Barion e-mail (wallet)
    - `BARION_API_URL` — `https://api.test.barion.com` (sandbox) vagy `https://api.barion.com` (eles)
+   - `NEXT_PUBLIC_TURNSTILE_SITE_KEY` + `TURNSTILE_SECRET_KEY` — admin login captcha vedelmehez
 2. Barion adminban engedelyezd az IPN / callback URL-t: `https://<domain>/api/barion/callback`
 3. Endpointok:
    - `GET /api/topup/config` — csomagok, kedvezmeny %, sajat keszulekek, uicel lista (`destinations`)

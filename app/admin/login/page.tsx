@@ -1,11 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import Script from "next/script";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 type LoginStage = "credentials" | "setup-mfa" | "verify-mfa";
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (container: string | HTMLElement, options: { sitekey: string; callback?: (token: string) => void }) => string;
+      reset: (widgetId?: string) => void;
+    };
+  }
+}
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -19,8 +29,22 @@ export default function AdminLoginPage() {
   const [manualSecret, setManualSecret] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileReady, setTurnstileReady] = useState(false);
+  const widgetIdRef = useRef<string | null>(null);
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? "";
 
   const mfaRequired = searchParams.get("mfa") === "required";
+
+  useEffect(() => {
+    if (!turnstileSiteKey || stage !== "credentials" || !turnstileReady) return;
+    if (widgetIdRef.current) return;
+    if (!window.turnstile) return;
+    widgetIdRef.current = window.turnstile.render("#admin-turnstile", {
+      sitekey: turnstileSiteKey,
+      callback: (token: string) => setTurnstileToken(token),
+    });
+  }, [turnstileReady, turnstileSiteKey, stage]);
 
   async function continueToAdminIfAal2(): Promise<boolean> {
     const supabase = createSupabaseBrowserClient();
@@ -42,18 +66,44 @@ export default function AdminLoginPage() {
     setError(null);
     setIsLoading(true);
 
+    let attemptSuccess = false;
+    let attemptReason = "unknown_error";
     try {
       const normalizedEmail = email.trim().toLowerCase();
+      const pre = await fetch("/api/auth/admin-prelogin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: normalizedEmail,
+          turnstileToken,
+        }),
+      });
+      const preData = (await pre.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      if (!pre.ok || !preData?.ok) {
+        attemptReason = preData?.error?.includes("Captcha")
+          ? "captcha_failed"
+          : pre.status === 429
+            ? "locked_too_many_attempts"
+            : "precheck_failed";
+        setError(preData?.error ?? "Belépés előtti biztonsági ellenőrzés sikertelen.");
+        return;
+      }
+
       const supabase = createSupabaseBrowserClient();
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: normalizedEmail,
         password,
       });
       if (signInError) {
+        attemptReason = "invalid_credentials";
         if (signInError.message.toLowerCase().includes("invalid login credentials")) {
           setError("Hibás e-mail vagy jelszó.");
         } else {
           setError(signInError.message);
+        }
+        if (window.turnstile && widgetIdRef.current) {
+          window.turnstile.reset(widgetIdRef.current);
+          setTurnstileToken("");
         }
         return;
       }
@@ -71,10 +121,18 @@ export default function AdminLoginPage() {
       };
 
       if (!data.ok) {
+        attemptReason = data.code === "NOT_ADMIN" ? "not_admin" : "context_validation_failed";
         await supabase.auth.signOut();
         setError(data.message ?? "Nem sikerült ellenőrizni a jogosultságot.");
+        if (window.turnstile && widgetIdRef.current) {
+          window.turnstile.reset(widgetIdRef.current);
+          setTurnstileToken("");
+        }
         return;
       }
+
+      attemptSuccess = true;
+      attemptReason = "ok";
 
       const done = await continueToAdminIfAal2();
       if (done) return;
@@ -106,6 +164,18 @@ export default function AdminLoginPage() {
       setManualSecret(enrollData.totp.secret ?? null);
       setStage("setup-mfa");
     } finally {
+      const normalizedEmail = email.trim().toLowerCase();
+      if (normalizedEmail.includes("@")) {
+        void fetch("/api/auth/admin-login-result", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: normalizedEmail,
+            success: attemptSuccess,
+            reason: attemptReason,
+          }),
+        });
+      }
       setIsLoading(false);
     }
   }
@@ -161,11 +231,20 @@ export default function AdminLoginPage() {
     setManualSecret(null);
     setOtpCode("");
     setPassword("");
+    setTurnstileToken("");
+    if (window.turnstile && widgetIdRef.current) {
+      window.turnstile.reset(widgetIdRef.current);
+    }
     setError(null);
   }
 
   return (
     <div className="flex flex-1 items-center justify-center px-6 py-16">
+      <Script
+        src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+        strategy="afterInteractive"
+        onLoad={() => setTurnstileReady(true)}
+      />
       <section className="w-full max-w-md">
         <div className="rounded-2xl border border-border bg-card p-8 shadow-lg">
           <div className="mb-6 text-center">
@@ -214,6 +293,15 @@ export default function AdminLoginPage() {
                   autoComplete="current-password"
                 />
               </div>
+              {!turnstileSiteKey ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  Hiányzik a NEXT_PUBLIC_TURNSTILE_SITE_KEY környezeti változó.
+                </div>
+              ) : (
+                <div className="rounded-xl border border-border bg-white px-3 py-3">
+                  <div id="admin-turnstile" />
+                </div>
+              )}
               {error && (
                 <div className="rounded-xl border border-red-200 bg-danger-light px-4 py-3 text-sm text-danger">
                   {error}
@@ -221,7 +309,7 @@ export default function AdminLoginPage() {
               )}
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || !turnstileToken || !turnstileSiteKey}
                 className="w-full rounded-xl bg-slate-800 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isLoading ? "Belépés…" : "Belépés az admin felületre"}
