@@ -14,6 +14,7 @@ import {
   type HomeBlogPost,
 } from "@/lib/home-blog";
 import { BlogRichEditor } from "@/components/blog-rich-editor";
+import { LegalRichEditor } from "@/components/legal-rich-editor";
 import { compressImageToJpegBlob, compressImageToJpegDataUrl } from "@/lib/image-compress-browser";
 import { AdminDataPanels } from "./admin-data-panels";
 import { ImportDevicesForm } from "./import-devices-form";
@@ -502,7 +503,7 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
   },
   aszf_content: {
     label: "ÁSZF teljes tartalom",
-    hint: "Formátum: üres sor = új bekezdés/szekció. | ## Fejléc szöveg → szekció fejléc | 1. Fejezet neve → számozott fejezet | 1.1. Alfejezet szövege → alfejezet (számmal, behúzva) | **félkövér** → félkövér szöveg a mondatban.",
+    hint: "Vizuális szerkesztő: Fejléc = szekció cím, Fejezet = alfejezet (1.1. stb.), Bekezdés = sima szöveg.",
   },
   adatvedelem_title: {
     label: "Adatvédelem oldal cím",
@@ -526,7 +527,7 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
   },
   adatvedelem_content: {
     label: "Adatvédelem teljes tartalom",
-    hint: "Formátum: üres sor = új bekezdés/szekció. | ## Fejléc szöveg → szekció fejléc | 1. Fejezet neve → számozott fejezet | 1.1. Alfejezet szövege → alfejezet (számmal, behúzva) | **félkövér** → félkövér szöveg a mondatban.",
+    hint: "Vizuális szerkesztő: Fejléc = szekció cím, Fejezet = alfejezet (1.1. stb.), Bekezdés = sima szöveg.",
   },
 };
 
@@ -3006,7 +3007,12 @@ export function AdminWorkspace() {
                     <p className="mt-0.5 font-mono text-[10px] text-slate-400">{s.key}</p>
                   </div>
                   <div className="min-w-[200px] flex-1 space-y-2">
-                    {isMultilineContentSettingKey(s.key) ? (
+                    {(s.key === "aszf_content" || s.key === "adatvedelem_content") ? (
+                      <LegalRichEditor
+                        value={setDraft[s.key] ?? ""}
+                        onChange={(html) => setSetDraft((d) => ({ ...d, [s.key]: html }))}
+                      />
+                    ) : isMultilineContentSettingKey(s.key) ? (
                       <textarea
                         value={setDraft[s.key] ?? ""}
                         onChange={(e) => setSetDraft((d) => ({ ...d, [s.key]: e.target.value }))}

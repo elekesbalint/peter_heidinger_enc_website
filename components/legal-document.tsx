@@ -1,5 +1,7 @@
 import React from "react";
 
+import { looksLikeLegalHtml } from "@/lib/legal-content";
+
 type ParsedNode =
   | { type: "section-heading"; text: string }
   | { type: "numbered-heading"; number: string; text: string }
@@ -80,7 +82,8 @@ export function LegalDocument({
   documentLabel = "Dokumentum megnyitása / letöltése",
 }: LegalDocumentProps) {
   const hasDocument = Boolean(documentUrl);
-  const nodes = hasDocument ? [] : parseContent(content);
+  const isHtml = !hasDocument && looksLikeLegalHtml(content);
+  const nodes = hasDocument || isHtml ? [] : parseContent(content);
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-16">
@@ -108,6 +111,12 @@ export function LegalDocument({
           {intro && (
             <p className="mt-4 text-sm leading-relaxed text-muted">{intro}</p>
           )}
+          {isHtml ? (
+            <div
+              className="legal-prose mt-8"
+              dangerouslySetInnerHTML={{ __html: content }}
+            />
+          ) : (
           <div className="mt-8 space-y-1 text-sm leading-relaxed text-foreground">
             {nodes.map((node, idx) => {
               if (node.type === "section-heading") {
@@ -151,6 +160,7 @@ export function LegalDocument({
               );
             })}
           </div>
+          )}
         </>
       )}
     </div>
