@@ -484,33 +484,49 @@ const SETTINGS_META: Record<string, { label: string; hint: string }> = {
     label: "ÁSZF oldal cím",
     hint: "Az ÁSZF oldal főcíme.",
   },
+  aszf_label: {
+    label: "ÁSZF oldal badge felirat",
+    hint: "Kis felirat a cím felett (pl. „Jogi dokumentum"). Hagyd üresen, ha nem kell.",
+  },
+  aszf_last_updated: {
+    label: "ÁSZF utolsó frissítés dátuma",
+    hint: "Megjelenik a cím alatt (pl. „2026.01.18."). Hagyd üresen, ha nem kell.",
+  },
   aszf_intro: {
     label: "ÁSZF bevezető",
-    hint: "Az ÁSZF oldal rövid bevezető szövege.",
+    hint: "Rövid bevezető szöveg. Csak akkor látszik, ha nincs dokumentum URL megadva.",
   },
   aszf_document_url: {
     label: "ÁSZF dokumentum (PDF/Word)",
-    hint: "Feltölthető dokumentum link/data URI, ami az oldalon letöltésként jelenik meg.",
+    hint: "Ha meg van adva, letöltő gombot jelenít meg, és a tartalom mező figyelmen kívül marad.",
   },
   aszf_content: {
     label: "ÁSZF teljes tartalom",
-    hint: "Többsoros mező. Üres sor = új blokk.",
+    hint: "Formátum: üres sor = új bekezdés/szekció. | ## Fejléc szöveg → szekció fejléc | 1. Fejezet neve → számozott fejezet | 1.1. Alfejezet szövege → alfejezet (számmal, behúzva) | **félkövér** → félkövér szöveg a mondatban.",
   },
   adatvedelem_title: {
     label: "Adatvédelem oldal cím",
     hint: "Az Adatvédelmi oldal főcíme.",
   },
+  adatvedelem_label: {
+    label: "Adatvédelem oldal badge felirat",
+    hint: "Kis felirat a cím felett (pl. „Jogi dokumentum"). Hagyd üresen, ha nem kell.",
+  },
+  adatvedelem_last_updated: {
+    label: "Adatvédelem utolsó frissítés dátuma",
+    hint: "Megjelenik a cím alatt (pl. „2026.01.18."). Hagyd üresen, ha nem kell.",
+  },
   adatvedelem_intro: {
     label: "Adatvédelem bevezető",
-    hint: "Az Adatvédelmi oldal rövid bevezető szövege.",
+    hint: "Rövid bevezető szöveg. Csak akkor látszik, ha nincs dokumentum URL megadva.",
   },
   adatvedelem_document_url: {
     label: "Adatvédelem dokumentum (PDF/Word)",
-    hint: "Feltölthető dokumentum link/data URI, ami az oldalon letöltésként jelenik meg.",
+    hint: "Ha meg van adva, letöltő gombot jelenít meg, és a tartalom mező figyelmen kívül marad.",
   },
   adatvedelem_content: {
     label: "Adatvédelem teljes tartalom",
-    hint: "Többsoros mező. Üres sor = új blokk.",
+    hint: "Formátum: üres sor = új bekezdés/szekció. | ## Fejléc szöveg → szekció fejléc | 1. Fejezet neve → számozott fejezet | 1.1. Alfejezet szövege → alfejezet (számmal, behúzva) | **félkövér** → félkövér szöveg a mondatban.",
   },
 };
 

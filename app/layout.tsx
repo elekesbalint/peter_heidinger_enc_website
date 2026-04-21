@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { Viewport } from "next";
 import { Inter } from "next/font/google";
 import { Geist_Mono } from "next/font/google";
+import Image from "next/image";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth-server";
 import { getProfileByAuthUserId } from "@/lib/profile-completion";
@@ -179,19 +180,34 @@ export default async function RootLayout({
                 </section>
               </div>
 
-              <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200/80 pt-5 text-xs">
-                <p>&copy; {new Date().getFullYear()} AdriaGo. Minden jog fenntartva.</p>
-                <p>
-                  Designed &amp; coded by{" "}
-                  <a
-                    href="https://balintelekes.hu"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="font-semibold text-blue-600 transition-all duration-200 hover:text-blue-500 hover:underline hover:underline-offset-2"
-                  >
-                    Bálint Elekes
-                  </a>
-                </p>
+              <div className="mt-8 border-t border-slate-200/80 pt-5">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex flex-col gap-2">
+                    <p className="text-xs text-muted">Biztonságos fizetés</p>
+                    <Image
+                      src="/barion-card-strip.png"
+                      alt="Barion — Mastercard, VISA, Apple Pay, Google Pay"
+                      width={300}
+                      height={36}
+                      className="h-8 w-auto object-contain"
+                      unoptimized
+                    />
+                  </div>
+                  <div className="flex flex-col items-end gap-1 text-xs text-muted">
+                    <p>&copy; {new Date().getFullYear()} AdriaGo. Minden jog fenntartva.</p>
+                    <p>
+                      Designed &amp; coded by{" "}
+                      <a
+                        href="https://balintelekes.hu"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-semibold text-blue-600 transition-all duration-200 hover:text-blue-500 hover:underline hover:underline-offset-2"
+                      >
+                        Bálint Elekes
+                      </a>
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </footer>

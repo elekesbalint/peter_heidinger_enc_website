@@ -518,23 +518,31 @@ export function TopupClient({ initialDeviceIdentifier = "" }: { initialDeviceIde
         {isLoading ? "Átirányítás…" : "Fizetés Barionnal"}
       </button>
 
-      <div className="adria-animate-in adria-delay-6 flex items-center justify-center gap-3 rounded-2xl border border-emerald-200/70 bg-emerald-50/90 px-4 py-3 text-center shadow-sm">
-        <svg
-          viewBox="0 0 24 24"
-          className="h-6 w-6 text-emerald-600"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden
-        >
-          <path d="M12 3l7 3v6c0 4.5-3.1 7.7-7 9-3.9-1.3-7-4.5-7-9V6l7-3z" />
-          <path d="m9 12 2 2 4-4" />
-        </svg>
-        <p className="text-base font-semibold text-slate-800">
-          Titkos és biztonságos fizetés <span className="ml-1 font-extrabold text-[#2d7a4d]">Barion</span>
-        </p>
+      <div className="adria-animate-in adria-delay-6 flex flex-col items-center gap-3 rounded-2xl border border-emerald-200/70 bg-emerald-50/90 px-4 py-4 text-center shadow-sm">
+        <div className="flex items-center gap-3">
+          <svg
+            viewBox="0 0 24 24"
+            className="h-6 w-6 text-emerald-600"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="M12 3l7 3v6c0 4.5-3.1 7.7-7 9-3.9-1.3-7-4.5-7-9V6l7-3z" />
+            <path d="m9 12 2 2 4-4" />
+          </svg>
+          <p className="text-base font-semibold text-slate-800">
+            Titkos és biztonságos fizetés <span className="ml-1 font-extrabold text-[#2d7a4d]">Barion</span>
+          </p>
+        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/barion-card-strip.png"
+          alt="Barion — Mastercard, VISA, Apple Pay, Google Pay"
+          className="h-7 w-auto object-contain"
+        />
       </div>
     </section>
   );

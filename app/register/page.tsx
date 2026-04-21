@@ -30,6 +30,8 @@ export default function RegisterPage() {
   const [taxNumber, setTaxNumber] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [acceptedAszf, setAcceptedAszf] = useState(false);
+  const [acceptedAdatvedelem, setAcceptedAdatvedelem] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -56,6 +58,14 @@ export default function RegisterPage() {
       }
       if (userType === "company" && !normalizedTaxNumber) {
         setError("Céges regisztrációnál az adószám kötelező.");
+        return;
+      }
+      if (!acceptedAszf) {
+        setError("Az Általános Szerződési Feltételek elfogadása kötelező.");
+        return;
+      }
+      if (!acceptedAdatvedelem) {
+        setError("Az Adatvédelmi tájékoztató elfogadása kötelező.");
         return;
       }
 
@@ -214,6 +224,46 @@ export default function RegisterPage() {
                 required
               />
             </div>
+            <div className="space-y-3 rounded-xl border border-border bg-slate-50/80 px-4 py-4">
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={acceptedAszf}
+                  onChange={(e) => setAcceptedAszf(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
+                />
+                <span className="text-sm leading-snug text-foreground">
+                  Elolvastam és elfogadom az{" "}
+                  <Link
+                    href="/aszf"
+                    target="_blank"
+                    className="font-medium text-primary hover:underline"
+                  >
+                    Általános Szerződési Feltételeket
+                  </Link>
+                  .
+                </span>
+              </label>
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={acceptedAdatvedelem}
+                  onChange={(e) => setAcceptedAdatvedelem(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
+                />
+                <span className="text-sm leading-snug text-foreground">
+                  Elolvastam és elfogadom az{" "}
+                  <Link
+                    href="/adatvedelem"
+                    target="_blank"
+                    className="font-medium text-primary hover:underline"
+                  >
+                    Adatvédelmi tájékoztatót
+                  </Link>
+                  .
+                </span>
+              </label>
+            </div>
             {error && (
               <div className="rounded-xl border border-red-200 bg-danger-light px-4 py-3 text-sm text-danger">
                 {error}
@@ -226,7 +276,7 @@ export default function RegisterPage() {
             )}
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !acceptedAszf || !acceptedAdatvedelem}
               className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-strong disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isLoading ? "Regisztráció folyamatban…" : "Fiók létrehozása"}
