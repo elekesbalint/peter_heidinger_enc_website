@@ -76,7 +76,6 @@ export default async function RootLayout({
                   className="h-10 w-auto object-contain"
                   unoptimized
                 />
-                <span className="text-lg font-bold tracking-tight text-foreground">AdriaGo</span>
               </Link>
               <nav className="hidden items-center gap-0.5 text-sm font-medium md:flex">
                 <Link
@@ -146,7 +145,6 @@ export default async function RootLayout({
                       className="h-8 w-auto object-contain"
                       unoptimized
                     />
-                    <span className="text-base font-bold tracking-tight text-foreground">AdriaGo</span>
                   </div>
                   <p className="max-w-sm leading-relaxed">
                     ENC értékesítés és útdíjkezelés egy modern platformon: rendelés, feltöltés, állapotkövetés.
