@@ -23,6 +23,11 @@ export const metadata: Metadata = {
   title: "AdriaGo — ENC értékesítés és útdíjkezelés",
   description:
     "Webalapú ENC értékesítési és útdíjkezelő rendszer — eszközrendelés, egyenlegfeltöltés, útvonalkövetés.",
+  icons: {
+    icon: "/adriago-logo.png",
+    shortcut: "/adriago-logo.png",
+    apple: "/adriago-logo.png",
+  },
 };
 
 export const viewport: Viewport = {
@@ -63,9 +68,14 @@ export default async function RootLayout({
                 href="/"
                 className="group flex items-center gap-2.5 transition-transform duration-300 hover:scale-[1.02]"
               >
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-indigo-600 text-sm font-bold text-white shadow-md shadow-primary/25 transition-shadow duration-300 group-hover:shadow-lg group-hover:shadow-primary/35">
-                  AG
-                </span>
+                <Image
+                  src="/adriago-logo.png"
+                  alt="AdriaGo logó"
+                  width={127}
+                  height={62}
+                  className="h-9 w-auto object-contain"
+                  unoptimized
+                />
                 <span className="text-lg font-bold tracking-tight text-foreground">AdriaGo</span>
               </Link>
               <nav className="hidden items-center gap-0.5 text-sm font-medium md:flex">
@@ -128,9 +138,14 @@ export default async function RootLayout({
               <div className="grid gap-8 md:grid-cols-3">
                 <section className="space-y-3">
                   <div className="flex items-center gap-2.5">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-indigo-600 text-xs font-bold text-white shadow">
-                      AG
-                    </span>
+                    <Image
+                      src="/adriago-logo.png"
+                      alt="AdriaGo logó"
+                      width={127}
+                      height={62}
+                      className="h-8 w-auto object-contain"
+                      unoptimized
+                    />
                     <span className="text-base font-bold tracking-tight text-foreground">AdriaGo</span>
                   </div>
                   <p className="max-w-sm leading-relaxed">
