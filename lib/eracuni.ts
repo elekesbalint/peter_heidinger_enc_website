@@ -229,6 +229,17 @@ export async function createEracuniInvoice(params: {
     };
   }
 
+  function withInvoiceCostPosition(invoice: Record<string, unknown>): Record<string, unknown> {
+    if (!shouldSendCostPosition) return invoice;
+    if (!costPosition) return invoice;
+    return {
+      ...invoice,
+      costPosition,
+      // Alias for tenants that map cost center under different naming.
+      costCenter: costPosition,
+    };
+  }
+
   function responseIndicatesFailure(payload: unknown): string | null {
     if (!payload || typeof payload !== "object") return null;
     const obj = payload as Record<string, unknown>;
@@ -521,7 +532,7 @@ export async function createEracuniInvoice(params: {
     if (!Array.isArray(out.Items) || out.Items.length === 0) {
       out.Items = wikiItems;
     }
-    return withCurrencyAliases(out);
+    return withInvoiceCostPosition(withCurrencyAliases(out));
   }
 
   /** Build a PaymentRecord that marks the invoice as already paid via Stripe/configured method. */
