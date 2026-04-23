@@ -359,6 +359,8 @@ export async function POST(request: Request) {
       }
 
       // e-racuni számla.
+      let orderInvoicePublicUrl: string | null = null;
+      let orderInvoicePdfUrl: string | null = null;
       if (deviceIdentifier) {
         const profileAddr = await fetchProfileBillingAddress(supabase, authUserId);
         const inv = await createEracuniInvoice({
@@ -386,10 +388,13 @@ export async function POST(request: Request) {
           inv.invoicePdfUrl,
           inv.error ?? null,
         );
+        orderInvoicePublicUrl = inv.invoicePublicUrl ?? null;
+        orderInvoicePdfUrl = inv.invoicePdfUrl ?? null;
       }
 
       // Email a felhasználónak.
       if (userEmail) {
+        const orderInvoiceDownloadUrl = orderInvoicePdfUrl ?? orderInvoicePublicUrl;
         const bonusLine =
           referralWalletBonusHuf > 0
             ? ` Ajánlói jóváírás a készülék egyenlegén: ${referralWalletBonusHuf.toLocaleString("hu-HU")} Ft.`
@@ -397,7 +402,9 @@ export async function POST(request: Request) {
         await sendAppEmail({
           to: userEmail,
           subject: "AdriaGo — sikeres ENC rendelés",
-          text: `Köszönjük a vásárlást. Eszköz: ${deviceIdentifier ?? "-"}. Fizetett összeg: ${amountHuf} Ft.${bonusLine}`,
+          text: `Köszönjük a vásárlást. Eszköz: ${deviceIdentifier ?? "-"}. Fizetett összeg: ${amountHuf} Ft.${bonusLine}${
+            orderInvoiceDownloadUrl ? ` Számla: ${orderInvoiceDownloadUrl}` : ""
+          }`,
           html: buildEmailHtml({
             title: "Sikeres rendelés",
             intro:
@@ -416,6 +423,9 @@ export async function POST(request: Request) {
                   ]
                 : []),
               { label: "Rendelés azonosító", value: paymentId },
+              ...(orderInvoiceDownloadUrl
+                ? [{ label: "Számla", value: orderInvoiceDownloadUrl }]
+                : []),
             ],
           }),
         }).catch((err) => {
@@ -504,12 +514,15 @@ export async function POST(request: Request) {
 
       const amountEur = meta.amount_eur ?? Number((amountHuf / fxEurToHuf).toFixed(2));
       const creditedEur = Number((amountHuf / fxEurToHuf).toFixed(2));
+      const topupInvoiceDownloadUrl = inv.invoicePdfUrl ?? inv.invoicePublicUrl ?? null;
 
       if (userEmail) {
         await sendAppEmail({
           to: userEmail,
           subject: "AdriaGo — sikeres egyenlegfeltöltés",
-          text: `Feltöltött összeg: ${creditedEur.toLocaleString("hu-HU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR, eszköz: ${deviceIdentifier}.`,
+          text: `Feltöltött összeg: ${creditedEur.toLocaleString("hu-HU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR, eszköz: ${deviceIdentifier}.${
+            topupInvoiceDownloadUrl ? ` Számla: ${topupInvoiceDownloadUrl}` : ""
+          }`,
           html: buildEmailHtml({
             title: "Sikeres egyenlegfeltöltés",
             intro: "A feltöltésed sikeresen jóváírásra került.",
@@ -524,6 +537,9 @@ export async function POST(request: Request) {
                 value: `${amountEur.toLocaleString("hu-HU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR`,
               },
               { label: "Barion PaymentId", value: paymentId },
+              ...(topupInvoiceDownloadUrl
+                ? [{ label: "Számla", value: topupInvoiceDownloadUrl }]
+                : []),
             ],
           }),
         }).catch((err) => {
