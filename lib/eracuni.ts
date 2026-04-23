@@ -100,6 +100,8 @@ export async function createEracuniInvoice(params: {
   const methodTopup = useLiveCredentials ? liveMethodTopup : testMethodTopup || liveMethodTopup;
 
   const method = params.kind === "device_sale" ? methodDeviceSale : methodTopup;
+  const shouldSendCostPosition = /salesinvoiceget/i.test(method ?? "");
+  const costPosition = process.env.E_RACUNI_COST_POSITION?.trim() || "02";
 
   const itemName =
     params.kind === "device_sale" ? "ENC készülék / ENC uređaj" : "ENC készülék feltöltése";
@@ -212,6 +214,15 @@ export async function createEracuniInvoice(params: {
 
   function compact(text: string, max = 500): string {
     return text.replace(/\s+/g, " ").trim().slice(0, max);
+  }
+
+  function withCostPosition(parameters: Record<string, unknown>): Record<string, unknown> {
+    if (!shouldSendCostPosition) return parameters;
+    if (!costPosition) return parameters;
+    return {
+      ...parameters,
+      costPosition,
+    };
   }
 
   function responseIndicatesFailure(payload: unknown): string | null {
@@ -767,13 +778,13 @@ export async function createEracuniInvoice(params: {
             secretKey,
             token,
             method,
-            parameters: {
+            parameters: withCostPosition({
               SalesInvoice: salesInvoice,
               Salesinvoice: salesInvoice,
               // Ask e-racuni to send issued invoice by e-mail and expose public URL when supported.
               sendIssuedInvoiceByEmail: true,
               generatePublicURL: true,
-            },
+            }),
           }),
         });
         const raw = await res.text();
@@ -824,7 +835,7 @@ export async function createEracuniInvoice(params: {
                     secretKey,
                     token,
                     method,
-                    parameters: {
+                    parameters: withCostPosition({
                       SalesInvoice: finalizedRetry,
                       Salesinvoice: finalizedRetry,
                       salesInvoice: finalizedRetry,
@@ -836,7 +847,7 @@ export async function createEracuniInvoice(params: {
                       quantity: 1,
                       sendIssuedInvoiceByEmail: true,
                       generatePublicURL: true,
-                    },
+                    }),
                   }),
                 });
                 const retryRaw = await retryRes.text();
@@ -890,7 +901,7 @@ export async function createEracuniInvoice(params: {
                 secretKey,
                 token,
                 method,
-                parameters: {
+                parameters: withCostPosition({
                   SalesInvoice: buyerRetryInvoice,
                   Salesinvoice: buyerRetryInvoice,
                   customerEmail: params.userEmail,
@@ -901,7 +912,7 @@ export async function createEracuniInvoice(params: {
                   quantity: 1,
                   sendIssuedInvoiceByEmail: true,
                   generatePublicURL: true,
-                },
+                }),
               }),
             });
             const brRaw = await br.text();
@@ -951,7 +962,7 @@ export async function createEracuniInvoice(params: {
                   secretKey,
                   token,
                   method,
-                  parameters: {
+                  parameters: withCostPosition({
                     SalesInvoice: buyerRetryInvoice,
                     Salesinvoice: buyerRetryInvoice,
                     customerEmail: params.userEmail,
@@ -962,7 +973,7 @@ export async function createEracuniInvoice(params: {
                     quantity: 1,
                     sendIssuedInvoiceByEmail: true,
                     generatePublicURL: true,
-                  },
+                  }),
                 }),
               });
               const brRaw = await br.text();
