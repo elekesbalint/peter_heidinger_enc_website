@@ -142,7 +142,7 @@ export default async function RootLayout({
                       alt="AdriaGo logó"
                       width={127}
                       height={62}
-                      className="h-8 w-auto object-contain"
+                      className="h-12 w-auto object-contain"
                       unoptimized
                     />
                   </div>
