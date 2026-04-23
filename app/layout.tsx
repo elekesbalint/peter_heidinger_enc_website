@@ -71,9 +71,9 @@ export default async function RootLayout({
                 <Image
                   src="/adriago-logo.png"
                   alt="AdriaGo logó"
-                  width={127}
-                  height={62}
-                  className="h-9 w-auto object-contain"
+                  width={1270}
+                  height={620}
+                  className="h-10 w-auto object-contain"
                   unoptimized
                 />
                 <span className="text-lg font-bold tracking-tight text-foreground">AdriaGo</span>
