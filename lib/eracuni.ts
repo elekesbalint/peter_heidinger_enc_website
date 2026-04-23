@@ -100,8 +100,12 @@ export async function createEracuniInvoice(params: {
   const methodTopup = useLiveCredentials ? liveMethodTopup : testMethodTopup || liveMethodTopup;
 
   const method = params.kind === "device_sale" ? methodDeviceSale : methodTopup;
-  const shouldSendCostPosition = /salesinvoiceget/i.test(method ?? "");
-  const costPosition = process.env.E_RACUNI_COST_POSITION?.trim() || "02";
+  // costPosition is added when E_RACUNI_COST_POSITION is set explicitly in env,
+  // OR whenever the configured method contains "SalesInvoiceGet" (which requires it).
+  const envCostPosition = process.env.E_RACUNI_COST_POSITION?.trim() ?? "";
+  const shouldSendCostPosition =
+    Boolean(envCostPosition) || /salesinvoiceget/i.test(method ?? "");
+  const costPosition = envCostPosition || "02";
 
   const itemName =
     params.kind === "device_sale" ? "ENC készülék / ENC uređaj" : "ENC készülék feltöltése";
