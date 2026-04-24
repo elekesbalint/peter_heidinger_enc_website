@@ -3,7 +3,17 @@ import { useCallback, useEffect, useState } from 'react';
 type LocalAuthModule = typeof import('expo-local-authentication');
 type SecureStoreModule = typeof import('expo-secure-store');
 
+function hasExpoNativeModule(moduleName: string): boolean {
+  try {
+    const modules = (globalThis as { expo?: { modules?: Record<string, unknown> } }).expo?.modules;
+    return Boolean(modules && modules[moduleName]);
+  } catch {
+    return false;
+  }
+}
+
 function getLocalAuthModule(): LocalAuthModule | null {
+  if (!hasExpoNativeModule('ExpoLocalAuthentication')) return null;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     return require('expo-local-authentication') as LocalAuthModule;
@@ -13,6 +23,7 @@ function getLocalAuthModule(): LocalAuthModule | null {
 }
 
 function getSecureStoreModule(): SecureStoreModule | null {
+  if (!hasExpoNativeModule('ExpoSecureStore')) return null;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     return require('expo-secure-store') as SecureStoreModule;

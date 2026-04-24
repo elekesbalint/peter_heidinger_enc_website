@@ -79,5 +79,15 @@ export async function POST(request: Request) {
     return Response.json({ ok: false, error: updErr.message }, { status: 500 });
   }
 
+  // Egyenleg nullázása: az új felhasználó ne örökölje az előző tartozását.
+  const { error: walletErr } = await supabase
+    .from("device_wallets")
+    .update({ balance_huf: 0, updated_at: now })
+    .eq("device_identifier", deviceIdentifier);
+
+  if (walletErr) {
+    return Response.json({ ok: false, error: walletErr.message }, { status: 500 });
+  }
+
   return Response.json({ ok: true });
 }
