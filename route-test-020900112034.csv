@@ -1,0 +1,3 @@
+Reláció;A tranzakció végrehajtásának dátuma;Behajtás ideje;Kihajtás ideje;Készülék száma;Rendszám;Kifizetés (EUR);Pénznem
+TESZT REL 1;25.04.2026 11:00:00;25.04.2026 10:55:00;25.04.2026 11:05:00;020900112034;;6,40;EUR
+TESZT REL 2;25.04.2026 12:30:00;25.04.2026 12:25:00;25.04.2026 12:35:00;020900112034;;8,90;EUR

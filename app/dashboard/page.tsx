@@ -106,7 +106,7 @@ export default async function DashboardPage({
 
   const { data: ownedDevices } = await supabase
     .from("devices")
-    .select("id, identifier, category, status, sold_at, license_plate")
+    .select("id, identifier, category, status, sold_at, assigned_at, license_plate")
     .eq("auth_user_id", user.id)
     .order("sold_at", { ascending: false });
 
@@ -135,12 +135,29 @@ export default async function DashboardPage({
     (wallets ?? []).map((w) => [w.device_identifier, w] as const),
   );
 
-  const { data: routeHistory } = await supabase
+  const assignedAtByIdentifier = new Map(
+    (ownedDevices ?? []).map((d) => [
+      d.identifier,
+      d.assigned_at ? new Date(d.assigned_at).getTime() : null,
+    ] as const),
+  );
+
+  const { data: rawRouteHistory } = await supabase
     .from("route_records")
     .select("id, device_number_raw, relation_label, executed_at, amount, currency, dedupe_key")
     .in("device_number_raw", ownedIdentifiers)
     .order("executed_at", { ascending: false })
-    .limit(50);
+    .limit(250);
+
+  const routeHistory = (rawRouteHistory ?? [])
+    .filter((r) => {
+      const assignedAtMs = assignedAtByIdentifier.get(r.device_number_raw) ?? null;
+      if (!assignedAtMs) return true;
+      const executedAtMs = new Date(r.executed_at).getTime();
+      if (Number.isNaN(executedAtMs)) return false;
+      return executedAtMs >= assignedAtMs;
+    })
+    .slice(0, 50);
 
   const referralWalletBonusCapEur = getReferralWalletBonusCapEur(settings, fxEurToHuf);
   let referralInvites: Array<{
