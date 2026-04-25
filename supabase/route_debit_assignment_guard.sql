@@ -1,6 +1,5 @@
--- Migration: skip route wallet deduction if route predates device assignment
--- A trigger most ellenőrzi: ha az útvonal executed_at dátuma korábbi, mint
--- a készülék assigned_at dátuma, akkor a levonás nem kerül alkalmazásra.
+-- Migration: skip route wallet deduction if route predates device assignment.
+-- Guard timestamp: devices.assigned_at, and legacy fallback: devices.sold_at.
 
 create or replace function route_record_wallet_after_insert()
 returns trigger
@@ -11,15 +10,16 @@ declare
   v_fx numeric;
   v_huf integer;
   cur text;
-  v_assigned_at timestamptz;
+  v_assignment_start_at timestamptz;
 begin
-  -- Ha az útvonal a kiosztás előtti időpontból származik, kihagyjuk a levonást.
-  select assigned_at into v_assigned_at
+  -- Ha az útvonal a készülék aktuális kiosztási kezdete előtti, kihagyjuk a levonást.
+  -- Régi rekordoknál, ahol assigned_at üres, sold_at a fallback.
+  select coalesce(assigned_at, sold_at) into v_assignment_start_at
   from devices
   where identifier = NEW.device_number_raw
   limit 1;
 
-  if v_assigned_at is not null and NEW.executed_at < v_assigned_at then
+  if v_assignment_start_at is not null and NEW.executed_at < v_assignment_start_at then
     return NEW;
   end if;
 

@@ -261,6 +261,7 @@ export async function POST(request: Request) {
           .update({
             status: "sold",
             auth_user_id: authUserId,
+            assigned_at: paidAt,
             sold_at: paidAt,
             updated_at: paidAt,
             license_plate: licensePlate,
@@ -305,6 +306,7 @@ export async function POST(request: Request) {
           .update({
             status: "sold",
             auth_user_id: authUserId,
+            assigned_at: paidAt,
             sold_at: paidAt,
             updated_at: paidAt,
             license_plate: licensePlate,

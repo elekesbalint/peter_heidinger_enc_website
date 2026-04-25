@@ -80,6 +80,7 @@ export default async function DashboardPage({
         .update({
           status: "sold",
           auth_user_id: user.id,
+          assigned_at: new Date().toISOString(),
           sold_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
@@ -112,6 +113,16 @@ export default async function DashboardPage({
 
   const ownedIdentifiers = (ownedDevices ?? []).map((d) => d.identifier);
 
+  const { data: ownershipOrders } = ownedIdentifiers.length
+    ? await supabase
+        .from("enc_device_orders")
+        .select("device_identifier, paid_at, created_at")
+        .eq("auth_user_id", user.id)
+        .in("device_identifier", ownedIdentifiers)
+        .order("created_at", { ascending: false })
+        .limit(200)
+    : { data: [] as Array<{ device_identifier: string | null; paid_at: string | null; created_at: string }>, error: null };
+
   const { data: topups } = await supabase
     .from("stripe_topups")
     .select("id, amount_huf, currency, status, paid_at, created_at, device_identifier, travel_destination, payload")
@@ -135,10 +146,27 @@ export default async function DashboardPage({
     (wallets ?? []).map((w) => [w.device_identifier, w] as const),
   );
 
+  const paidAtByIdentifier = new Map<string, number>();
+  for (const row of ownershipOrders ?? []) {
+    const identifier = (row.device_identifier ?? "").trim();
+    if (!identifier) continue;
+    if (paidAtByIdentifier.has(identifier)) continue;
+    const paidAtMs = row.paid_at ? new Date(row.paid_at).getTime() : NaN;
+    const createdAtMs = row.created_at ? new Date(row.created_at).getTime() : NaN;
+    const candidate = Number.isFinite(paidAtMs) ? paidAtMs : Number.isFinite(createdAtMs) ? createdAtMs : NaN;
+    if (Number.isFinite(candidate)) {
+      paidAtByIdentifier.set(identifier, candidate);
+    }
+  }
+
   const assignedAtByIdentifier = new Map(
     (ownedDevices ?? []).map((d) => [
       d.identifier,
-      d.assigned_at ? new Date(d.assigned_at).getTime() : null,
+      d.assigned_at
+        ? new Date(d.assigned_at).getTime()
+        : d.sold_at
+          ? new Date(d.sold_at).getTime()
+          : (paidAtByIdentifier.get(d.identifier) ?? null),
     ] as const),
   );
 
