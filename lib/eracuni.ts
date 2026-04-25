@@ -523,10 +523,8 @@ export async function createEracuniInvoice(params: {
       extra.methodOfPayment = pm;
       extra.paymentMethodForInvoice = pm;
     }
-    const bu = process.env.E_RACUNI_BUSINESS_UNIT?.trim();
-    if (bu) {
-      extra.businessUnit = bu;
-    }
+    const bu = process.env.E_RACUNI_BUSINESS_UNIT?.trim() || costPosition || "02";
+    extra.businessUnit = bu;
 
     const out = { ...inv, ...extra };
     if (!Array.isArray(out.Items) || out.Items.length === 0) {
