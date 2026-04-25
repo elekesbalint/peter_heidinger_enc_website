@@ -121,7 +121,7 @@ export default async function DashboardPage({
         .in("device_identifier", ownedIdentifiers)
         .order("created_at", { ascending: false })
         .limit(200)
-    : { data: [] as Array<{ device_identifier: string | null; paid_at: string | null; created_at: string }>, error: null };
+    : { data: [] as Array<{ device_identifier: string | null; paid_at: string | null; created_at: string }> };
 
   const { data: topups } = await supabase
     .from("stripe_topups")
