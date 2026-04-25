@@ -66,13 +66,17 @@ async function fetchProfileBillingAddress(
   try {
     const { data } = await supabase
       .from("profiles")
-      .select("billing_address")
+      .select("billing_address, name")
       .eq("auth_user_id", authUserId)
       .maybeSingle();
-    const raw = (data as { billing_address?: string | null } | null)?.billing_address;
-    return parseBillingAddress(raw);
+    const row = data as { billing_address?: string | null; name?: string | null } | null;
+    const raw = row?.billing_address;
+    return {
+      ...parseBillingAddress(raw),
+      profileName: row?.name?.trim() || null,
+    };
   } catch {
-    return { street: null, postalCode: null, city: null, country: null };
+    return { street: null, postalCode: null, city: null, country: null, profileName: null };
   }
 }
 
@@ -372,7 +376,7 @@ export async function POST(request: Request) {
           stripePaidMajorUnits: amountHuf,
           stripeCurrency: "HUF",
           paymentMethodForInvoice: "Barion",
-          buyerName: payerName,
+          buyerName: payerName || profileAddr.profileName || null,
           buyerStreet: profileAddr.street ?? barionBillingAddr?.Street ?? null,
           buyerPostalCode: profileAddr.postalCode ?? barionBillingAddr?.Zip ?? null,
           buyerCity: profileAddr.city ?? barionBillingAddr?.City ?? null,
@@ -486,7 +490,7 @@ export async function POST(request: Request) {
       );
       const topupProfileAddr = topupAuthUserId
         ? await fetchProfileBillingAddress(supabase, topupAuthUserId)
-        : { street: null, postalCode: null, city: null, country: null };
+        : { street: null, postalCode: null, city: null, country: null, profileName: null };
 
       const inv = await createEracuniInvoice({
         kind: "topup",
@@ -495,7 +499,7 @@ export async function POST(request: Request) {
         stripePaidMajorUnits: meta.amount_eur ?? amountHuf / fxEurToHuf,
         stripeCurrency: row.currency ?? "EUR",
         paymentMethodForInvoice: "Barion",
-        buyerName: payerName,
+        buyerName: payerName || topupProfileAddr.profileName || null,
         buyerStreet: topupProfileAddr.street ?? barionBillingAddr?.Street ?? null,
         buyerPostalCode: topupProfileAddr.postalCode ?? barionBillingAddr?.Zip ?? null,
         buyerCity: topupProfileAddr.city ?? barionBillingAddr?.City ?? null,
