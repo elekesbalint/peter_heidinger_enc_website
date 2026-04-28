@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import { Geist_Mono } from "next/font/google";
 import Image from "next/image";
 import Link from "next/link";
+import Script from "next/script";
 import { getCurrentUser } from "@/lib/auth-server";
 import { getProfileByAuthUserId } from "@/lib/profile-completion";
 import { MobileNavMenu } from "./components/mobile-nav-menu";
@@ -18,6 +19,9 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
+
+const BARION_PIXEL_ID =
+  process.env.NEXT_PUBLIC_BARION_PIXEL_ID?.trim() || "BPT-tDsnHCqVrM-AA";
 
 export const metadata: Metadata = {
   title: "AdriaGo — ENC értékesítés és útdíjkezelés",
@@ -61,6 +65,23 @@ export default async function RootLayout({
       className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body suppressHydrationWarning className="relative flex min-h-full flex-col overflow-x-hidden text-foreground">
+        <Script id="barion-pixel-basic" strategy="afterInteractive">
+          {`
+            (function () {
+              window.bp = window.bp || function () {
+                (window.bp.q = window.bp.q || []).push(arguments);
+              };
+              window.bp.l = +new Date();
+              var s = document.createElement("script");
+              s.async = true;
+              s.src = "https://pixel.barion.com/bp.js";
+              var e = document.getElementsByTagName("script")[0];
+              if (e && e.parentNode) e.parentNode.insertBefore(s, e);
+            })();
+            window.bp('init', '${BARION_PIXEL_ID}');
+            window.bp('event', 'pageView');
+          `}
+        </Script>
         <div className="relative z-10 flex min-h-full flex-1 flex-col overflow-x-hidden">
           <header className="sticky top-0 z-40 w-full border-b border-white/40 bg-white/55 shadow-sm backdrop-blur-xl transition-shadow duration-300 hover:shadow-md">
             <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-6">
